@@ -64,9 +64,16 @@ The trusted publisher is bound to the workflow **filename**. Renaming or moving
 `.github/workflows/changesets.yml` revokes the credential, and the release then
 fails with a `404` that reads like a missing package.
 
+The repository is public, so every release from CI carries a provenance
+statement, and npm accepts it only when `repository.url` in `package.json`
+names this repository.
+
 ## Preflight — before merging a "Version Packages" PR
 
 - [ ] `main` is green. No red required checks.
+- [ ] On npmjs.com, under the package's **Settings → Trusted publishing**, the
+      publisher names `uxfront-com/uxd` and `changesets.yml`, its **Allowed
+      actions** include `npm publish`, and it has not expired.
 - [ ] The version bump matches the changesets it consumed. `feat` work should
       show a MINOR bump, fixes a PATCH.
 - [ ] Read `CHANGELOG.md` in the PR diff as the release notes, because that is
@@ -145,6 +152,18 @@ and the release is never that urgent.
 **`404` on publish.** Almost always the trusted publisher, not the package.
 Check that the publisher registered on npmjs.com still names
 `.github/workflows/changesets.yml`, and that `pnpm/action-setup` is v6 or later.
+Check two more settings on the same page. **Allowed actions** must include
+`npm publish`: a publisher created after 2026-09-03 allows only
+`npm stage publish` until you tick it. And a new publisher expires if its first
+publish doesn't succeed within 2 days, so recreate an expired one and release
+within 2 days.
+
+**`E422 undefined` on publish.** The registry rejected the provenance
+statement, because `repository.url` in `package.json` is missing or doesn't
+match `https://github.com/uxfront-com/uxd` exactly, case included. Changesets
+hides the registry's message and prints `undefined` in its place. The `422`
+comes after the OIDC exchange, so the trusted publisher is most likely not the
+cause; if fixing `repository.url` doesn't clear it, check the `404` entry above.
 
 **"GitHub Actions is not permitted to create or approve pull requests."** The
 repository setting *Allow GitHub Actions to create and approve pull requests* is
