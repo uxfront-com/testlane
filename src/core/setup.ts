@@ -135,6 +135,6 @@ async function install(ctx: Ctx, project: ProjectConfig, ws: Workspace, wc: Work
   }
 
   ctx.log.step("running setup");
-  const code = await passthrough(["bash", "-c", script], { cwd: ws.path, env });
+  const code = await passthrough(["bash", "-c", script], { cwd: ws.path, env, stdoutToStderr: ctx.flags.json });
   if (code !== 0) throw setupError(`setup command failed (exit ${code})`);
 }

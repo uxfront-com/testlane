@@ -68,6 +68,11 @@ export interface PassthroughOptions {
   env?: Record<string, string>;
   /** Detach into a new session with ignored stdio (GUI editors, §10). */
   detach?: boolean;
+  /**
+   * Send the child's stdout to uxd's stderr. Setup and hooks use it under
+   * `--json`, so an install's output never lands in front of the JSON (§13.2).
+   */
+  stdoutToStderr?: boolean;
 }
 
 export interface DetachOptions {
@@ -130,7 +135,7 @@ export async function passthrough(argv: string[], opts: PassthroughOptions = {})
     const child = spawn(argv[0]!, argv.slice(1), {
       cwd: opts.cwd,
       env: opts.env ?? (process.env as Record<string, string>),
-      stdio: "inherit",
+      stdio: opts.stdoutToStderr ? ["inherit", 2, "inherit"] : "inherit",
     });
 
     const forward = (signal: NodeJS.Signals) => {

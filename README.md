@@ -412,7 +412,7 @@ Non-interactive (no TTY) or `--json` falls back to a plain `list`. An empty answ
 | `--config-dir <dir>` | Override the config directory |
 | `--pr` / `--branch` / `--path <v>` | Force how the ref is interpreted |
 | `--dry-run` | Print what would run; change nothing |
-| `--json` | Machine-readable stdout (`checkout`, `list`, `info`, `projects`, `doctor`) |
+| `--json` | Machine-readable stdout (`checkout`, `list`, `info`, `start`, `ps`, `projects`, `doctor`) |
 | `-q`, `--quiet` | Suppress step logs |
 | `-v`, `--verbose` | Print external commands (also enables debug traces) |
 | `-y`, `--yes` | Assume "yes" for prompts |

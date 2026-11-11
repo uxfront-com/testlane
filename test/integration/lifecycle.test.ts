@@ -4,7 +4,7 @@
 
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { spawn, spawnSync } from "node:child_process";
-import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { get } from "node:http";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -61,7 +61,16 @@ beforeEach(() => {
 
 afterEach(() => {
   setProcRecorder(null);
+  // Also whatever a start recorded, so a failed assertion can't leak a server.
+  const data = join(env.worktreesPath(PROJECT), ".data");
+  if (existsSync(data)) {
+    for (const slug of readdirSync(data)) {
+      const file = join(data, slug, "process.json");
+      if (existsSync(file)) started.push(Number(JSON.parse(readFileSync(file, "utf8")).pid));
+    }
+  }
   for (const pid of started) {
+    if (!Number.isInteger(pid) || pid <= 1) continue;
     for (const target of [-pid, pid]) {
       try {
         process.kill(target, "SIGKILL");
@@ -140,6 +149,9 @@ beforeAll(() => {
     encoding: "utf8",
   });
   if (build.status !== 0) throw new Error(`build failed:\n${build.stdout}${build.stderr}`);
+  // Package-scope lookup stops at node_modules, so the root "type": "module"
+  // doesn't reach this build. Without this, Node 18 loads it as CommonJS.
+  writeFileSync(join(builtDir, "package.json"), '{"type":"module"}\n');
 }, 120_000);
 
 function spawnBuilt(argv: string[]) {
@@ -178,6 +190,27 @@ describe("start", () => {
     expect(entry).toMatchObject({ pid: s.pid, command: "web", port: s.port, log: s.log });
     expect(entry.lstart).toBe(psField("lstart", s.pid));
   });
+
+  it("P1-C1 — with --json, stdout is one JSON object even when setup and hooks print", async () => {
+    env = makeLifeEnv(`post_checkout = "echo POST-CHECKOUT-OUT"\npre_clean = "true"`);
+    const cfg = join(env.configDir, `${PROJECT}.toml`);
+    writeFileSync(
+      cfg,
+      readFileSync(cfg, "utf8")
+        .replace(/^run = "echo setup >> .*"$/m, 'run = "echo SETUP-OUT"')
+        .replace(/^pre_run = .*$/m, 'pre_run = "echo PRE-RUN-OUT"'),
+    );
+    // A separate process: children write to fd 1, which the in-process harness can't see.
+    const r = await spawnBuilt([PROJECT, "main", "start", "web", "--json"]).done;
+    expect(r.code, r.stderr).toBe(0);
+    const out = JSON.parse(r.stdout) as Started;
+    started.push(out.pid);
+    expect(out.command).toBe("web");
+    for (const line of ["SETUP-OUT", "PRE-RUN-OUT", "POST-CHECKOUT-OUT"]) {
+      expect(r.stdout).not.toContain(line);
+      expect(r.stderr).toContain(line);
+    }
+  }, 60_000);
 
   it("P1-C1 — without --json, prints the URL on stdout", async () => {
     const r = await env.run([PROJECT, "main", "start", "web"]);

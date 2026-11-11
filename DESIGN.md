@@ -177,7 +177,7 @@ Recognized anywhere before the verb; also accepted after it (verb parsers must t
 |---|---|
 | `--config-dir <path>` | Override config directory (highest precedence). |
 | `--dry-run` | Print external commands instead of executing; no state writes. §13.4 |
-| `--json` | Machine-readable stdout where supported (`checkout`, `list`, `info`, `projects`, `doctor`). Elsewhere: exit 2. |
+| `--json` | Machine-readable stdout where supported (`checkout`, `list`, `info`, `start`, `ps`, `projects`, `doctor`). Elsewhere: exit 2. Setup and hook output goes to stderr while it's set. |
 | `--quiet`, `-q` | Suppress step logging on stderr (errors still print). |
 | `--verbose`, `-v` | Log every external command with timing to stderr. |
 | `--yes`, `-y` | Skip confirmation prompts (required for destructive ops when stdin is not a TTY). |

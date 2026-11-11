@@ -31,7 +31,7 @@ export async function runHook(
 
   ctx.log.step(`hook ${name}`);
   const env = composeEnv(wc, project);
-  const code = await passthrough(["bash", "-c", script], { cwd: wc.path, env });
+  const code = await passthrough(["bash", "-c", script], { cwd: wc.path, env, stdoutToStderr: ctx.flags.json });
   if (code !== 0 && fatal) {
     throw setupError(`hook ${name} failed (exit ${code})`);
   }
