@@ -34,7 +34,7 @@ export const HELP = `uxd — materialize any git ref of a configured project int
 
 USAGE
   uxd <project> <ref> [verb] [flags] [-- passthrough]
-  uxd <project> [list|clean] [flags]
+  uxd <project> [list|clean|ps] [flags]
   uxd <top-level-verb> [args]
 
 REF FORMS
@@ -50,10 +50,15 @@ WORKSPACE VERBS
   rm                  remove one workspace
   run|exec|shell|sync process verbs (M1)
   diff                show PR diff (M2)
+  start <name>        run a configured command in the background; return once
+                      127.0.0.1:{port} accepts connections
+  stop                stop the process \`start\` left running
+  logs [-f]           print (or follow) that process's log
 
 PROJECT VERBS
   list                list a project's workspaces (default for bare \`uxd <project>\`)
   clean               remove workspaces (explicit slugs or --all)
+  ps                  list the processes \`start\` left running, and their status
 
 TOP-LEVEL VERBS
   setup               create the config dir and scaffold your first project
@@ -68,7 +73,7 @@ GLOBAL FLAGS
   --config-dir <dir>  override the config directory
   --pr|--branch|--path <v>  force ref interpretation
   --dry-run           print what would run; change nothing
-  --json              machine-readable stdout (checkout, list, info, projects, doctor)
+  --json              machine-readable stdout (checkout, list, info, start, ps, projects, doctor)
   -q, --quiet         suppress step logs
   -v, --verbose       print external commands
   -y, --yes           assume yes for prompts

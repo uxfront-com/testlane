@@ -87,7 +87,7 @@ export interface Lock {
   release(): void;
 }
 
-interface LockContents {
+export interface LockContents {
   pid: number;
   startedAt: string;
 }
@@ -95,7 +95,7 @@ interface LockContents {
 const LOCK_TIMEOUT_MS = 30_000;
 const LOCK_POLL_MS = 250;
 
-function pidAlive(pid: number): boolean {
+export function pidAlive(pid: number): boolean {
   try {
     process.kill(pid, 0);
     return true;
@@ -113,8 +113,34 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  */
 export async function acquireLock(project: string, log: Logger): Promise<Lock> {
   ensureStateDir();
-  const file = lockPath(project);
-  const deadline = Date.now() + LOCK_TIMEOUT_MS;
+  return acquireFileLock(lockPath(project), {
+    label: `'${project}'`,
+    timeoutMs: LOCK_TIMEOUT_MS,
+    log,
+    onTimeout: (holder) =>
+      gitError(
+        `timed out waiting for lock on '${project}'`,
+        holder ? `held by pid ${holder.pid} since ${holder.startedAt}` : undefined,
+      ),
+  });
+}
+
+export interface FileLockOptions {
+  /** Names the lock in the stale-lock warning, e.g. `'n8n'`. */
+  label: string;
+  timeoutMs: number;
+  log: Logger;
+  /** The error thrown when a live holder outlasts `timeoutMs`. */
+  onTimeout(holder: LockContents | null): UxdError;
+}
+
+/**
+ * Create `file` exclusively (`wx`) and hold it until `release()`. A lock whose
+ * holder PID is dead is stolen with a warning; a live holder is waited on for
+ * `timeoutMs` (§7.6). The file's directory must exist.
+ */
+export async function acquireFileLock(file: string, opts: FileLockOptions): Promise<Lock> {
+  const deadline = Date.now() + opts.timeoutMs;
 
   for (;;) {
     try {
@@ -128,16 +154,11 @@ export async function acquireLock(project: string, log: Logger): Promise<Lock> {
 
       const holder = readLock(file);
       if (holder && !pidAlive(holder.pid)) {
-        log.warn(`stealing stale lock for '${project}' (dead pid ${holder.pid})`);
+        opts.log.warn(`stealing stale lock for ${opts.label} (dead pid ${holder.pid})`);
         rmSync(file, { force: true });
         continue;
       }
-      if (Date.now() >= deadline) {
-        throw gitError(
-          `timed out waiting for lock on '${project}'`,
-          holder ? `held by pid ${holder.pid} since ${holder.startedAt}` : undefined,
-        );
-      }
+      if (Date.now() >= deadline) throw opts.onTimeout(holder);
       await sleep(LOCK_POLL_MS);
     }
   }

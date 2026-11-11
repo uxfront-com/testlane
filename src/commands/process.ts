@@ -22,15 +22,7 @@ export async function run(input: WorkspaceInput): Promise<number> {
     multi: ["--env"],
   });
 
-  const name = flags.positionals[0];
-  if (name === undefined) {
-    throw usage("run requires a command name", commandHint(project));
-  }
-  const command = project.commands[name];
-  if (!command) {
-    throw usage(`unknown command '${name}'`, commandHint(project));
-  }
-
+  const name = commandName(project, flags.positionals[0], "run");
   const flagEnv = parseEnvFlags(flags.list("--env"));
 
   const { ws, dataDir } = await ensureWorkspace(ctx, project, ref, {
@@ -40,20 +32,55 @@ export async function run(input: WorkspaceInput): Promise<number> {
     preRun: true,
   });
 
-  const wc = wsContextWithPort(project, ws, dataDir, flags.value("--port"));
+  const cmd = buildCommand(project, ws, dataDir, name, input.passthrough, flagEnv, flags.value("--port"));
+
+  if (ctx.flags.dryRun) {
+    printDryRun(cmd.wc, project, cmd.extra, cmd.argv);
+    return ExitCode.SUCCESS;
+  }
+  return passthrough(cmd.argv, { cwd: cmd.cwd, env: composeEnv(cmd.wc, project, cmd.extra) });
+}
+
+/** The configured command `name`, or a usage error listing the configured ones. */
+export function commandName(project: ProjectConfig, name: string | undefined, verb: string): string {
+  if (name === undefined) {
+    throw usage(`${verb} requires a command name`, commandHint(project));
+  }
+  if (!project.commands[name]) {
+    throw usage(`unknown command '${name}'`, commandHint(project));
+  }
+  return name;
+}
+
+export interface BuiltCommand {
+  wc: WorkspaceContext;
+  argv: string[];
+  cwd: string;
+  extra: { commandEnv?: Record<string, string>; flagEnv: Record<string, string> };
+}
+
+/**
+ * Template `commands.<name>` for a workspace, the way `run` executes it (§9.3):
+ * `bash -c '<run> "$@"' uxd <extra…>` in the command's cwd. `start` builds its
+ * command here too, so the two never drift apart.
+ */
+export function buildCommand(
+  project: ProjectConfig,
+  ws: Workspace,
+  dataDir: string,
+  name: string,
+  passthroughArgs: string[],
+  flagEnv: Record<string, string>,
+  portFlag?: string,
+): BuiltCommand {
+  const command = project.commands[name]!;
+  const wc = wsContextWithPort(project, ws, dataDir, portFlag);
   const vars = templateVars(wc);
   const runStr = interpolate(command.run, vars, `commands.${name}.run`);
   const cwd = commandCwd(ws, command.cwd, vars, name);
-
   // Passthrough args are appended shell-safely: bash -c '<run> "$@"' uxd <extra…>.
-  const argv = ["bash", "-c", `${runStr} "$@"`, "uxd", ...input.passthrough];
-  const extra = { commandEnv: command.env, flagEnv };
-
-  if (ctx.flags.dryRun) {
-    printDryRun(wc, project, extra, argv);
-    return ExitCode.SUCCESS;
-  }
-  return passthrough(argv, { cwd, env: composeEnv(wc, project, extra) });
+  const argv = ["bash", "-c", `${runStr} "$@"`, "uxd", ...passthroughArgs];
+  return { wc, argv, cwd, extra: { commandEnv: command.env, flagEnv } };
 }
 
 // ── exec -- <argv...> ────────────────────────────────────────────────────────
@@ -147,7 +174,7 @@ function parsePort(value: string | undefined): number | undefined {
   return n;
 }
 
-function parseEnvFlags(items: string[]): Record<string, string> {
+export function parseEnvFlags(items: string[]): Record<string, string> {
   const out: Record<string, string> = {};
   for (const item of items) {
     const eq = item.indexOf("=");
@@ -161,7 +188,7 @@ function parseEnvFlags(items: string[]): Record<string, string> {
  * `--dry-run`: print env layers 2–5 as `export` lines, then the shell-quoted
  * command (§11.2, §13.4). No spawn, no lock.
  */
-function printDryRun(
+export function printDryRun(
   wc: WorkspaceContext,
   project: ProjectConfig,
   extra: { commandEnv?: Record<string, string>; flagEnv?: Record<string, string> },

@@ -1,6 +1,7 @@
 // Process execution: capture/passthrough on node:child_process (§11.1).
 
 import { spawn } from "node:child_process";
+import { closeSync, openSync } from "node:fs";
 import { UxdError, type ErrCode } from "./errors.ts";
 
 // Optional recorder: when set, every spawned argv is recorded before execution.
@@ -69,29 +70,62 @@ export interface PassthroughOptions {
   detach?: boolean;
 }
 
+export interface DetachOptions {
+  cwd?: string;
+  env?: Record<string, string>;
+  /** Append stdout and stderr to this file instead of discarding them (`start`, §9.14). */
+  log?: string;
+}
+
+export interface Detached {
+  pid: number;
+  /** Settles with the exit code (128+signal on signal death) once the child exits. */
+  exited: Promise<number>;
+}
+
+/**
+ * Spawn `argv` in a new session and process group (its PGID is its PID), then
+ * unref it so uxd can exit while it runs. stdio is ignored, or appended to
+ * `log` when given (§10, §9.14).
+ */
+export async function detach(argv: string[], opts: DetachOptions = {}): Promise<Detached> {
+  recorder?.(argv);
+  const fd = opts.log !== undefined ? openSync(opts.log, "a") : undefined;
+  try {
+    return await new Promise<Detached>((resolve, reject) => {
+      const child = spawn(argv[0]!, argv.slice(1), {
+        cwd: opts.cwd,
+        env: opts.env ?? (process.env as Record<string, string>),
+        stdio: fd !== undefined ? ["ignore", fd, fd] : "ignore",
+        detached: true,
+      });
+      const exited = new Promise<number>((res) => {
+        child.once("exit", (code, signal) => res(signal ? 128 + signalNumber(signal) : (code ?? 0)));
+      });
+      child.once("error", (e) => reject(mapSpawnError(e, argv)));
+      child.once("spawn", () => {
+        child.unref();
+        resolve({ pid: child.pid!, exited });
+      });
+    });
+  } finally {
+    // The child holds its own copy of the descriptor.
+    if (fd !== undefined) closeSync(fd);
+  }
+}
+
 /**
  * Run `argv` with stdio inherited (or detached). Forwards SIGINT/SIGTERM to the
  * child's process group for the duration, then restores handlers (§11.1, §19.13).
  * Returns the child's exit code (128+signal on signal death).
  */
 export async function passthrough(argv: string[], opts: PassthroughOptions = {}): Promise<number> {
-  recorder?.(argv);
   if (opts.detach) {
-    return await new Promise<number>((resolve, reject) => {
-      const child = spawn(argv[0]!, argv.slice(1), {
-        cwd: opts.cwd,
-        env: opts.env ?? (process.env as Record<string, string>),
-        stdio: "ignore",
-        detached: true,
-      });
-      child.once("error", (e) => reject(mapSpawnError(e, argv)));
-      child.once("spawn", () => {
-        child.unref();
-        resolve(0);
-      });
-    });
+    await detach(argv, { cwd: opts.cwd, env: opts.env });
+    return 0;
   }
 
+  recorder?.(argv);
   return await new Promise<number>((resolve, reject) => {
     const child = spawn(argv[0]!, argv.slice(1), {
       cwd: opts.cwd,

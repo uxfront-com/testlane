@@ -52,7 +52,7 @@ resolve(ref) → materialize(workspace) → act(command)
 
 ### Non-goals (v1)
 
-- Process supervision (`run --detach`, `logs`, `stop`) — deferred to M3.
+- Process supervision beyond one detached process per workspace (`start`, `stop`, `logs`, `ps`, §9.14–9.17). uxd doesn't restart a crashed process, reap orphans or orchestrate services.
 - File watching / auto-sync on new commits — the calling automation's job.
 - Docker / docker-compose service orchestration per workspace.
 - Native Windows. WSL2 is expected to work; do not add Windows-specific code paths.
@@ -105,6 +105,7 @@ uxd [global flags] <top-verb> [args...]                                      # g
 |---|---|---|
 | `list` | List workspaces for the project | §9.8 |
 | `clean` | Remove workspaces by filter | §9.9 |
+| `ps` | List the processes `start` left running | §9.17 |
 
 **Workspace verbs** (require project + ref):
 
@@ -119,6 +120,9 @@ uxd [global flags] <top-verb> [args...]                                      # g
 | `diff` | Show the workspace's diff vs. its base | §9.7 |
 | `info` | Print workspace details (`--json` capable) | §9.8 |
 | `rm` | Remove this one workspace (single-target `clean`) | §9.9 |
+| `start <name>` | Materialize + setup, then run a configured command detached and return once its port accepts | §9.14 |
+| `stop` | Stop the process `start` left running | §9.15 |
+| `logs [-f]` | Print or follow that process's log | §9.16 |
 
 ### 4.3 Argument classification algorithm
 
@@ -489,6 +493,8 @@ Unknown `version` → exit 3 with an upgrade hint. Entries whose `path` no longe
 
 `<worktrees_path>/.data/<slug>/`, created at materialization, exported as `{data_dir}`/`UXD_DATA_DIR`. Purpose: per-workspace mutable state (SQLite files, user folders, caches) so concurrent instances never share; e.g. `N8N_USER_FOLDER = "{data_dir}"`. Lives beside the worktrees (not inside them — keeps `git status` clean) and dies with the workspace.
 
+uxd keeps three files of its own there for `start` (§9.14): `process.json`, the record of the one detached process (`pid`, its `lstart` start time as `ps -o lstart=` prints it, `command`, `port`, `log`, `startedAt`), `process.log`, which that process's stdout and stderr are appended to, and `start.lock`, held while a `start` runs. `stop` removes `process.json` and keeps the log.
+
 ### 8.4 Setup: seeding + install, cached
 
 `runSetup(ws)`:
@@ -496,7 +502,7 @@ Unknown `version` → exit 3 with an upgrade hint. Entries whose `path` no longe
 1. **Seed.** For each entry in `setup.seed_files` (validated: relative, no `..`): if `<worktree>/<rel>` already exists, skip (never overwrite). Otherwise copy from the first source that has it: `<config-dir>/seeds/<project>/<rel>` → `setup.seed_from/<rel>`. Neither has it → warn once, continue. `--reseed` deletes the targets first.
 2. **Hash.** Expand `setup.cache_key` globs (via `tinyglobby`, sorted, relative to worktree; excluded: anything under `node_modules/` or `.git/`); `setupHash = sha256(concat(relpath, "\\0", file bytes, "\\0") …)`.
 3. **Install.** If `setup.run` is set and `setupHash !== ws.setupHash`: run it (`bash -c`, cwd = worktree, env = composed env §11.2, stdio inherited). Success → persist new hash. Failure → exit 6 and leave the old hash so the next attempt retries.
-4. `pre_run` hook, when the caller is `run`/`exec`/`shell`.
+4. `pre_run` hook, when the caller is `run`/`exec`/`shell`/`start`.
 
 ### 8.5 Port allocation
 
@@ -624,6 +630,49 @@ Runs the checks below; each prints `ok` / `warn` / `fail` + one-line detail to s
 
 Static script completing: top-level verbs, project names (reads config dir), project/workspace verbs, configured command names and workspace slugs via `uxd <project> list --json`.
 
+### 9.14 `start <name>`
+
+```
+uxd <project> <ref> start <name> [--timeout <seconds>] [--env K=V ...] [--no-setup] [--reseed] [--fetch] [-- extra args]
+```
+
+Runs `commands.<name>` in the background, so an agent or a script can hand back a running app. Materialize + setup + `pre_run`, then build the command exactly as `run` does (§9.3, same `bash -c '<run> "$@"' uxd <extra…>` and env), and spawn it with `detach` (§11.1): its own session and process group, stdout and stderr appended to `<data_dir>/process.log`.
+
+Record `<data_dir>/process.json` (§8.3) before waiting, so an interrupted `start` can still be stopped. Then poll `127.0.0.1:{port}` until it accepts a TCP connection, and return. The rules:
+
+- **One process per workspace.** A *live* entry is one whose PID answers `kill(pid, 0)` and whose `ps -o lstart=` equals the recorded `lstart`, so a PID the OS has reused is not live. `start`, `stop` and `ps` share this one test. When the entry is live with the same command, print it with `reused: true` and run nothing (no setup, no hooks, no process). When a different command is live, exit 2 and name the running command and the `stop` to run. A dead entry is replaced.
+- **Concurrency.** An exclusive `<data_dir>/start.lock` (created `wx`, stolen from a dead holder as §7.6 does) serializes starts of one workspace without holding the project lock through the readiness wait. A second `start` waits on it for its own `--timeout`, not §7.6's 30 seconds, then sees the first one's live entry and prints it. Timing out on the lock exits 5.
+- **Readiness.** `--timeout` defaults to 300 seconds. When the child exits first, kill what's left of its group, clear the entry, print the last 20 log lines to stderr and exit 6. When the port isn't ready in time, stop the group (§9.15), clear the entry and exit 6 with a hint to bind `127.0.0.1:{port}`. When something already accepts on the port before the spawn, exit 6 without spawning, since readiness would be meaningless.
+- **No `--port`.** It's a usage error (exit 2), so the entry's port always equals `{port}` and hooks see the same one. `--dry-run` prints the env and command as `run` does and spawns nothing.
+
+stdout: the URL `http://127.0.0.1:<port>`. `--json`: one object with `project`, `slug`, `command`, `pid`, `port`, `url`, `log`, `startedAt` and `reused`.
+
+### 9.15 `stop`
+
+```
+uxd <project> <ref> stop
+```
+
+When the entry is live (§9.14), send SIGTERM to its process group (`kill(-pid)`), so children of the shell (a `vite` under `bash -c`) die too. Wait up to 10 seconds for the group to empty, then SIGKILL it. Remove `process.json` and keep the log.
+
+A dead or reused PID is never signalled: the entry is cleared and `stop` exits 0. With no entry, print "not running" and exit 0. `rm` and `clean` (§9.9) do the same for each workspace they remove, after `pre_clean` ran and didn't veto, and before anything is deleted.
+
+### 9.16 `logs`
+
+```
+uxd <project> <ref> logs [-f | --follow]
+```
+
+Print `<data_dir>/process.log` to stdout. With `-f`, keep printing new lines until SIGINT/SIGTERM, starting over when the file shrinks. No log → exit 2 with a message.
+
+### 9.17 `ps`
+
+```
+uxd <project> ps [--json]
+```
+
+One row per `process.json` found in the project's workspaces (the state's slugs plus every directory under `<worktrees_path>/.data`): `SLUG  COMMAND  PID  PORT  STATUS  STARTED  LOG`, sorted by slug, where `STATUS` is `running` for a live entry (§9.14) and `exited` otherwise. `--json`: an array of `{ slug, command, pid, port, status, startedAt, log }`.
+
 ---
 
 ## 10. Editors
@@ -655,6 +704,7 @@ below rather than relying on a synchronous failure:
 
 - `capture(argv, { cwd, env }): { code, stdout, stderr }` — for git/gh plumbing. Non-zero exit throws `UxdError(E_GIT | E_EXTERNAL)` carrying trimmed stderr; callers that expect failure pass `{ allowFailure: true }`.
 - `passthrough(argv, { cwd, env, detach? }): exitCode` — stdio inherited (or detached per §10); used by run/exec/shell/editor/hooks/setup. Installs SIGINT/SIGTERM forwarding to the child process group for the duration.
+- `detach(argv, { cwd, env, log? }): { pid, exited }` is the detached half of `passthrough`, which `passthrough({ detach: true })` calls. The child gets a new session and process group (its PGID is its PID) and is unref'd so uxd can exit. stdio is ignored, or appended to `log`. `exited` settles with the exit code, so `start` notices a child that dies before its port is ready.
 
 Config-supplied *strings* (`setup.run`, `commands.*.run`, `hooks.*`, custom editor templates) always execute as `["bash", "-c", string]` — documented trust model: config is user-authored code on the user's machine; uxd does not sandbox it. Internal operations never string-concatenate shell commands.
 
@@ -677,7 +727,7 @@ Four hooks, all optional strings run via `bash -c`, cwd = worktree, env = §11.2
 | Hook | When | Non-zero exit ⇒ |
 |---|---|---|
 | `post_checkout` | after a workspace is first materialized | operation fails (exit 6), workspace kept (retry on next use — hook idempotency is the config author's job) |
-| `pre_run` | after setup, before `run`/`exec`/`shell` command | operation aborts (exit 6) |
+| `pre_run` | after setup, before `run`/`exec`/`shell`/`start` command | operation aborts (exit 6) |
 | `post_sync` | after a successful sync reset | warn only |
 | `pre_clean` | before each workspace removal | that workspace is skipped, warn |
 
@@ -736,6 +786,7 @@ uxd/
       setup.ts            # seeding, cache-key hashing, install (§8.4)
       ports.ts            # allocation (§8.5)
       state.ts            # load/save (atomic), lock/unlock (§7.6)
+      supervise.ts        # process.json, liveness, stop, readiness (§9.14–9.17)
     git/
       repo.ts             # init, fetch strategies, default-branch detect (§7.1–7.3)
       worktree.ts         # add/remove/prune/status/dirty (§7.2, §7.5)
@@ -743,8 +794,9 @@ uxd/
     commands/             # one file per verb, each: (ctx, args) => Promise<exitCode>
       checkout.ts code.ts run.ts exec.ts shell.ts sync.ts diff.ts
       info.ts list.ts clean.ts projects.ts doctor.ts config.ts completions.ts
+      lifecycle.ts        # start/stop/logs/ps (§9.14–9.17)
     lib/
-      proc.ts             # capture/passthrough (§11.1)
+      proc.ts             # capture/passthrough/detach (§11.1)
       log.ts              # stderr steps, levels, color gating
       template.ts         # {var} interpolation (§5.5)
       paths.ts            # ~ expansion, XDG dirs
@@ -881,6 +933,7 @@ Scenarios (each asserts exit code, stdout contract, stderr contains, and on-disk
 10. `--dry-run checkout` on a fresh project — prints clone/fetch/worktree commands, creates nothing.
 11. lock contention — two concurrent `checkout`s serialize (second waits), stale lock with dead pid is stolen.
 12. `list --json` shape; `doctor` on a corrupted repo (deleted fetch refspec) fails with the fix hint.
+13. `start`, `stop`, `logs` and `ps` (`test/integration/lifecycle.test.ts`): a `node` server on `$UXD_PORT` outlives `main()`, repeat and concurrent starts leave one process, an early exit and a timeout exit 6, `stop` kills a `bash -c` tree and never signals a reused PID, and `rm` stops the process before it removes anything. Each test kills what it started.
 
 ---
 
@@ -909,7 +962,7 @@ Scenarios (each asserts exit code, stdout contract, stderr contains, and on-disk
 
 ### M3 — deferred (do not build now)
 
-`run --detach`/`logs`/`stop` (pidfiles under `{data_dir}`), `watch`, per-workspace service orchestration, reflink `node_modules` acceleration, brew/npm distribution.
+`watch`, restarting or reaping detached processes, per-workspace service orchestration, reflink `node_modules` acceleration, brew/npm distribution.
 
 ---
 

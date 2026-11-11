@@ -31,6 +31,7 @@ import { config } from "./commands/config.ts";
 import { setup } from "./commands/setup.ts";
 import { run, exec, shell } from "./commands/process.ts";
 import { sync } from "./commands/sync.ts";
+import { start, stop, logs, ps } from "./commands/lifecycle.ts";
 import { diff } from "./commands/diff.ts";
 import { completions } from "./commands/completions.ts";
 
@@ -200,6 +201,8 @@ async function dispatch(result: ParseResult, ctx: Ctx, defaults: Defaults): Prom
           : list({ ctx, project, args: result.args });
       case "clean":
         return clean({ ctx, project, args: result.args });
+      case "ps":
+        return ps({ ctx, project, args: result.args });
     }
   }
 
@@ -232,6 +235,12 @@ async function dispatch(result: ParseResult, ctx: Ctx, defaults: Defaults): Prom
       return sync(wi);
     case "diff":
       return diff(wi);
+    case "start":
+      return start(wi);
+    case "stop":
+      return stop(wi);
+    case "logs":
+      return logs(wi);
     default:
       throw new UxdError("E_INTERNAL", "unhandled workspace verb");
   }

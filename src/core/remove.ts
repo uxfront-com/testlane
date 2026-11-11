@@ -8,6 +8,7 @@ import type { Workspace } from "./state.ts";
 import { deleteBranch, pruneWorktrees, removeWorktree } from "../git/worktree.ts";
 import { runHook } from "./hooks.ts";
 import { wsContext } from "./env.ts";
+import { isLive, readEntry, stopRecorded } from "./supervise.ts";
 import type { GitEnv } from "../git/repo.ts";
 
 function dataDirFor(project: ProjectConfig, slug: string): string {
@@ -28,7 +29,8 @@ export async function workspaceDiskBytes(dir: string): Promise<number | null> {
 }
 
 /**
- * Tear down one workspace (§7.5). Adopted workspaces keep their directory and
+ * Tear down one workspace (§7.5). Once `pre_clean` allows it, a process `start`
+ * left running is stopped first. Adopted workspaces keep their directory and
  * branch — only the data dir is removed. Returns true when disposed, false when
  * a pre_clean hook vetoed it.
  */
@@ -48,6 +50,8 @@ export async function disposeWorkspace(
   }
 
   if (ctx.flags.dryRun) {
+    const entry = readEntry(dataDir);
+    if (entry && (await isLive(entry))) process.stdout.write(`kill -TERM -- -${entry.pid}\n`);
     if (!ws.adopted) {
       process.stdout.write(`git -C ${project.repoPath} worktree remove ${ws.path}${force ? " --force" : ""}\n`);
       if (ws.kind === "pr" && ws.number !== undefined) {
@@ -57,6 +61,10 @@ export async function disposeWorkspace(
     process.stdout.write(`rm -rf ${dataDir}\n`);
     return true;
   }
+
+  // A process `start` left running would hold the worktree and its port (§9.15).
+  const stopped = await stopRecorded(dataDir);
+  if (stopped.kind === "stopped") ctx.log.step(`stopped ${stopped.entry.command} (pid ${stopped.entry.pid}) in ${ws.slug}`);
 
   const g = gitEnv(ctx, project);
 
