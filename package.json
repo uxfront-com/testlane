@@ -2,6 +2,10 @@
   "name": "@uxfront/uxd",
   "version": "1.2.0",
   "description": "Materialize any git ref of a configured project into an isolated, runnable local workspace.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/uxfront-com/uxd.git"
+  },
   "type": "module",
   "bin": {
     "uxd": "./dist/bin/uxd.js"
