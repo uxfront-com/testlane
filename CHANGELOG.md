@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.1
+
+### Patch Changes
+
+- ab7e828: Declare the source repository in `package.json`, so the npm page links to the code and releases from CI carry a provenance statement that npm can verify. The CLI itself is unchanged.
+
 ## 1.2.0
 
 ### Minor Changes
