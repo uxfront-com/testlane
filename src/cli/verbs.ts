@@ -2,7 +2,7 @@
 
 export const TOP_LEVEL_VERBS = ["setup", "projects", "doctor", "config", "completions", "help", "version"] as const;
 
-export const PROJECT_VERBS = ["list", "clean"] as const;
+export const PROJECT_VERBS = ["list", "clean", "ps"] as const;
 
 export const WORKSPACE_VERBS = [
   "checkout",
@@ -14,6 +14,9 @@ export const WORKSPACE_VERBS = [
   "diff",
   "info",
   "rm",
+  "start",
+  "stop",
+  "logs",
 ] as const;
 
 export type TopLevelVerb = (typeof TOP_LEVEL_VERBS)[number];

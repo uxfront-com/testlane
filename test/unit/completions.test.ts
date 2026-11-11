@@ -72,6 +72,11 @@ describe("completions §9.13", () => {
     expect(out).toContain("__fish_uxd_slugs");
   });
 
+  it.each(["bash", "zsh", "fish"])("P1-C9 — the %s script offers start, stop, logs and ps", async (shell) => {
+    const { out } = await emit([shell]);
+    expect(out).toContain("list clean ps checkout code run exec shell sync diff info rm start stop logs");
+  });
+
   it("missing shell → E_USAGE (exit 2)", async () => {
     await expect(emit([])).rejects.toThrow(/requires a shell/);
   });

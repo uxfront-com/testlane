@@ -192,6 +192,9 @@ Require a project and a ref.
 | `diff` | Show the workspace's diff vs. its base |
 | `info` | Print one workspace's details |
 | `rm` | Remove one workspace |
+| `start <name>` | Materialize + setup, then run a configured command in the background and return once its port accepts connections |
+| `stop` | Stop the process `start` left running |
+| `logs [-f]` | Print, or follow, that process's log |
 
 **`checkout`** — the scriptable primitive. Prints the absolute worktree path (one line, nothing else) so it composes:
 
@@ -264,6 +267,21 @@ uxd my-project 42 rm                        # remove one workspace (prompts unle
 uxd my-project 42 rm --force --yes          # remove even if dirty, no prompt
 ```
 
+**`start <name>`**, **`stop`** and **`logs`** let you hand someone a running app and get your terminal back. `start` runs a configured command the way `run` does, but in its own session and process group, with its output appended to `process.log` in the workspace's data dir. It returns once `127.0.0.1:{port}` accepts a TCP connection, prints the URL and leaves the process running after uxd exits:
+
+```bash
+uxd my-project 42 start dev                 # prints http://127.0.0.1:5701
+uxd my-project 42 start dev --json          # {"pid":4242,"port":5701,"reused":false,...}
+uxd my-project 42 logs -f                   # follow the log until Ctrl-C
+uxd my-project 42 stop
+```
+
+A workspace runs one such process at a time. Starting the same command again prints the running one with `"reused": true` and runs no setup or hooks, while a different command exits 2 and names the `stop` to run first. When the command exits before the port is ready, `start` exits 6 and prints the last 20 log lines. When the port isn't ready within `--timeout <seconds>` (300 by default), it stops the process and exits 6, so make sure your server binds `127.0.0.1:$UXD_PORT`.
+
+`start` takes the same flags as `run` apart from `--port`, which is a usage error: the process always serves the workspace's own port, so hooks and `ps` see the same one. `stop` sends `SIGTERM` to the whole process group, then `SIGKILL` after 10 seconds, so a dev server under `bash -c` stops too. It only signals the PID it recorded while that PID still has the start time it had, so a PID the OS has since given to another process is left alone. `rm` and `clean` stop a running process before they remove its workspace, once `pre_clean` has allowed it.
+
+The built-in verbs win over configured commands of the same name, so `uxd my-project 42 start` always means the verb. Run a command named `start` with `uxd my-project 42 run start`, and `doctor` warns about the overlap.
+
 ### Project verbs
 
 Require a project, no ref.
@@ -295,6 +313,18 @@ uxd my-project clean --merged --yes          # skip the confirmation prompt
 ```
 
 Filters intersect. Dirty worktrees are skipped unless `--force`; adopted workspaces are excluded unless `--include-adopted`. `clean` prints a plan and asks for confirmation (pass `--yes` for non-interactive use).
+
+**`ps`** lists the processes `start` left running in the project's workspaces, with their status, `running` or `exited`:
+
+```bash
+uxd my-project ps
+uxd my-project ps --json                    # [{"slug":"pr-42","command":"dev","status":"running",...}]
+```
+
+```
+SLUG   COMMAND  PID   PORT  STATUS   STARTED                   LOG
+pr-42  dev      4242  5701  running  2026-11-11T15:33:15.000Z  /srv/trees/.data/pr-42/process.log
+```
 
 ### Top-level verbs
 
@@ -382,7 +412,7 @@ Non-interactive (no TTY) or `--json` falls back to a plain `list`. An empty answ
 | `--config-dir <dir>` | Override the config directory |
 | `--pr` / `--branch` / `--path <v>` | Force how the ref is interpreted |
 | `--dry-run` | Print what would run; change nothing |
-| `--json` | Machine-readable stdout (`checkout`, `list`, `info`, `projects`, `doctor`) |
+| `--json` | Machine-readable stdout (`checkout`, `list`, `info`, `start`, `ps`, `projects`, `doctor`) |
 | `-q`, `--quiet` | Suppress step logs |
 | `-v`, `--verbose` | Print external commands (also enables debug traces) |
 | `-y`, `--yes` | Assume "yes" for prompts |

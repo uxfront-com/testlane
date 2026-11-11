@@ -217,6 +217,40 @@ describe("parse — top-level verbs precede project lookup (UXF-265)", () => {
   });
 });
 
+describe("parse — start, stop, logs and ps", () => {
+  // "start" and "ps" are configured commands here too: the built-in verbs win.
+  const withCommands: ParseDeps = { ...deps, projectCommandNames: () => ["dev", "start", "logs", "ps"] };
+  const q = (argv: string[]) => parse(argv, withCommands);
+
+  it("P1-C8 — start is a workspace verb and passes --port through for start to reject", () => {
+    const r = q(["n8n", "main", "start", "dev", "--port", "1"]);
+    expect(r.kind === "workspace" && r.verb).toBe("start");
+    if (r.kind !== "workspace") return;
+    expect(r.commandName).toBeUndefined();
+    expect(r.args).toEqual(["dev", "--port", "1"]);
+  });
+
+  it.each(["stop", "logs"])("P1-C9 — %s is a workspace verb, not the configured command", (verb) => {
+    const r = q(["n8n", "pr/7", verb]);
+    expect(r.kind === "workspace" && r.verb).toBe(verb);
+    if (r.kind !== "workspace") return;
+    expect(r.commandName).toBeUndefined();
+  });
+
+  it("P1-C9 — ps is a project verb", () => {
+    const r = q(["n8n", "ps", "--json"]);
+    expect(r.kind === "project" && r.verb).toBe("ps");
+    expect(r.global.json).toBe(true);
+  });
+
+  it("P1-C9 — run <name> still reaches a configured command named like a verb", () => {
+    const r = q(["n8n", "main", "run", "start"]);
+    expect(r.kind === "workspace" && r.verb).toBe("run");
+    if (r.kind !== "workspace") return;
+    expect(r.args).toEqual(["start"]);
+  });
+});
+
 describe("parse — error cases", () => {
   it("unknown project throws (exit 3)", () => {
     expect(() => p(["nope", "19234"])).toThrow(/unknown project/);
