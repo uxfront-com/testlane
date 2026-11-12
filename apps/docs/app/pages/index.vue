@@ -2,9 +2,10 @@
 import { hold } from "@uxfront/scene";
 import { corridor, outline } from "@uxfront/scene/formations";
 
+import { WORKSPACES as workspaces, configCode, refsCode } from "~/data/samples";
 import { DOCS_URL, GITHUB_URL, UXFRONT_URL } from "~/data/site";
 import { lanes } from "~/lib/formations/lanes";
-import { spotlight } from "~/lib/formations/spotlight";
+import { dimmed, spotlight } from "~/lib/formations/spotlight";
 
 useUxHead({
 	title: "Testlane - Run any pull request or branch locally, in one command",
@@ -81,7 +82,8 @@ const isolation = spotlight(
 	{ dim: 0.06 },
 );
 const environment = outline({ key: "environment", label: "Environment" });
-const lifecycle = spotlight(
+// The six details below sit over the lanes: keep them faint.
+const lifecycle = dimmed(
 	hold(
 		lanes({
 			key: "lifecycle",
@@ -98,10 +100,7 @@ const lifecycle = spotlight(
 		}),
 		1,
 	),
-	-20,
-	20,
-	// The six details below sit over the lanes: keep them faint.
-	{ dim: 0.35, soft: 0.4 },
+	0.35,
 );
 const requirements = spotlight(
 	hold(
@@ -113,7 +112,8 @@ const requirements = spotlight(
 					eye: [-3.4, 0.8, 7],
 					target: [-3.6, 0, 0],
 					span: [2.6, 1],
-					shift: [0.3, 0],
+					// Left of the copy, which this chapter puts on the right.
+					shift: [-0.3, 0],
 				},
 				mobile: { eye: [-3, 0.8, 8], target: [-3.2, 0, 0], span: [2.4, 1] },
 			},
@@ -176,14 +176,6 @@ const nav = Object.values(chapters).map((chapter) => ({
 	index: chapter.index,
 }));
 
-// The four refs the lanes stand for, and the port each workspace gets.
-const workspaces = [
-	{ ref: "#42", port: "3053" },
-	{ ref: "feat/login", port: "3011" },
-	{ ref: "1a2b3c4", port: "3027" },
-	{ ref: "main", port: "3040" },
-];
-
 const steps = [
 	{
 		title: "Resolve the ref",
@@ -209,12 +201,6 @@ const refKinds = [
 		text: "A GitHub link already says which project and which pull request. Paste it in and that is the entire command.",
 	},
 ];
-
-const refsCode = `testlane my-project 42            # pull request
-testlane my-project feat/login    # branch
-testlane my-project 1a2b3c4       # commit
-testlane my-project - shell       # last used ref
-testlane …/pull/42 code           # straight from a URL`;
 
 const isolated = [
 	{
@@ -247,17 +233,6 @@ const placeholders = [
 		text: "A dry run prints the exact environment and the exact command, then stops.",
 	},
 ];
-
-const configCode = `ports = 2
-
-[setup]
-run = "pnpm install --frozen-lockfile"
-cache_key = ["pnpm-lock.yaml"]
-seed_files = [".env.local"]
-
-[env]
-PORT = "{port}"
-API_PORT = "{port+1}"`;
 
 const lifespan = [
 	{
@@ -364,7 +339,7 @@ const family = [
 				<br />
 				<span class="hero-actions">
 					<UxPillLink variant="filled" :href="DOCS_URL" label="Get started" />
-					<UxPillLink :href="GITHUB_URL" label="Star on GitHub" />
+					<UxPillLink :href="GITHUB_URL" label="GitHub" />
 				</span>
 			</template>
 		</UxHero>
@@ -384,7 +359,7 @@ const family = [
 			</template>
 			<UxTraits :items="refKinds" />
 			<template #aside>
-				<UxCode title="Six ways to name the same thing" :code="refsCode" />
+				<UxCode title="Five ways to name a ref" :code="refsCode" />
 			</template>
 		</UxSplit>
 

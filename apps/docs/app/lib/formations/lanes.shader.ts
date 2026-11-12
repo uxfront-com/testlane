@@ -29,10 +29,11 @@ const float $BOX_X1 = ${f(BOX_X1)};
 const float $BOX_HH = ${f(BOX_HH)};
 const vec3 $COLORS[4] = ${glslArray("vec3", LANE_COLORS.map(glslVec))};
 
-// Lanes start growing as the chapter scrolls in (see laneProgress).
+// Lanes start growing as the chapter scrolls in, and a held formation keeps
+// its progress while it morphs in (see laneProgress).
 float $progress(Frame f) {
-  if (f.approach < 1.0) return f.approach * ${f(LANE_APPROACH)};
-  return mix(${f(LANE_APPROACH)}, 1.0, f.local);
+  if (f.local > 0.0) return mix(${f(LANE_APPROACH)}, 1.0, f.local);
+  return f.approach * ${f(LANE_APPROACH)};
 }
 
 float $branchX(int i) { return $BRANCH_X0 + float(i) * $BRANCH_DX; }

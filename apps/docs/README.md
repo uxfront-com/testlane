@@ -9,7 +9,7 @@ Run them from the repository root, since the site shares its lockfile with the w
 ```bash
 pnpm install --filter @uxfront/docs
 pnpm --filter @uxfront/docs dev         # dev server on http://localhost:3000
-pnpm --filter @uxfront/docs test        # the redirect map against content/docs
+pnpm --filter @uxfront/docs test        # the redirects, the homepage's samples and the lanes formation
 pnpm --filter @uxfront/docs build       # nuxt build → .output, every page prerendered into .output/public
 pnpm --filter @uxfront/docs lighthouse  # Lighthouse CI against .output/public, fails below 0.95 in any category
 ```
@@ -45,6 +45,8 @@ Everything else comes from the homepage kit:
 - [`@uxfront/ui`](https://www.npmjs.com/package/@uxfront/ui): the Vue components (`UxSite`, `UxHero`, `UxChapter`, `UxSplit`, `UxFinale`, the HUD, the header and the labels pinned to the formations) and the design tokens.
 - [`@uxfront/scene`](https://www.npmjs.com/package/@uxfront/scene): the WebGL particle scene and the `outline` and `corridor` formations. Without WebGL2, the page shows the scene's fallback with all of its copy.
 
+The refs, the project file and the workspace labels the page shows live in `app/data/samples.ts`. `test/samples.test.ts` parses every ref with the CLI's own `parseRef`, so a sample can't promise what `testlane` doesn't do, like a short SHA read as a commit. It also keeps each line of the code samples to 30 characters, which fit the code panel on a 320px phone.
+
 `public/og.jpg` is a 1200 × 630 capture of the hero, with the HUD and the scroll cue hidden. Capture it again when the hero changes. The favicons in `public/` draw the same lanes.
 
 ## The docs
@@ -59,16 +61,17 @@ How it shares the app with the homepage:
 - `app/app.config.ts` sets the theme colours and the GitHub, "Edit this page" and "Report an issue" links, with `rootDir: "apps/docs"`, since the docs don't live at the repository root.
 - Docus reads the site URL from `NUXT_SITE_URL`, which `nuxt.config.ts` defaults to the production origin.
 - Docus's MCP server is off (`mcp.enabled` in `nuxt.config.ts`), and so is its AI assistant, which only starts with an `AI_GATEWAY_API_KEY`.
+- `server/routes/sitemap.xml.ts` replaces Docus's `/sitemap.xml` route, as on unframework.dev. Docus's lists a landing page from `content/index.md`, which this site doesn't have, so it left the homepage out. This one lists `/` first, then the docs pages.
 - In content, link to the generated files (`/llms.txt`, `/raw/…`) with `{external}`. Otherwise the router handles the click and shows the 404 page.
 
 ### Keeping it accessible
 
-Every page passes axe's contrast rule in light and dark mode, and the homepage and the docs pages we've measured score 1 in Lighthouse accessibility. Docus doesn't as it ships, so the site changes four things:
+Every page passes axe's contrast rule in light and dark mode, and the homepage and the docs pages we've measured score 1 in Lighthouse accessibility. Docus doesn't as it ships, so the site changes these:
 
 - **Colours.** `app/app.css` darkens Nuxt UI's light-mode primary to the 700 shade, since green's default 500 fails AA contrast on white. `ui.prose.callout` in `app/app.config.ts` draws the callouts' text, links and inline code (`::note`, `::tip`, `::warning`, `::caution`) in the 800 shade in light mode, since Nuxt UI's 600 fails on their tinted background, `::warning`'s yellow worst at 2.75:1.
 - **Links.** `ui.prose.a` underlines links at rest, so a link in a sentence doesn't stand out by colour alone.
 - **Code.** `nuxt.config.ts` highlights code with the high-contrast GitHub themes, since the default themes put comments below 4.5:1.
-- **Two Docus components.** `app/components/docs/DocsPageHeaderLinks.vue` names the button that opens the page menu, which only shows an arrow, and leaves out the menu's MCP items. `app/pages/[[lang]]/[...slug].vue` makes the separator above "Edit this page" decorative, since a separator can't hold links. Both are copies of Docus 5.13.0's, so keep them in step when you upgrade it.
+- **Three Docus components.** `app/components/docs/DocsPageHeaderLinks.vue` names the button that opens the page menu, which only shows an arrow, and leaves out the menu's MCP items. `app/components/IconMenuToggle.vue` names the button that opens the header's menu on phones, and says whether it's open. `app/pages/[[lang]]/[...slug].vue` makes the separator above "Edit this page" decorative, since a separator can't hold links. The first and last are copies of Docus 5.13.0's, and the toggle draws the same lines, so keep all three in step when you upgrade Docus.
 
 ### Old URLs
 
@@ -83,3 +86,5 @@ The site runs as a Nitro server (`node .output/server/index.mjs`), which serves 
 - `vercel.json`, for Vercel, with `apps/docs` as the root directory.
 
 The prerenderer needs more memory than Node's default, so the builds set `NODE_OPTIONS=--max-old-space-size=4096`.
+
+The server needs Node 22.13 or newer, both to build and to run: Docus reads its content with Node's built-in `node:sqlite`, which older versions don't have or keep behind a flag. `engines` in `package.json` says so, which Nixpacks and Vercel read to pick their Node version, and the `Dockerfile` uses `node:22-slim`, which is newer.

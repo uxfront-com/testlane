@@ -40,9 +40,15 @@ export const LANE_COLORS: Vec3[] = [
 /** Share of the lanes' growth that happens while the chapter scrolls in. */
 export const LANE_APPROACH = 0.35;
 
-/** Lane progress: starts with the morph into the formation, not once it's held. */
+/**
+ * Lane progress: starts with the morph into the formation, not once it's held.
+ * It reads `local` first, since `hold()` fixes `local` but not `approach`: a
+ * held formation would otherwise shrink its lanes while it morphs in. Without
+ * `hold()`, `local` is 0 until `approach` reaches 1, so the two meet at
+ * `LANE_APPROACH`.
+ */
 export const laneProgress = (approach: number, local: number) =>
-	approach < 1 ? approach * LANE_APPROACH : lerp(LANE_APPROACH, 1, local);
+	local > 0 ? lerp(LANE_APPROACH, 1, local) : approach * LANE_APPROACH;
 
 /** Lanes branch off one after another as the chapter is read: 0 → 1 each. */
 export const laneReach = (index: number, progress: number) =>

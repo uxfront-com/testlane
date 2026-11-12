@@ -24,3 +24,17 @@ export function spotlight(
   return P;`,
 	);
 }
+
+/**
+ * Dims the whole formation to `factor` of its brightness, for a chapter whose
+ * copy sits over it.
+ */
+export function dimmed(formation: Formation, factor: number): Formation {
+	return wrapMain(
+		formation,
+		"undimmed",
+		`  Particle P = $undimmed(id, sel, f);
+  P.col *= ${glslFloat(factor)};
+  return P;`,
+	);
+}
