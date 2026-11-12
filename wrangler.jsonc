@@ -1,0 +1,21 @@
+// Cloudflare Workers config for the docs site in apps/docs. It sits at the
+// repository root because Workers Builds runs `npx wrangler deploy` from the
+// root, where the pnpm lockfile is.
+//
+// The build command on the dashboard runs `nuxt generate` for apps/docs, which
+// prerenders every route, so the Worker only serves static files and has no
+// `main` script. On Workers Builds, apps/docs/nuxt.config.ts picks the
+// cloudflare_pages_static preset, so Nitro writes _headers and _redirects into
+// apps/docs/dist and no wrangler.json of its own that would replace this file.
+{
+	"name": "testlane",
+	"compatibility_date": "2026-10-01",
+	"assets": {
+		"directory": "./apps/docs/dist",
+		// Answers unknown paths with dist/404.html and a 404 status.
+		"not_found_handling": "404-page",
+	},
+	// `wrangler versions upload`, the command for non-production branches, stops
+	// without this block. Previews use the settings above, so it stays empty.
+	"previews": {},
+}
