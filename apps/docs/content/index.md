@@ -1,9 +1,9 @@
 ---
-title: uxd
+title: Testlane
 description: Run any pull request or branch locally, without disturbing the work you already have open.
 seo:
-  title: uxd — run any pull request or branch locally, in one command
-  description: Point uxd at a pull request, a branch, a commit or a link. You get the code checked out, dependencies installed and a port of your own, while everything you already had open stays untouched.
+  title: Testlane — run any pull request or branch locally, in one command
+  description: Point Testlane at a pull request, a branch, a commit or a link. You get the code checked out, dependencies installed and a port of your own, while everything you already had open stays untouched.
 navigation: false
 ---
 
@@ -24,9 +24,9 @@ title: Terminal
 ---
 
 ```bash
-uxd my-project 42 code
-uxd my-project 42 run dev
-uxd my-project clean --merged
+testlane my-project 42 code
+testlane my-project 42 run dev
+testlane my-project clean --merged
 ```
 
 ::
@@ -38,7 +38,7 @@ unpack · execute · debug
 Any git ref, running locally in [one command]{.text-primary}
 
 #description
-Point uxd at a pull request, a branch, or a link someone pasted in chat. You get the code checked out, dependencies installed, and a port of your own — while the work you already have open stays exactly where it is.
+Point Testlane at a pull request, a branch, or a link someone pasted in chat. You get the code checked out, dependencies installed, and a port of your own — while the work you already have open stays exactly where it is.
 
 #links
   :::u-button
@@ -59,7 +59,7 @@ Point uxd at a pull request, a branch, or a link someone pasted in chat. You get
   icon: i-lucide-github
   size: xl
   target: _blank
-  to: https://github.com/uxfront-com/uxd
+  to: https://github.com/uxfront-com/testlane
   variant: outline
   ---
   Star on GitHub
@@ -87,7 +87,7 @@ Learn it once and the whole tool is predictable. There is no special case to rem
   [resolve]{.text-primary} the ref
 
   #description
-  You point at something — a pull request number, a branch, a commit, a link from chat. uxd works out what you meant.
+  You point at something — a pull request number, a branch, a commit, a link from chat. Testlane works out what you meant.
   :::
 
   :::u-page-feature
@@ -127,11 +127,11 @@ title: Six ways to name the same thing
 ---
 
 ```bash
-uxd my-project 42            # pull request
-uxd my-project feat/login    # branch
-uxd my-project 1a2b3c…       # 40-char SHA
-uxd my-project - shell       # last used ref
-uxd …/pull/42 code           # straight from a URL
+testlane my-project 42            # pull request
+testlane my-project feat/login    # branch
+testlane my-project 1a2b3c…       # 40-char SHA
+testlane my-project - shell       # last used ref
+testlane …/pull/42 code           # straight from a URL
 ```
 
 ::
@@ -140,7 +140,7 @@ uxd …/pull/42 code           # straight from a URL
 Any ref [you can name]{.text-primary}
 
 #description
-If you can point at it, uxd can run it. No cloning, no stashing, no "let me finish what I'm doing first".
+If you can point at it, Testlane can run it. No cloning, no stashing, no "let me finish what I'm doing first".
 
 #features
   :::u-page-feature
@@ -176,7 +176,7 @@ Section 3 — Isolation --------------------------------------------------------
 
 ::browser-frame
 ---
-title: ~/.uxd/my-project.toml
+title: ~/.testlane/my-project.toml
 ---
 
 ```toml
@@ -210,7 +210,7 @@ Three branches can run at the same time without fighting over a port, a node_mod
   A port of its own
 
   #description
-  Every workspace gets its own free ports, and uxd hands them to your commands. Ask for two if your app needs an API alongside it.
+  Every workspace gets its own free ports, and Testlane hands them to your commands. Ask for two if your app needs an API alongside it.
   :::
 
   :::u-page-feature
@@ -234,7 +234,7 @@ Three branches can run at the same time without fighting over a port, a node_mod
   Setup that remembers
 
   #description
-  Dependencies install on the first checkout and stay installed. uxd only runs them again when your lockfile actually changes.
+  Dependencies install on the first checkout and stay installed. Testlane only runs them again when your lockfile actually changes.
   :::
 ::
 
@@ -259,7 +259,7 @@ Paths, ports and your own variables are worked out before anything runs, so one 
   The details, handed over
 
   #description
-  Everything uxd runs for you — setup, hooks, your dev server, a shell — is told the workspace's path, ports, branch and data directory. Anything you set yourself sits on top and wins.
+  Everything Testlane runs for you — setup, hooks, your dev server, a shell — is told the workspace's path, ports, branch and data directory. Anything you set yourself sits on top and wins.
   :::
 
   :::u-page-feature
@@ -271,7 +271,7 @@ Paths, ports and your own variables are worked out before anything runs, so one 
   Write it once, with placeholders
 
   #description
-  Drop a placeholder for the port, the path or the branch into any command, environment value or hook, and uxd fills it in per workspace. [Template variables](/docs/configuration/environment-and-templates).
+  Drop a placeholder for the port, the path or the branch into any command, environment value or hook, and Testlane fills it in per workspace. [Template variables](/docs/configuration/environment-and-templates).
   :::
 
   :::u-page-feature
@@ -296,7 +296,7 @@ Section 5 — Lifecycle --------------------------------------------------------
 From opened to [cleaned up]{.text-primary}
 
 #description
-A workspace has a lifespan. uxd covers all of it, and clears up after itself at the end.
+A workspace has a lifespan. Testlane covers all of it, and clears up after itself at the end.
 
 #features
   :::u-page-feature
@@ -332,7 +332,7 @@ A workspace has a lifespan. uxd covers all of it, and clears up after itself at 
   Catch up without starting over
 
   #description
-  Pull a workspace back up to date with its branch. If you have uncommitted work, uxd stops and tells you, rather than quietly throwing it away.
+  Pull a workspace back up to date with its branch. If you have uncommitted work, Testlane stops and tells you, rather than quietly throwing it away.
   :::
 
   :::u-page-feature
@@ -356,7 +356,7 @@ A workspace has a lifespan. uxd covers all of it, and clears up after itself at 
   Get the disk back
 
   #description
-  Clear out the workspaces whose pull requests have merged or closed. uxd shows you the list, asks before deleting, and skips anything with uncommitted work in it.
+  Clear out the workspaces whose pull requests have merged or closed. Testlane shows you the list, asks before deleting, and skips anything with uncommitted work in it.
   :::
 
   :::u-page-feature
@@ -368,7 +368,7 @@ A workspace has a lifespan. uxd covers all of it, and clears up after itself at 
   Fine inside your own scripts
 
   #description
-  The commands that produce data can print JSON instead, with progress kept out of the way — so you can wrap uxd without parsing around it. [Script with uxd](/docs/guides/script-with-uxd).
+  The commands that produce data can print JSON instead, with progress kept out of the way — so you can wrap Testlane without parsing around it. [Script with Testlane](/docs/uxd/guides/script-with-uxd).
   :::
 ::
 
@@ -417,7 +417,7 @@ No new runtime, no daemon, no account.
   One small file per project
 
   #description
-  Your commands, environment and hooks live in one readable text file, and uxd can check it for mistakes before you rely on it.
+  Your commands, environment and hooks live in one readable text file, and Testlane can check it for mistakes before you rely on it.
   :::
 ::
 
