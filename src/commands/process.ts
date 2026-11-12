@@ -7,7 +7,7 @@ import { passthrough } from "../lib/proc.ts";
 import { shellJoin, shellQuote } from "../lib/shell.ts";
 import { interpolate } from "../lib/template.ts";
 import { ensureWorkspace } from "../core/workspace.ts";
-import { composeEnv, templateVars, uxdEnv, wsContext, type WorkspaceContext } from "../core/env.ts";
+import { composeEnv, exportedEnv, templateVars, wsContext, type WorkspaceContext } from "../core/env.ts";
 import type { ProjectConfig } from "../config/schema.ts";
 import type { Workspace } from "../core/state.ts";
 import type { WorkspaceInput } from "./types.ts";
@@ -61,7 +61,7 @@ export interface BuiltCommand {
 
 /**
  * Template `commands.<name>` for a workspace, the way `run` executes it (§9.3):
- * `bash -c '<run> "$@"' uxd <extra…>` in the command's cwd. `start` builds its
+ * `bash -c '<run> "$@"' testlane <extra…>` in the command's cwd. `start` builds its
  * command here too, so the two never drift apart.
  */
 export function buildCommand(
@@ -78,8 +78,8 @@ export function buildCommand(
   const vars = templateVars(wc);
   const runStr = interpolate(command.run, vars, `commands.${name}.run`);
   const cwd = commandCwd(ws, command.cwd, vars, name);
-  // Passthrough args are appended shell-safely: bash -c '<run> "$@"' uxd <extra…>.
-  const argv = ["bash", "-c", `${runStr} "$@"`, "uxd", ...passthroughArgs];
+  // Passthrough args are appended shell-safely: bash -c '<run> "$@"' testlane <extra…>.
+  const argv = ["bash", "-c", `${runStr} "$@"`, "testlane", ...passthroughArgs];
   return { wc, argv, cwd, extra: { commandEnv: command.env, flagEnv } };
 }
 
@@ -90,7 +90,7 @@ export async function exec(input: WorkspaceInput): Promise<number> {
   const flags = parseFlags(input.args, { bools: ["--no-setup", "--reseed", "--fetch"] });
 
   if (input.passthrough.length === 0) {
-    throw usage("exec requires a command after '--'", "e.g. `uxd <project> <ref> exec -- npm test`");
+    throw usage("exec requires a command after '--'", "e.g. `testlane <project> <ref> exec -- npm test`");
   }
 
   const { ws, dataDir } = await ensureWorkspace(ctx, project, ref, {
@@ -133,7 +133,7 @@ export async function shell(input: WorkspaceInput): Promise<number> {
   }
 
   const port = ws.ports[0] !== undefined ? String(ws.ports[0]) : "-";
-  process.stderr.write(`uxd: ${project.name}/${ws.slug} — port ${port} — ${ws.path}\n`);
+  process.stderr.write(`testlane: ${project.name}/${ws.slug} — port ${port} — ${ws.path}\n`);
   return passthrough([shellBin], { cwd: ws.path, env: composeEnv(wc, project) });
 }
 
@@ -195,7 +195,7 @@ export function printDryRun(
   argv: string[],
 ): void {
   const vars = templateVars(wc);
-  const layered: Record<string, string> = { ...uxdEnv(wc) };
+  const layered: Record<string, string> = { ...exportedEnv(wc) };
   for (const [k, v] of Object.entries(project.env)) layered[k] = interpolate(v, vars, `env.${k}`);
   if (extra.commandEnv) {
     for (const [k, v] of Object.entries(extra.commandEnv)) layered[k] = interpolate(v, vars, `command.env.${k}`);

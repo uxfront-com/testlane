@@ -16,7 +16,7 @@ import { defaultProjectTemplate } from "../../src/lib/project-template.ts";
 let dir: string;
 
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), "uxd-cfg-"));
+  dir = mkdtempSync(join(tmpdir(), "testlane-cfg-"));
 });
 afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
@@ -53,11 +53,11 @@ describe("loadProject — valid fixture → ProjectConfig", () => {
   });
 
   it("derives paths from defaults.root when project omits them", () => {
-    write("defaults.toml", `root = "/data/uxd"\n`);
+    write("defaults.toml", `root = "/data/testlane"\n`);
     write("app.toml", `repo = "git@github.com:x/app.git"\n`);
     const p = loadProject(dir, "app", loadDefaults(dir));
-    expect(p.repoPath).toBe("/data/uxd/app/repo");
-    expect(p.worktreesPath).toBe("/data/uxd/app/trees");
+    expect(p.repoPath).toBe("/data/testlane/app/repo");
+    expect(p.worktreesPath).toBe("/data/testlane/app/trees");
   });
 });
 
@@ -162,7 +162,7 @@ describe("defaultProjectTemplate — §9.12 seed", () => {
   });
 
   it("validates clean after replacing the placeholder repo, deriving paths from root (AC5/AC6)", () => {
-    write("defaults.toml", `root = "/data/uxd"\n`);
+    write("defaults.toml", `root = "/data/testlane"\n`);
     const seeded = defaultProjectTemplate("acme").replace(
       "git@github.com:ORG/REPO.git",
       "git@github.com:acme/app.git",
@@ -171,12 +171,12 @@ describe("defaultProjectTemplate — §9.12 seed", () => {
     const p = loadProject(dir, "acme", loadDefaults(dir));
     expect(p.repo).toBe("git@github.com:acme/app.git");
     // Paths are not hardcoded in the template; they derive from defaults.root (AC6).
-    expect(p.repoPath).toBe("/data/uxd/acme/repo");
-    expect(p.worktreesPath).toBe("/data/uxd/acme/trees");
+    expect(p.repoPath).toBe("/data/testlane/acme/repo");
+    expect(p.worktreesPath).toBe("/data/testlane/acme/trees");
   });
 
   it("interpolates the project name into the header comment", () => {
-    expect(defaultProjectTemplate("my-proj")).toContain("uxd config validate my-proj");
+    expect(defaultProjectTemplate("my-proj")).toContain("testlane config validate my-proj");
   });
 });
 
@@ -193,7 +193,17 @@ describe("isValidProjectName — §5.1 guard", () => {
 });
 
 describe("defaultConfigDir — §5.1", () => {
-  it("defaults to ~/.uxd (no XDG fallback)", () => {
-    expect(defaultConfigDir()).toBe(join(homedir(), ".uxd"));
+  it("defaults to ~/.testlane (no XDG fallback)", () => {
+    // A throwaway home, so a config dir on the machine running the tests can't
+    // change the answer (§5.6).
+    const prevHome = process.env.HOME;
+    process.env.HOME = dir;
+    try {
+      expect(defaultConfigDir()).toBe(join(homedir(), ".testlane"));
+      expect(homedir()).toBe(dir);
+    } finally {
+      if (prevHome === undefined) delete process.env.HOME;
+      else process.env.HOME = prevHome;
+    }
   });
 });

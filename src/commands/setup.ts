@@ -1,11 +1,11 @@
-// `uxd setup` — create the config directory and scaffold the first project.
+// `testlane setup` — create the config directory and scaffold the first project.
 //
 // First-run onboarding. Creates the config dir (exempt from the §5.1 existence
 // guard), ensures a `defaults.root` so derived paths resolve, then walks the
 // user through one project file. Every value is also accepted via a flag so the
 // command runs non-interactively in CI:
 //
-//   uxd setup [--name <name>] [--repo <url>] [--root <dir>]
+//   testlane setup [--name <name>] [--repo <url>] [--root <dir>]
 //             [--default-branch <branch>] [--force]
 //
 // Failure modes: an invalid/reserved name or empty repo → E_USAGE (nothing
@@ -22,7 +22,7 @@ import { isValidProjectName, loadDefaults, loadProject, projectFilePath } from "
 import type { Ctx } from "../config/schema.ts";
 import type { TopInput } from "./types.ts";
 
-const DEFAULT_ROOT = "~/dev/uxd";
+const DEFAULT_ROOT = "~/dev/testlane";
 
 export async function setup(input: TopInput): Promise<number> {
   const { ctx } = input;
@@ -62,7 +62,7 @@ export async function setup(input: TopInput): Promise<number> {
   if (existsSync(projectFile) && !flags.bool("--force")) {
     throw configError(
       `project '${name}' already exists`,
-      `edit it with \`uxd config edit ${name}\`, choose another name, or pass --force`,
+      `edit it with \`testlane config edit ${name}\`, choose another name, or pass --force`,
     );
   }
 
@@ -103,7 +103,7 @@ export async function setup(input: TopInput): Promise<number> {
   // rather than on the user's next command.
   loadProject(configDir, name, loadDefaults(configDir));
 
-  ctx.log.step(`next: uxd ${name} ${branch ?? "<branch|pr|path>"}`);
+  ctx.log.step(`next: testlane ${name} ${branch ?? "<branch|pr|path>"}`);
   return ExitCode.SUCCESS;
 }
 

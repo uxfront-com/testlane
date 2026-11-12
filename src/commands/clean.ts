@@ -116,7 +116,7 @@ export async function clean(input: ProjectInput): Promise<number> {
   if (explicit.length === 0 && !hasFilter) {
     throw usage(
       "clean requires explicit slugs or a filter",
-      "e.g. `uxd <project> clean pr-19234`, `--all`, `--merged`, `--closed`, `--prune-state`, or `--older-than 7d`",
+      "e.g. `testlane <project> clean pr-19234`, `--all`, `--merged`, `--closed`, `--prune-state`, or `--older-than 7d`",
     );
   }
   if (explicit.length > 0 && hasFilter) {

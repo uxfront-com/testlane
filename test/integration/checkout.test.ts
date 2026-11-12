@@ -12,7 +12,7 @@ let origin: ReturnType<typeof makeFixtureOrigin>;
 let env: Harness;
 
 beforeEach(() => {
-  tmp = mkdtempSync(join(tmpdir(), "uxd-it-"));
+  tmp = mkdtempSync(join(tmpdir(), "testlane-it-"));
   origin = makeFixtureOrigin(tmp);
   origin.commit("main", { "README.md": "# fixture\n" });
   origin.commit("feature-x", { "feat.txt": "hello\n" });
@@ -25,7 +25,7 @@ afterEach(() => {
 });
 
 function state(project: string): { workspaces: Record<string, { slug: string; kind: string; branch?: string }> ; lastRef?: string } {
-  const file = join(env.stateHome, "uxd", `${project}.json`);
+  const file = join(env.stateHome, "testlane", `${project}.json`);
   return JSON.parse(readFileSync(file, "utf8"));
 }
 
@@ -101,7 +101,7 @@ describe("§17.2 scenario 10 — --dry-run checkout on a fresh project", () => {
     // Nothing materialized on disk.
     expect(existsSync(env.repoPath("n8n"))).toBe(false);
     expect(existsSync(join(env.worktreesPath("n8n"), "feature-x"))).toBe(false);
-    expect(existsSync(join(env.stateHome, "uxd", "n8n.json"))).toBe(false);
+    expect(existsSync(join(env.stateHome, "testlane", "n8n.json"))).toBe(false);
   });
 });
 
@@ -122,7 +122,7 @@ describe("§17.2 scenario 11 — lock contention", () => {
     // Seed the primary repo first so the stolen-lock run does real work.
     await env.run(["n8n", "feature-x", "checkout"]);
 
-    const lockFile = join(env.stateHome, "uxd", "n8n.lock");
+    const lockFile = join(env.stateHome, "testlane", "n8n.lock");
     writeFileSync(lockFile, JSON.stringify({ pid: 2_147_483_646, startedAt: new Date().toISOString() }));
 
     origin.commit("feature-z", { "z.txt": "z\n" });

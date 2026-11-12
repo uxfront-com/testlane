@@ -1,6 +1,6 @@
 // Packaging guard (UXF-265).
 //
-// `uxd setup` failed for a user with `error(E_CONFIG): unknown project 'setup'`
+// `testlane setup` failed for a user with `error(E_CONFIG): unknown project 'setup'`
 // while the same command worked from source. The published artifact was built
 // before the verb existed, so `TOP_LEVEL_VERBS` had no "setup"; parse.ts then
 // fell through step 3a to step 3c and read the verb as a project name.
@@ -10,13 +10,13 @@
 
 import { beforeAll, describe, expect, it } from "vitest";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
-const builtCli = join(repoRoot, "dist", "bin", "uxd.js");
+const builtCli = join(repoRoot, "dist", "bin", "testlane.js");
 
 // Spelled out, not imported from TOP_LEVEL_VERBS: a list derived from the table
 // cannot detect a verb missing from the table.
@@ -34,7 +34,7 @@ beforeAll(() => {
 
 /** Run the built CLI against a config dir that does not exist yet. */
 function runBuilt(argv: string[]): { code: number; stdout: string; stderr: string } {
-  const tmp = mkdtempSync(join(tmpdir(), "uxd-packaging-"));
+  const tmp = mkdtempSync(join(tmpdir(), "testlane-packaging-"));
   try {
     const res = spawnSync("node", [builtCli, "--config-dir", join(tmp, "config"), ...argv], {
       encoding: "utf8",
@@ -54,6 +54,24 @@ describe("packaging — the built CLI ships every command", () => {
     expect(existsSync(join(repoRoot, "dist", "src", "commands", "setup.js"))).toBe(true);
   });
 
+  it("ships `testlane` as the only binary, at dist/bin/testlane.js", () => {
+    const pkg = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8")) as {
+      name: string;
+      version: string;
+      bin: Record<string, string>;
+    };
+    expect(pkg.name).toBe("@uxfront/testlane");
+    expect(pkg.bin).toEqual({ testlane: "./dist/bin/testlane.js" });
+    expect(join(repoRoot, pkg.bin.testlane!)).toBe(builtCli);
+  });
+
+  it("prints `testlane <version>` from the built entrypoint", () => {
+    const pkg = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8")) as { version: string };
+    const r = runBuilt(["version"]);
+    expect(r.code).toBe(0);
+    expect(r.stdout).toBe(`testlane ${pkg.version}\n`);
+  });
+
   it.each(PROMISED_VERBS)("resolves '%s' as a verb, not as a project name", (verb) => {
     const r = runBuilt([verb]);
     // The verb may still fail for its own reasons (missing config dir, missing
@@ -68,9 +86,9 @@ describe("packaging — the built CLI ships every command", () => {
       "--name",
       "demo",
       "--repo",
-      "git@github.com:uxfront-com/uxd.git",
+      "git@github.com:uxfront-com/testlane.git",
       "--root",
-      "/tmp/uxd-packaging-root",
+      "/tmp/testlane-packaging-root",
     ]);
     expect(r.stderr).toBe("");
     expect(r.code).toBe(0);

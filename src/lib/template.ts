@@ -1,6 +1,6 @@
 // Single-pass {name} interpolation (§5.5). `{{` escapes a literal `{`.
 
-import { UxdError } from "./errors.ts";
+import { TestlaneError } from "./errors.ts";
 
 export type TemplateVars = Record<string, string>;
 
@@ -26,11 +26,11 @@ export function interpolate(input: string, vars: TemplateVars, where: string): s
       }
       const close = input.indexOf("}", i + 1);
       if (close === -1) {
-        throw new UxdError("E_CONFIG", `${where}: unterminated '{' in template`);
+        throw new TestlaneError("E_CONFIG", `${where}: unterminated '{' in template`);
       }
       const name = input.slice(i + 1, close);
       if (!(name in vars)) {
-        throw new UxdError("E_CONFIG", `${where}: unknown template variable '{${name}}'`, {
+        throw new TestlaneError("E_CONFIG", `${where}: unknown template variable '{${name}}'`, {
           hint: `known variables: ${Object.keys(vars).sort().join(", ")}`,
         });
       }

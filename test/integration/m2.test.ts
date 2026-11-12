@@ -18,7 +18,7 @@ let env: Harness;
 beforeEach(() => {
   // realpath: on macOS $TMPDIR is a symlink (/var → /private/var) and git prints
   // resolved worktree paths, which would not compare equal to the config paths.
-  tmp = realpathSync(mkdtempSync(join(tmpdir(), "uxd-m2-")));
+  tmp = realpathSync(mkdtempSync(join(tmpdir(), "testlane-m2-")));
   origin = makeFixtureOrigin(tmp);
   origin.commit("main", { "README.md": "# fixture\n" });
   origin.commit("feature-x", { "feat.txt": "hello\n" });
@@ -31,7 +31,7 @@ afterEach(() => {
 });
 
 function state(): { workspaces: Record<string, { slug: string; kind: string; branch?: string }> } {
-  return JSON.parse(readFileSync(join(env.stateHome, "uxd", "n8n.json"), "utf8"));
+  return JSON.parse(readFileSync(join(env.stateHome, "testlane", "n8n.json"), "utf8"));
 }
 
 function headSha(dir: string): string {
@@ -303,7 +303,7 @@ describe("§9.12 config add — seed a template when the project is absent", () 
     expect(existsSync(file)).toBe(true);
     const body = readFileSync(file, "utf8");
     expect(body).toContain(`repo = "git@github.com:ORG/REPO.git"`);
-    expect(body).toContain("uxd config validate fresh");
+    expect(body).toContain("testlane config validate fresh");
   });
 
   it("AC2 — never seeds or warns for an existing file", async () => {

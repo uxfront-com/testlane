@@ -8,7 +8,7 @@ export default defineConfig({
   test: {
     testTimeout: 30_000,
     hookTimeout: 30_000,
-    // The root suite covers the `uxd` CLI only. Workspace apps under `apps/*`
+    // The root suite covers the `testlane` CLI only. Workspace apps under `apps/*`
     // (e.g. the Nuxt `apps/docs` site) own their own test runners and configs,
     // so they are excluded here — otherwise the root `vitest run` would try to
     // collect their tests without a prepared framework environment.
