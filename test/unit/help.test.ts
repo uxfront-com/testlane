@@ -10,9 +10,9 @@ const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as {
   version: string;
 };
 
-describe("version — resolved from uxd's own package.json", () => {
-  // Regression: the lookup matched the name "uxd" while the manifest says
-  // "@uxfront/uxd", so every run fell through to the "0.0.0" fallback.
+describe("version — resolved from Testlane's own package.json", () => {
+  // Regression: the lookup matched the name "testlane" while the manifest says
+  // "@uxfront/testlane", so every run fell through to the "0.0.0" fallback.
   it("matches the name declared in package.json", () => {
     expect(PKG_NAME).toBe(pkg.name);
   });
@@ -30,6 +30,6 @@ describe("help — verb lists", () => {
       expect(section("WORKSPACE VERBS")).toMatch(new RegExp(`^  ${verb}\\b`, "m"));
     }
     expect(section("PROJECT VERBS")).toMatch(/^  ps\b/m);
-    expect(HELP).toContain("uxd <project> [list|clean|ps] [flags]");
+    expect(HELP).toContain("testlane <project> [list|clean|ps] [flags]");
   });
 });

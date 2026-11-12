@@ -18,7 +18,7 @@ export type ParseResult =
       kind: "project";
       project: string;
       verb: ProjectVerb;
-      /** True when `list` was reached via bare `uxd <project>` (enables the TTY picker, §4.3/M2). */
+      /** True when `list` was reached via bare `testlane <project>` (enables the TTY picker, §4.3/M2). */
       defaulted?: boolean;
       args: string[];
       global: GlobalFlags;
@@ -128,7 +128,7 @@ function extractFlags(pre: string[]): Extracted {
 }
 
 export function parse(argv: string[], deps: ParseDeps): ParseResult {
-  // 1. Tokenize: first bare `--` ends uxd parsing.
+  // 1. Tokenize: first bare `--` ends Testlane parsing.
   const dashIdx = argv.indexOf("--");
   const pre = dashIdx === -1 ? argv : argv.slice(0, dashIdx);
   const passthrough = dashIdx === -1 ? [] : argv.slice(dashIdx + 1);
@@ -192,7 +192,7 @@ export function parse(argv: string[], deps: ParseDeps): ParseResult {
   // 4. Positional 1.
   const p1 = rest[1];
   if (p1 === undefined || isFlag(p1)) {
-    // bare `uxd <project>` ≡ `list`; leftover flags belong to list.
+    // bare `testlane <project>` ≡ `list`; leftover flags belong to list.
     return { kind: "project", project, verb: "list", defaulted: true, args: rest.slice(1), global };
   }
   if (isProjectVerb(p1)) {

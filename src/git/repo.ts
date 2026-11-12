@@ -2,7 +2,7 @@
 
 import { existsSync } from "node:fs";
 import { capture } from "../lib/proc.ts";
-import { UxdError } from "../lib/errors.ts";
+import { TestlaneError } from "../lib/errors.ts";
 import type { Logger } from "../lib/log.ts";
 
 export const MIN_GIT_VERSION = "2.38";
@@ -159,18 +159,18 @@ async function commitPresent(repoPath: string, sha: string): Promise<boolean> {
  * A failed fetch is E_RESOLVE (exit 4) when the ref simply isn't on origin, and
  * E_GIT (exit 5) for any other transport/plumbing failure (§14).
  */
-function classifyFetchError(stderr: string, ref: string): UxdError {
+function classifyFetchError(stderr: string, ref: string): TestlaneError {
   const detail = stderr.trim();
   if (
     /couldn't find remote ref|no such ref|remote ref .* not found|not our ref|unadvertised object|did not send all necessary objects/i.test(
       detail,
     )
   ) {
-    return new UxdError("E_RESOLVE", `${ref} does not exist on origin`, {
+    return new TestlaneError("E_RESOLVE", `${ref} does not exist on origin`, {
       hint: "check the name, or push the ref first",
     });
   }
-  return new UxdError("E_GIT", `git fetch failed for ${ref}: ${detail || "unknown error"}`);
+  return new TestlaneError("E_GIT", `git fetch failed for ${ref}: ${detail || "unknown error"}`);
 }
 
 /** Wire same-repo PR push-back so a plain `git push` targets the agent branch (§7.3). */

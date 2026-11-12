@@ -1,5 +1,5 @@
 // Integration-test fixtures (§17.2): a real bare-git origin + an in-process
-// harness that runs main() against tmp UXD_CONFIG_DIR / XDG_STATE_HOME.
+// harness that runs main() against tmp TESTLANE_CONFIG_DIR / XDG_STATE_HOME.
 
 import { spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -8,10 +8,10 @@ import { main, unavailableGh } from "../src/main.ts";
 import type { GhClient, PrMeta } from "../src/git/gh.ts";
 
 const AUTHOR_ENV = {
-  GIT_AUTHOR_NAME: "uxd-test",
-  GIT_AUTHOR_EMAIL: "uxd@test.local",
-  GIT_COMMITTER_NAME: "uxd-test",
-  GIT_COMMITTER_EMAIL: "uxd@test.local",
+  GIT_AUTHOR_NAME: "testlane-test",
+  GIT_AUTHOR_EMAIL: "testlane@test.local",
+  GIT_COMMITTER_NAME: "testlane-test",
+  GIT_COMMITTER_EMAIL: "testlane@test.local",
 } as const;
 
 /** Run a git command synchronously; throws on non-zero with captured stderr. */
@@ -135,12 +135,14 @@ export function makeEnv(
   }
 
   const run = async (argv: string[]): Promise<RunResult> => {
-    const prevConfig = process.env.UXD_CONFIG_DIR;
+    const prevConfig = process.env.TESTLANE_CONFIG_DIR;
     const prevState = process.env.XDG_STATE_HOME;
-    const prevDebug = process.env.UXD_DEBUG;
-    process.env.UXD_CONFIG_DIR = configDir;
+    const prevDebug = process.env.TESTLANE_DEBUG;
+    process.env.TESTLANE_CONFIG_DIR = configDir;
     process.env.XDG_STATE_HOME = stateHome;
-    delete process.env.UXD_DEBUG;
+    // Pinned off rather than unset, so a 1.x debug variable in the caller's shell
+    // can't turn debug on (§5.6).
+    process.env.TESTLANE_DEBUG = "0";
 
     let out = "";
     let err = "";
@@ -161,9 +163,9 @@ export function makeEnv(
     } finally {
       process.stdout.write = origOut;
       process.stderr.write = origErr;
-      restore("UXD_CONFIG_DIR", prevConfig);
+      restore("TESTLANE_CONFIG_DIR", prevConfig);
       restore("XDG_STATE_HOME", prevState);
-      restore("UXD_DEBUG", prevDebug);
+      restore("TESTLANE_DEBUG", prevDebug);
     }
     return { code, stdout: out, stderr: err };
   };

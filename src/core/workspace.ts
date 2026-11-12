@@ -351,7 +351,7 @@ function dryRunPlan(ctx: Ctx, project: ProjectConfig, refSpec: RefSpec): EnsureR
     path: dir,
     adopted: spec.kind === "path",
     // Deterministic-only (no TCP probing, §8.5) so run/exec/shell --dry-run can
-    // render {port}/UXD_PORT without taking a lock or binding a socket.
+    // render {port}/TESTLANE_PORT without taking a lock or binding a socket.
     ports: deterministicPorts(project, slug),
     createdAt: now,
     lastUsedAt: now,

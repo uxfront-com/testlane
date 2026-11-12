@@ -93,7 +93,7 @@ export async function start(input: WorkspaceInput): Promise<number> {
       if (current.command !== name) {
         throw usage(
           `'${current.command}' is already running in ${project.name}/${slug} (pid ${current.pid})`,
-          `stop it first: uxd ${project.name} ${refFor(project, slug)} stop`,
+          `stop it first: testlane ${project.name} ${refFor(project, slug)} stop`,
         );
       }
       ctx.log.step(`${name} already running (pid ${current.pid})`);
@@ -109,7 +109,7 @@ export async function start(input: WorkspaceInput): Promise<number> {
 
     if (await portAccepts(port)) {
       throw setupError(
-        `port ${port} already accepts connections, so uxd can't tell when '${name}' is ready`,
+        `port ${port} already accepts connections, so Testlane can't tell when '${name}' is ready`,
         `free 127.0.0.1:${port} (\`lsof -nP -iTCP:${port} -sTCP:LISTEN\` shows the holder), then start again`,
       );
     }
@@ -153,7 +153,7 @@ export async function start(input: WorkspaceInput): Promise<number> {
     if (outcome === "timeout") {
       throw setupError(
         `'${name}' did not accept connections on 127.0.0.1:${port} within ${timeoutMs / 1000}s`,
-        `bind the server to 127.0.0.1:{port} (UXD_PORT=${port}), or raise --timeout; log: ${log}`,
+        `bind the server to 127.0.0.1:{port} (TESTLANE_PORT=${port}), or raise --timeout; log: ${log}`,
       );
     }
     throw setupError(`could not read the start time of pid ${child.pid} with ps`, "check that `ps` is on your PATH");
@@ -255,7 +255,7 @@ export async function logs(input: WorkspaceInput): Promise<number> {
   const slug = slugFor(resolveLast(project, input.ref));
   const file = logFile(dataDirFor(project, slug));
   if (!existsSync(file)) {
-    throw usage(`no log for ${project.name}/${slug}`, `start a command first: uxd ${project.name} <ref> start <name>`);
+    throw usage(`no log for ${project.name}/${slug}`, `start a command first: testlane ${project.name} <ref> start <name>`);
   }
 
   let offset = await copyFrom(file, 0);

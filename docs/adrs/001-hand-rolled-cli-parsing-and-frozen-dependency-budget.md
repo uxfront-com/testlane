@@ -6,7 +6,7 @@ Amended by: ADR-002 (dependency budget three → four: `tinyglobby` added for th
 
 ## Context
 
-`uxd` is a Bun CLI whose argument grammar is positional and context-dependent
+Testlane is a Bun CLI whose argument grammar is positional and context-dependent
 (§4.3): project names are dynamic, refs are freeform, and the verb can appear in
 more than one position. DESIGN.md §16 fixed the technology choices for the tool
 up front, and M0 (UXF-34) was built against them: a ~150-line hand-rolled parser

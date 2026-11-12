@@ -1,4 +1,4 @@
-# The npm trusted publisher for @uxfront/uxd names this file by its exact
+# The npm trusted publisher for @uxfront/testlane names this file by its exact
 # filename. Renaming or moving changesets.yml revokes the publish credential,
 # and the release then fails with a misleading E404.
 name: Changesets
@@ -64,7 +64,7 @@ jobs:
         run: pnpm test
 
       # With any pending changeset: opens/updates the "Version Packages" PR and
-      # publishes nothing. With none: publishes @uxfront/uxd if its version is
+      # publishes nothing. With none: publishes @uxfront/testlane if its version is
       # absent from the registry, then pushes the git tag and creates the
       # GitHub release.
       - name: Version or publish

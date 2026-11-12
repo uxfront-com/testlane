@@ -7,7 +7,7 @@ import { computeSetupHash } from "../../src/core/setup.ts";
 let tree: string;
 
 beforeEach(() => {
-  tree = mkdtempSync(join(tmpdir(), "uxd-hash-"));
+  tree = mkdtempSync(join(tmpdir(), "testlane-hash-"));
 });
 
 afterEach(() => {

@@ -1,6 +1,6 @@
 # Release runbook
 
-`@uxfront/uxd` is published by `.github/workflows/changesets.yml`, which runs on
+`@uxfront/testlane` is published by `.github/workflows/changesets.yml`, which runs on
 every push to `main`. Releases are driven by [Changesets](https://github.com/changesets/changesets);
 `.changeset/README.md` covers the day-to-day author workflow.
 
@@ -25,7 +25,7 @@ entirely by whether `.changeset/` holds any changesets.
 1. **Changesets pending → version.** The workflow opens or updates a
    **"Version Packages"** PR that consumes them, bumps `version` in
    `package.json` and writes `CHANGELOG.md`. Nothing is published.
-2. **No changesets pending → publish.** The workflow publishes `@uxfront/uxd`
+2. **No changesets pending → publish.** The workflow publishes `@uxfront/testlane`
    if that version is absent from the registry, then pushes the git tag and
    creates the GitHub release.
 
@@ -50,7 +50,7 @@ The job fails, and nothing reaches npm, if any of these fail.
    the gate the `1.0.0` defect would have tripped. It lives in the `release`
    script on purpose, so editing the workflow cannot bypass it.
 
-`uxd version` reads `version` from the package's own `package.json` at runtime,
+`testlane version` reads `version` from the package's own `package.json` at runtime,
 so the published CLI reports whatever `changeset version` wrote. The two cannot
 disagree.
 
@@ -72,7 +72,7 @@ names this repository.
 
 - [ ] `main` is green. No red required checks.
 - [ ] On npmjs.com, under the package's **Settings → Trusted publishing**, the
-      publisher names `uxfront-com/uxd` and `changesets.yml`, its **Allowed
+      publisher names `uxfront-com/testlane` and `changesets.yml`, its **Allowed
       actions** include `npm publish`, and it has not expired.
 - [ ] The version bump matches the changesets it consumed. `feat` work should
       show a MINOR bump, fixes a PATCH.
@@ -93,10 +93,10 @@ names this repository.
    test what users install, not your working tree:
 
    ```sh
-   npm install -g @uxfront/uxd@<new-version>
-   uxd version          # must print the new version
-   uxd --help           # every documented verb is listed
-   uxd doctor
+   npm install -g @uxfront/testlane@<new-version>
+   testlane version          # must print the new version
+   testlane --help           # every documented verb is listed
+   testlane doctor
    ```
 
    Any failure → roll back now. Do not debug in front of users.
@@ -113,7 +113,7 @@ argue with it.
 **Inside 72 hours of publish**, and only if nothing depends on the version yet:
 
 ```sh
-npm unpublish @uxfront/uxd@<bad-version>
+npm unpublish @uxfront/testlane@<bad-version>
 ```
 
 npm blocks re-publishing that exact version afterwards, so the next attempt
@@ -122,8 +122,8 @@ needs a new number.
 **After 72 hours, or if anything already installed it** — the real path:
 
 ```sh
-npm deprecate @uxfront/uxd@<bad-version> "Broken: <one line>. Use <fix-version>."
-npm dist-tag add @uxfront/uxd@<last-good> latest   # point new installs back
+npm deprecate @uxfront/testlane@<bad-version> "Broken: <one line>. Use <fix-version>."
+npm dist-tag add @uxfront/testlane@<last-good> latest   # point new installs back
 ```
 
 Deprecating warns on install; the `latest` dist-tag is what actually stops new
@@ -137,7 +137,7 @@ install from.
 
 ### Roll back when
 
-- `uxd version` on the published package disagrees with the release → immediately.
+- `testlane version` on the published package disagrees with the release → immediately.
 - Any documented verb fails on a clean global install → immediately.
 - `npm install -g` fails on a supported Node version (`>=18`) → immediately.
 
@@ -160,7 +160,7 @@ within 2 days.
 
 **`E422 undefined` on publish.** The registry rejected the provenance
 statement, because `repository.url` in `package.json` is missing or doesn't
-match `https://github.com/uxfront-com/uxd` exactly, case included. Changesets
+match `https://github.com/uxfront-com/testlane` exactly, case included. Changesets
 hides the registry's message and prints `undefined` in its place. The `422`
 comes after the OIDC exchange, so the trusted publisher is most likely not the
 cause; if fixing `repository.url` doesn't clear it, check the `404` entry above.

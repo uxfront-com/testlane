@@ -4,7 +4,7 @@ import { parse as parseToml } from "smol-toml";
 import { z } from "zod";
 import { isAbsolute, join, relative, sep } from "node:path";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { UxdError } from "../lib/errors.ts";
+import { TestlaneError } from "../lib/errors.ts";
 import { resolvePath } from "../lib/paths.ts";
 import { fnv1a32 } from "../lib/hash.ts";
 import {
@@ -24,7 +24,7 @@ export interface ConfigIssue {
   message: string;
 }
 
-export class ConfigValidationError extends UxdError {
+export class ConfigValidationError extends TestlaneError {
   readonly issues: ConfigIssue[];
   constructor(issues: ConfigIssue[]) {
     const body = issues.map((i) => `${i.file}: ${i.path}: ${i.message}`).join("\n");
@@ -125,7 +125,7 @@ export function loadProject(configDir: string, name: string, defaults: Defaults)
     ]);
   }
   if (!existsSync(file)) {
-    throw new UxdError("E_CONFIG", `unknown project '${name}'`, {
+    throw new TestlaneError("E_CONFIG", `unknown project '${name}'`, {
       hint: `no config file at ${file}`,
     });
   }
@@ -232,7 +232,7 @@ export function validateAll(configDir: string): ConfigIssue[] {
       loadProject(configDir, name, defaults);
     } catch (e) {
       if (e instanceof ConfigValidationError) issues.push(...e.issues);
-      else if (e instanceof UxdError) issues.push({ file: `${name}.toml`, path: "(root)", message: e.message });
+      else if (e instanceof TestlaneError) issues.push({ file: `${name}.toml`, path: "(root)", message: e.message });
       else throw e;
     }
   }

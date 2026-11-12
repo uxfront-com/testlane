@@ -16,10 +16,10 @@ import { stopGroup } from "../../src/core/supervise.ts";
 
 const PROJECT = "life";
 
-// A server on $UXD_PORT that logs one line once it listens.
+// A server on $TESTLANE_PORT that logs one line once it listens.
 const SERVER =
   `node -e "require('http').createServer((q,s)=>s.end('ok'))` +
-  `.listen(process.env.UXD_PORT,'127.0.0.1',()=>console.log('listening on '+process.env.UXD_PORT))"`;
+  `.listen(process.env.TESTLANE_PORT,'127.0.0.1',()=>console.log('listening on '+process.env.TESTLANE_PORT))"`;
 
 let tmp: string;
 let origin: ReturnType<typeof makeFixtureOrigin>;
@@ -51,7 +51,7 @@ function makeLifeEnv(extraToml = ""): Harness {
 }
 
 beforeEach(() => {
-  tmp = realpathSync(mkdtempSync(join(tmpdir(), "uxd-life-")));
+  tmp = realpathSync(mkdtempSync(join(tmpdir(), "testlane-life-")));
   origin = makeFixtureOrigin(tmp);
   origin.commit("main", { "README.md": "# fixture\n" });
   origin.commit("feature-x", { "feat.txt": "hello\n" });
@@ -136,12 +136,12 @@ function deadPid(): number {
   return Number(r.stdout.trim());
 }
 
-// ── The built CLI, for runs that need separate uxd processes ────────────────
+// ── The built CLI, for runs that need separate testlane processes ────────────────
 
 const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
 // Built apart from dist/ so it never races packaging.test.ts's build.
-const builtDir = join(repoRoot, "node_modules", ".cache", "uxd-lifecycle-build");
-const builtCli = join(builtDir, "bin", "uxd.js");
+const builtDir = join(repoRoot, "node_modules", ".cache", "testlane-lifecycle-build");
+const builtCli = join(builtDir, "bin", "testlane.js");
 
 beforeAll(() => {
   const build = spawnSync("npx", ["tsc", "-p", "tsconfig.build.json", "--outDir", builtDir], {
@@ -156,7 +156,7 @@ beforeAll(() => {
 
 function spawnBuilt(argv: string[]) {
   const child = spawn("node", [builtCli, ...argv], {
-    env: { ...process.env, UXD_CONFIG_DIR: env.configDir, XDG_STATE_HOME: env.stateHome, NO_COLOR: "1" },
+    env: { ...process.env, TESTLANE_CONFIG_DIR: env.configDir, XDG_STATE_HOME: env.stateHome, NO_COLOR: "1" },
     stdio: ["ignore", "pipe", "pipe"],
   });
   let stdout = "";
@@ -238,7 +238,7 @@ describe("start", () => {
     const r = await env.run([PROJECT, "main", "start", "api"]);
     expect(r.code).toBe(2);
     expect(r.stderr).toContain("'web' is already running");
-    expect(r.stderr).toContain(`uxd ${PROJECT} main stop`);
+    expect(r.stderr).toContain(`testlane ${PROJECT} main stop`);
     expect(pidAlive(a.pid)).toBe(true);
     expect(lines(join(tmp, "pre_run.count"))).toHaveLength(1);
   });
@@ -338,7 +338,7 @@ describe("start", () => {
   it("P1-C8 — --dry-run prints the env and command and spawns nothing", async () => {
     const r = await env.run([PROJECT, "--dry-run", "main", "start", "web"]);
     expect(r.code, r.stderr).toBe(0);
-    expect(r.stdout).toMatch(/^export UXD_PORT=\d+$/m);
+    expect(r.stdout).toMatch(/^export TESTLANE_PORT=\d+$/m);
     expect(r.stdout).toContain("bash -c");
     expect(r.stdout).toContain("createServer");
     expect(existsSync(join(dataDir("main"), "process.json"))).toBe(false);

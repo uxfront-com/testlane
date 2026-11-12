@@ -1,7 +1,7 @@
 // `completions <bash|zsh|fish>` — print a static shell completion script (§9.13).
 // Top-level/project/workspace verbs and the current project names are baked in
 // at generation time; workspace slugs are completed dynamically by shelling out
-// to `uxd <project> list --json` from the emitted script.
+// to `testlane <project> list --json` from the emitted script.
 
 import { ExitCode, usage } from "../lib/errors.ts";
 import { listProjectNames } from "../config/load.ts";
@@ -40,12 +40,12 @@ function render(shell: Shell, projects: string[]): string {
 /**
  * bash: a single `complete -F` function. Position 1 is a top-level verb or a
  * project name; after a project, offer project+workspace verbs plus the live
- * workspace slugs from `uxd <project> list --json`.
+ * workspace slugs from `testlane <project> list --json`.
  */
 function bash(projects: string[]): string {
   const projWords = projects.join(" ");
-  return `# uxd bash completion — eval "$(uxd completions bash)"
-_uxd() {
+  return `# testlane bash completion — eval "$(testlane completions bash)"
+_testlane() {
   local cur prev words cword
   _init_completion &>/dev/null || {
     cur="\${COMP_WORDS[COMP_CWORD]}"
@@ -65,7 +65,7 @@ _uxd() {
   case " $projects " in
     *" $project "*)
       local slugs
-      slugs=$(uxd "$project" list --json 2>/dev/null \\
+      slugs=$(testlane "$project" list --json 2>/dev/null \\
         | grep -o '"slug":"[^"]*"' | sed 's/"slug":"//; s/"//')
       COMPREPLY=($(compgen -W "$pverbs $slugs" -- "$cur"))
       return
@@ -73,7 +73,7 @@ _uxd() {
   esac
   COMPREPLY=($(compgen -W "$pverbs" -- "$cur"))
 }
-complete -F _uxd uxd
+complete -F _testlane testlane
 `;
 }
 
@@ -83,9 +83,9 @@ complete -F _uxd uxd
  */
 function zsh(projects: string[]): string {
   const projWords = projects.join(" ");
-  return `#compdef uxd
-# uxd zsh completion — eval "$(uxd completions zsh)"
-_uxd() {
+  return `#compdef testlane
+# testlane zsh completion — eval "$(testlane completions zsh)"
+_testlane() {
   local -a top projects pverbs
   top=(${TOP})
   projects=(${projWords})
@@ -99,14 +99,14 @@ _uxd() {
   local project="\${words[2]}"
   if (( \${projects[(I)$project]} )); then
     local -a slugs
-    slugs=(\${(f)"$(uxd "$project" list --json 2>/dev/null \\
+    slugs=(\${(f)"$(testlane "$project" list --json 2>/dev/null \\
       | grep -o '"slug":"[^"]*"' | sed 's/"slug":"//; s/"//')"})
     compadd -- $pverbs $slugs
     return
   fi
   compadd -- $pverbs
 }
-_uxd "$@"
+_testlane "$@"
 `;
 }
 
@@ -115,30 +115,30 @@ _uxd "$@"
  * that inspects `commandline` for the project token.
  */
 function fish(projects: string[]): string {
-  const projLines = projects.map((p) => `complete -c uxd -n '__fish_uxd_no_project' -a '${p}'`).join("\n");
-  const topLine = `complete -c uxd -n '__fish_uxd_no_project' -a '${TOP}'`;
-  return `# uxd fish completion — uxd completions fish | source
-function __fish_uxd_no_project
+  const projLines = projects.map((p) => `complete -c testlane -n '__fish_testlane_no_project' -a '${p}'`).join("\n");
+  const topLine = `complete -c testlane -n '__fish_testlane_no_project' -a '${TOP}'`;
+  return `# testlane fish completion — testlane completions fish | source
+function __fish_testlane_no_project
   set -l toks (commandline -opc)
   test (count $toks) -le 1
 end
 
-function __fish_uxd_project
+function __fish_testlane_project
   set -l toks (commandline -opc)
   test (count $toks) -ge 2; and printf '%s' $toks[2]
 end
 
-function __fish_uxd_slugs
-  set -l project (__fish_uxd_project)
+function __fish_testlane_slugs
+  set -l project (__fish_testlane_project)
   test -n "$project"; or return
-  uxd "$project" list --json 2>/dev/null \\
+  testlane "$project" list --json 2>/dev/null \\
     | string match -r -a '"slug":"[^"]*"' \\
     | string replace -r '"slug":"([^"]*)"' '$1'
 end
 
 ${topLine}
 ${projLines}
-complete -c uxd -n 'not __fish_uxd_no_project' -a '${PROJECT} ${WORKSPACE}'
-complete -c uxd -n 'not __fish_uxd_no_project' -a '(__fish_uxd_slugs)'
+complete -c testlane -n 'not __fish_testlane_no_project' -a '${PROJECT} ${WORKSPACE}'
+complete -c testlane -n 'not __fish_testlane_no_project' -a '(__fish_testlane_slugs)'
 `;
 }

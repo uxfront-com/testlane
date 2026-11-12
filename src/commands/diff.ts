@@ -24,7 +24,7 @@ export async function diff(input: WorkspaceInput): Promise<number> {
   const state = loadState(project.name);
   const ws = state.workspaces[slug];
   if (!ws || !existsSync(ws.path)) {
-    throw resolveError(`no workspace for '${slug}'`, "run `uxd <project> <ref> checkout` first");
+    throw resolveError(`no workspace for '${slug}'`, "run `testlane <project> <ref> checkout` first");
   }
 
   // PR workspace + gh → let gh render against the real PR base (§9.7). `--tool`

@@ -9,11 +9,11 @@
  */
 export function defaultProjectTemplate(project: string): string {
   return [
-    `# uxd project config for "${project}" — check with \`uxd config validate ${project}\``,
+    `# testlane project config for "${project}" — check with \`testlane config validate ${project}\``,
     `repo = "git@github.com:ORG/REPO.git"   # required`,
     ``,
     `# editor = "code"            # optional; $VISUAL/$EDITOR wins when unset`,
-    `# default_command = "code"   # optional; default action for \`uxd ${project} <ref>\``,
+    `# default_command = "code"   # optional; default action for \`testlane ${project} <ref>\``,
     ``,
     `# repo_path / worktrees_path default to {root}/${project}/{repo,trees}.`,
     "# Set `root` in defaults.toml, or uncomment these to override:",

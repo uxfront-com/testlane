@@ -11,7 +11,7 @@ let tmp: string;
 let origin: ReturnType<typeof makeFixtureOrigin>;
 
 beforeEach(() => {
-  tmp = mkdtempSync(join(tmpdir(), "uxd-setup-"));
+  tmp = mkdtempSync(join(tmpdir(), "testlane-setup-"));
   origin = makeFixtureOrigin(tmp);
   origin.commit("main", { "README.md": "# fixture\n" });
   origin.commit("feature-x", { "feat.txt": "hello\n" });
@@ -98,7 +98,7 @@ describe("§17.2 scenario 6 — seeding", () => {
 });
 
 describe("§17.2 scenario 9 — env composition (--dry-run)", () => {
-  it("layers UXD_* < [env] < command env < --env, and exports UXD_PORT", async () => {
+  it("layers TESTLANE_* < [env] < command env < --env, and exports TESTLANE_PORT", async () => {
     const env: Harness = makeEnv(tmp, {
       n8n: {
         repo: origin.url,
@@ -130,8 +130,8 @@ describe("§17.2 scenario 9 — env composition (--dry-run)", () => {
     // --env wins the FOO precedence chain.
     expect(exported.get("FOO")).toBe("flag");
     expect(exported.get("ONLY_PROJECT")).toBe("p");
-    // UXD_PORT is present and non-empty.
-    expect(exported.get("UXD_PORT")).toBeDefined();
-    expect(exported.get("UXD_PORT")).not.toBe("");
+    // TESTLANE_PORT is present and non-empty.
+    expect(exported.get("TESTLANE_PORT")).toBeDefined();
+    expect(exported.get("TESTLANE_PORT")).not.toBe("");
   });
 });

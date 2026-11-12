@@ -1,14 +1,14 @@
 {
-  "name": "@uxfront/uxd",
+  "name": "@uxfront/testlane",
   "version": "1.2.1",
   "description": "Materialize any git ref of a configured project into an isolated, runnable local workspace.",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/uxfront-com/uxd.git"
+    "url": "git+https://github.com/uxfront-com/testlane.git"
   },
   "type": "module",
   "bin": {
-    "uxd": "./dist/bin/uxd.js"
+    "testlane": "./dist/bin/testlane.js"
   },
   "files": [
     "dist",
@@ -18,7 +18,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "dev": "npm run build && node dist/bin/uxd.js",
+    "dev": "npm run build && node dist/bin/testlane.js",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "guard:packaging": "vitest run test/integration/packaging.test.ts",

@@ -13,7 +13,7 @@ let origin: ReturnType<typeof makeFixtureOrigin>;
 let env: Harness;
 
 beforeEach(() => {
-  tmp = mkdtempSync(join(tmpdir(), "uxd-clean-"));
+  tmp = mkdtempSync(join(tmpdir(), "testlane-clean-"));
   origin = makeFixtureOrigin(tmp);
   origin.commit("main", { "README.md": "# fixture\n" });
   origin.commit("feature-x", { "feat.txt": "hello\n" });
@@ -26,7 +26,7 @@ afterEach(() => {
 });
 
 function state(): { workspaces: Record<string, { slug: string; adopted?: boolean }> } {
-  const file = join(env.stateHome, "uxd", "n8n.json");
+  const file = join(env.stateHome, "testlane", "n8n.json");
   return JSON.parse(readFileSync(file, "utf8"));
 }
 
@@ -73,7 +73,7 @@ describe("§17.2 scenario 7 — clean --merged", () => {
 
 describe("§17.2 scenario 8 — adopted path ref", () => {
   it("runs commands in the adopted dir and rm leaves the directory", async () => {
-    // A real git working tree outside uxd's worktrees.
+    // A real git working tree outside Testlane's worktrees.
     const adopted = join(tmp, "external");
     mkdirSync(adopted, { recursive: true });
     const g = (args: string[]) =>
