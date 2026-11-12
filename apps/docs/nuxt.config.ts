@@ -1,53 +1,57 @@
-import {
-	DOCS_GROUP_ENTRY_PATHS,
-	DOCS_SECTION_ENTRY_PATHS,
-	DOCS_SECTIONS,
-} from "./app/constants/sections";
+import { SITE_URL } from "./app/data/site";
+import { DOCS_ENTRY, redirectRules } from "./redirects";
+
+const DESCRIPTION =
+	"Testlane materializes any git ref of a configured project into an isolated, runnable local workspace with one command.";
+
+// Docus reads the site URL from the environment: for canonical URLs, robots.txt
+// and llms.txt at build time, and for the sitemap when it's prerendered.
+process.env.NUXT_SITE_URL ||= SITE_URL;
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-	extends: ["@uxfront/layer-docs"],
 	compatibilityDate: "2025-07-22",
+	ssr: true,
 
-	// Re-declare the layer's constants auto-import dir against this app's srcDir
-	// so the local `app/constants/sections.ts` (DOCS_SECTIONS, findDocsSectionBySlug)
-	// overrides the layer's neutral empty default. Without this the layer's own
-	// constants win and `/docs/*` sections resolve to nothing.
-	imports: {
-		dirs: ["constants"],
+	extends: [
+		// The homepage kit: components, fonts, head helpers and critical-path loading.
+		"@uxfront/layer-ui",
+		// The docs theme: Docus, which renders content/docs/ at /docs (see app/app.vue),
+		// signed "by UXFront" in its header (`docsTheme` in app/app.config.ts).
+		"@uxfront/layer-docs",
+	],
+
+	runtimeConfig: {
+		public: {
+			siteUrl: SITE_URL,
+		},
 	},
 
-	// The single Tailwind entry. This app's `main.css` imports the layer's base so
-	// the consumer's `@source` scan compiles in the same pass. Since 0.3.0 the
-	// layer registers no CSS entry of its own, so this is the only one.
-	css: ["./app/assets/css/main.css"],
+	// The docs header and title template (Docus falls back to the package name).
+	site: {
+		name: "Testlane",
+	},
+
+	// llms.txt and llms-full.txt. Docus takes their description from package.json,
+	// which this private app doesn't describe.
+	llms: {
+		description: DESCRIPTION,
+		full: { description: DESCRIPTION },
+	},
 
 	content: {
 		build: {
 			markdown: {
 				highlight: {
-					// The layer's shared Shiki language set has no `toml`, and uxd's
-					// project config files are TOML. Nuxt merges layer arrays by
-					// concatenation, so this appends rather than replaces.
+					// Project files are TOML. Layers concatenate arrays, so this joins
+					// the languages Docus and @uxfront/layer-docs highlight.
 					langs: ["toml"],
 
-					// The layer configures `langs` but never `theme`, so Nuxt Content's
-					// stock `material-theme-*` map was in force and every Shiki token
-					// failed WCAG 1.4.3 on this page — measured 2.18:1 (arguments),
-					// 2.38:1 (command), 2.48:1 (comments), 2.57:1 (punctuation),
-					// 2.77:1 (numbers) in light mode, and 3.04:1 on comments in dark.
-					//
-					// All THREE keys are restated. Nuxt Content's default map has a
-					// `light` entry, and Shiki emits `html .light .shiki span { color:
-					// var(--shiki-light) }` — higher specificity than the `--shiki-default`
-					// fallback rule. Overriding only `default`/`dark` therefore leaves
-					// light mode rendering the old palette, since `defu` keeps the
-					// un-overridden `light` key.
-					//
-					// The high-contrast GitHub pair is used rather than plain
-					// `github-light`/`github-dark`: the standard pair puts comments at
-					// 4.61:1 on `bg-muted` in light and 3.03:1 in dark, so dark still
-					// failed and light had 2% of headroom.
+					// Docus's default Shiki themes put comments and punctuation below
+					// WCAG AA (4.5:1) on the code block's background. The high-contrast
+					// GitHub pair clears it in both modes. All three keys are set: Shiki
+					// emits a `.light` rule that outranks `default`, so leaving `light`
+					// out would keep the old palette in light mode.
 					theme: {
 						default: "github-light-high-contrast",
 						light: "github-light-high-contrast",
@@ -58,69 +62,51 @@ export default defineNuxtConfig({
 		},
 	},
 
-	// The layer resolves the OG card accent inside its `config` module, at build
-	// time, so it sees only the `appConfig` declared HERE — `app/app.config.ts`
-	// is evaluated later. Its own fallback walks `--ui-primary` through this
-	// app's CSS to a literal, but uxd's primary is a stock Tailwind scale reached
-	// through Nuxt UI (`--ui-primary: var(--ui-color-primary-700)`), not a brand
-	// `@theme` literal, so the walk dead-ends. 0.4.1 warns and falls back to
-	// white; 0.5.0 fails the build. This declaration is the escape.
-	//
-	// The `app.config.ts` copy stays — it is what the card renders from. Keep the
-	// two values, and the `.dark` `--ui-primary` mapping in `main.css`, in step.
-	appConfig: {
-		ogImage: {
-			accent: "#05df72",
+	// Docus's MCP server is off, like on the other UXFront docs sites.
+	mcp: {
+		enabled: false,
+	},
+
+	app: {
+		head: {
+			htmlAttrs: { lang: "en" },
+			meta: [
+				{ charset: "utf-8" },
+				{ name: "viewport", content: "width=device-width, initial-scale=1" },
+			],
+			link: [
+				{ rel: "icon", href: "/favicon.ico", sizes: "any" },
+				{ rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+				{ rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+			],
 		},
 	},
 
-	site: {
-		url: "https://uxd.uxfront.com",
-		name: "uxfront — Documentation",
+	experimental: {
+		// Inline the payload on first load (the homepage makes no extra request),
+		// and extract it for client-side navigation between docs pages.
+		payloadExtraction: "client",
 	},
 
-	// Neither the section root nor a group root carries a page of its own — each
-	// level's nav is built from its children, so an `index.md` there would be
-	// invisible. Every such root redirects to the first page below it.
-	//
-	// The `/docs/<folder>` rules are legacy: before the docs collapsed to one
-	// section each folder WAS a top-level section and owned that URL. They are
-	// kept so old links (the homepage CTA, bookmarks) keep landing on content.
 	routeRules: {
-		"/docs": { redirect: DOCS_SECTION_ENTRY_PATHS.uxd },
-		...Object.fromEntries(
-			DOCS_SECTIONS.map((section) => [
-				`/docs/${section.slug}`,
-				{ redirect: DOCS_SECTION_ENTRY_PATHS[section.slug] },
-			]),
-		),
-		...Object.fromEntries(
-			Object.entries(DOCS_GROUP_ENTRY_PATHS).flatMap(([folder, entry]) => [
-				// Group root, e.g. `/docs/uxd/cli` → first page in the group.
-				[`/docs/${DOCS_SECTIONS[0].slug}/${folder}`, { redirect: entry }],
-				// Legacy section root, e.g. `/docs/cli` → same first page.
-				[`/docs/${folder}`, { redirect: entry }],
-				// Legacy page URLs, e.g. `/docs/cli/exit-codes` →
-				// `/docs/uxd/cli/exit-codes`. The `**` splat is forwarded.
-				[
-					`/docs/${folder}/**`,
-					{ redirect: `/docs/${DOCS_SECTIONS[0].slug}/${folder}/**` },
-				],
-			]),
-		),
+		// The old docs URLs (redirects.ts), each a permanent redirect.
+		...redirectRules(),
+		// Hashed build assets never change, so cache them forever.
+		"/_nuxt/**": {
+			headers: { "cache-control": "public, max-age=31536000, immutable" },
+		},
 	},
 
 	nitro: {
+		// The site runs as a Nitro server (Docker, Nixpacks or Vercel), with every
+		// page prerendered into .output/public.
 		prerender: {
-			// The layer seeds "/" and crawls links from there; seed the docs entry
-			// page too so the whole `/docs` tree is reachable by the crawler even if
-			// the homepage CTA ever stops pointing at it.
-			routes: Object.values(DOCS_SECTION_ENTRY_PATHS),
-
-			// Without this a prerendered route that 404s only prints an ERROR line —
-			// `nuxt build` still exits 0. A dead redirect target or a renamed content
-			// file would ship green. The CI docs gate reads the exit code, so the
-			// gate can only go red on a broken page if the build fails on one.
+			crawlLinks: true,
+			// /docs only redirects, so crawling the docs starts from the introduction.
+			routes: ["/", DOCS_ENTRY],
+			// Without this a prerendered route that 404s only prints an error, and
+			// `nuxt build` still exits 0. A dead link or a renamed content file would
+			// ship green, so the docs gate fails the build on one.
 			failOnError: true,
 		},
 	},

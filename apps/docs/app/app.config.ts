@@ -1,121 +1,84 @@
+import { GITHUB_URL } from "./data/site";
+
 export default defineAppConfig({
-	/**
-	 * Branding for the docs site. The `@uxfront/layer-docs` layer ships neutral
-	 * defaults; these values are merged over them by Nuxt's `defu` layer merge
-	 * (consumer wins). This is a clean placeholder scaffold — real marketing and
-	 * documentation content land in follow-up work.
-	 *
-	 * The full shape below (logo, socials, footer.links, toc.bottom) is the
-	 * layer's consumer contract: its shell components read these keys, so the
-	 * consuming app declares them to type-check even when empty. Values are
-	 * neutral placeholders — no logo asset yet (the header falls back to the
-	 * title text) and no social/legal/resource links yet.
-	 *
-	 * @docs https://www.docus.dev/concepts/configuration#global-configuration
-	 */
-	seo: {
-		title: "uxfront",
-		titleTemplate: "%s - uxfront",
-		description: "The UI UX DX platform documentation.",
+	// The docs' GitHub, "Edit this page" and "Report an issue" links. Docus reads
+	// them from the git remote otherwise, which not every checkout has. The docs
+	// live in apps/docs/content/, not at the root.
+	github: {
+		url: GITHUB_URL,
+		branch: "main",
+		rootDir: "apps/docs",
 	},
-	header: {
-		title: "uxd",
-		// Renders "uxd by UXFront" in the navbar. Only "UXFront" is a link, so
-		// the link's accessible name is the brand alone; "by" stays plain text.
-		// The wordmark keeps the header's existing link to the homepage.
-		attribution: {
-			prefix: "by",
-			label: "UXFront",
-			to: "https://uxfront.com",
-		},
-		// No logo asset in the scaffold; empty paths make the header render the
-		// title text. Drop real light/dark logo paths here when they exist.
-		logo: {
-			alt: "uxd",
-			light: "",
-			dark: "",
-		},
-		links: [
+	seo: {
+		description:
+			"Run any pull request, branch or commit locally, in a workspace of its own, with one command.",
+	},
+	docsTheme: {
+		// Signs the header's site name "by UXFront", like the homepage header. With
+		// no wordmark, the name stays Docus's plain title, as the homepage writes it.
+		byline: true,
+		// The docs header's links, beside its buttons from 768px up and at the top
+		// of its menu below that.
+		headerLinks: [
+			// The introduction, rather than /docs, which only redirects to it.
 			{
 				label: "Docs",
-				// `/docs` redirects to the first Getting Started page.
-				to: "/docs",
-				activeMatch: "/docs",
+				to: "/docs/getting-started/introduction",
+				activeFor: "/docs",
+			},
+			{
+				label: "GitHub",
+				to: GITHUB_URL,
+				icon: "i-simple-icons-github",
+				target: "_blank",
 			},
 		],
 	},
-	socials: {} as Record<string, string>,
-	/*
-	 * OG card accent, as a literal. Satori has no CSS cascade, so the layer
-	 * resolves the accent at build time by following `--ui-primary` in this app's
-	 * CSS entry to the `--color-*` literal it aliases. uxd's primary is a STOCK
-	 * Tailwind scale reached through Nuxt UI (`--ui-primary:
-	 * var(--ui-color-primary-700)`), not a brand `@theme` literal, so that walk
-	 * dead-ends and the layer falls back to white — an unbranded card.
-	 *
-	 * green-400 rather than the light-mode green-700: the card is `bg-neutral-900`
-	 * (#171717), where green-400 measures 10.08:1 against green-700's 3.63:1.
-	 * Keep in step with the `.dark` `--ui-primary` mapping in `main.css`.
-	 */
-	ogImage: {
-		accent: "#05df72",
-	},
-	github: {
-		url: "https://github.com/uxfront-com/uxd",
-		branch: "main",
-	},
-	footer: {
-		credits: `Copyright © ${new Date().getFullYear()} uxfront`,
-		// Legal/nav footer links — none in the scaffold.
-		links: [] as Array<{ label: string; to: string; target?: string }>,
-	},
-	toc: {
-		title: "On this page",
-		// Right-aside "resources" panel.
-		bottom: {
-			title: "Resources",
-			links: [
-				{
-					icon: "i-simple-icons-github",
-					label: "uxd on GitHub",
-					to: "https://github.com/uxfront-com/uxd",
-					target: "_blank",
-				},
-				{
-					icon: "i-lucide-bug",
-					label: "Report an issue",
-					to: "https://github.com/uxfront-com/uxd/issues",
-					target: "_blank",
-				},
-			] as Array<{
-				icon: string;
-				label: string;
-				to: string;
-				target?: string;
-			}>,
-		},
-	},
 	ui: {
 		colors: {
+			// The green of the lanes the homepage's formation draws (see app/app.css
+			// for its shades).
 			primary: "green",
-			neutral: "slate",
+			neutral: "zinc",
 		},
 		prose: {
-			/*
-			 * WCAG 1.4.1 Use of Color.
-			 *
-			 * Nuxt UI's prose link is `text-primary border-b border-transparent
-			 * hover:border-primary` — colour alone until the pointer lands on it.
-			 * Measured on the homepage, the green link against the `text-muted`
-			 * body it sits in is 1.04:1 (link #008236, body #62748E), far under
-			 * the 3:1 that G183 allows colour-only links to rely on, so a
-			 * mid-sentence link is indistinguishable from prose without a mouse.
-			 *
-			 * `border-current` makes the existing 1px bottom border visible at
-			 * rest instead of on hover. It is a token-to-token change — the
-			 * border simply inherits the link's own colour — and `hover:` /
-			 * `focus-visible:` states are untouched.
-			 */
+			// WCAG 1.4.3: Nuxt UI writes a callout's text, links and inline code in
+			// its colour's 600 shade (500 for links), which fails AA on the callout's
+			// tinted background in light mode, by far the most for `::warning`'s
+			// yellow (2.75:1). The 800 shade passes on every colour. Dark mode keeps
+			// Nuxt UI's shades, which pass.
+			// Spelled out, since Tailwind only generates the classes it finds whole.
+			callout: {
+				variants: {
+					color: {
+						primary: {
+							base: "text-primary-800 [&_a]:text-primary-800 [&_code]:text-primary-800 dark:text-primary-300 dark:[&_a]:text-primary dark:[&_code]:text-primary-300",
+							externalIcon: "text-primary-800 dark:text-primary-300",
+						},
+						success: {
+							base: "text-success-800 [&_a]:text-success-800 [&_code]:text-success-800 dark:text-success-300 dark:[&_a]:text-success dark:[&_code]:text-success-300",
+							externalIcon: "text-success-800 dark:text-success-300",
+						},
+						info: {
+							base: "text-info-800 [&_a]:text-info-800 [&_code]:text-info-800 dark:text-info-300 dark:[&_a]:text-info dark:[&_code]:text-info-300",
+							externalIcon: "text-info-800 dark:text-info-300",
+						},
+						warning: {
+							base: "text-warning-800 [&_a]:text-warning-800 [&_code]:text-warning-800 dark:text-warning-300 dark:[&_a]:text-warning dark:[&_code]:text-warning-300",
+							externalIcon: "text-warning-800 dark:text-warning-300",
+						},
+						error: {
+							base: "text-error-800 [&_a]:text-error-800 [&_code]:text-error-800 dark:text-error-300 dark:[&_a]:text-error dark:[&_code]:text-error-300",
+							externalIcon: "text-error-800 dark:text-error-300",
+						},
+					},
+				},
+			},
+			// WCAG 1.4.1 Use of Color: Nuxt UI's prose link is the primary colour
+			// with a bottom border that only shows on hover, so a link in a
+			// sentence is told apart by colour alone. The green measures about
+			// 1:1 against the body text, far under the 3:1 a colour-only link
+			// needs, so the border shows at rest, in the link's own colour.
 			a: {
 				base: "border-current",
 			},
