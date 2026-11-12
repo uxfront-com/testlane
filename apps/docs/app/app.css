@@ -1,0 +1,16 @@
+/* Docus imports this after Tailwind CSS and Nuxt UI, into the global stylesheet
+   the docs pages load. Keep it off `.ux-site`: the homepage loads it too. */
+
+@layer theme {
+  /* Nuxt UI draws light-mode links and buttons in the 500 shade, which green
+     fails WCAG AA contrast with on white. The rules below replace both of its
+     defaults, so dark mode is restated. */
+  :root,
+  .light {
+    --ui-primary: var(--ui-color-primary-700);
+  }
+
+  .dark {
+    --ui-primary: var(--ui-color-primary-400);
+  }
+}
