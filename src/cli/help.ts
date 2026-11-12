@@ -4,12 +4,12 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-// uxd's published package name. `version()` matches on it so it can tell its own
+// Testlane's published package name. `version()` matches on it so it can tell its own
 // manifest apart from a parent workspace's package.json while walking up.
-export const PKG_NAME = "@uxfront/uxd";
+export const PKG_NAME = "@uxfront/testlane";
 
 export function version(): string {
-  // Walk up from this module until we find uxd's own package.json. The relative
+  // Walk up from this module until we find Testlane's own package.json. The relative
   // depth differs between source (src/cli/) and the compiled build (dist/src/cli/),
   // so resolve by identity rather than a fixed number of "..".
   let dir = dirname(fileURLToPath(import.meta.url));
@@ -30,12 +30,12 @@ export function version(): string {
   return "0.0.0";
 }
 
-export const HELP = `uxd — materialize any git ref of a configured project into a runnable workspace
+export const HELP = `testlane — materialize any git ref of a configured project into a runnable workspace
 
 USAGE
-  uxd <project> <ref> [verb] [flags] [-- passthrough]
-  uxd <project> [list|clean|ps] [flags]
-  uxd <top-level-verb> [args]
+  testlane <project> <ref> [verb] [flags] [-- passthrough]
+  testlane <project> [list|clean|ps] [flags]
+  testlane <top-level-verb> [args]
 
 REF FORMS
   <branch>            a branch name (fetched from origin)
@@ -56,7 +56,7 @@ WORKSPACE VERBS
   logs [-f]           print (or follow) that process's log
 
 PROJECT VERBS
-  list                list a project's workspaces (default for bare \`uxd <project>\`)
+  list                list a project's workspaces (default for bare \`testlane <project>\`)
   clean               remove workspaces (explicit slugs or --all)
   ps                  list the processes \`start\` left running, and their status
 
@@ -79,5 +79,5 @@ GLOBAL FLAGS
   -y, --yes           assume yes for prompts
   --no-color          disable ANSI color
 
-Config dir: --config-dir → $UXD_CONFIG_DIR → ~/.uxd
+Config dir: --config-dir → $TESTLANE_CONFIG_DIR → ~/.testlane
 `;

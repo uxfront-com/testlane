@@ -2,6 +2,7 @@
 
 import { homedir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
+import { legacyConfigDir, legacyStateDir, preferCurrentDir } from "./compat.ts";
 
 /** Expand a leading `~` / `~/` to the user's home. No env-var interpolation (§5.4). */
 export function expandTilde(p: string): string {
@@ -16,14 +17,21 @@ export function resolvePath(p: string, base = process.cwd()): string {
   return isAbsolute(expanded) ? expanded : resolve(base, expanded);
 }
 
-/** Default config directory: `~/.uxd` (§5.1). Override via --config-dir / $UXD_CONFIG_DIR. */
+/**
+ * Default config directory (§5.1): `~/.testlane`, or the 1.x config dir when only
+ * that one exists (§5.6, `compat.ts`). Override via --config-dir / $TESTLANE_CONFIG_DIR.
+ */
 export function defaultConfigDir(): string {
-  return join(homedir(), ".uxd");
+  return preferCurrentDir(join(homedir(), ".testlane"), legacyConfigDir(), "config dir");
 }
 
-/** `${XDG_STATE_HOME:-~/.local/state}/uxd` (§7.6, §8.2). */
+/**
+ * `${XDG_STATE_HOME:-~/.local/state}/testlane` (§7.6, §8.2), or the 1.x state dir
+ * when only that one exists (§5.6, `compat.ts`).
+ */
 export function stateDir(): string {
-  return join(xdgStateHome(), "uxd");
+  const home = xdgStateHome();
+  return preferCurrentDir(join(home, "testlane"), legacyStateDir(home), "state dir");
 }
 
 export function xdgStateHome(): string {

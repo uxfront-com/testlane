@@ -1,6 +1,6 @@
 # Changesets
 
-This directory tracks intended-but-unreleased changes to `@uxfront/uxd`, the
+This directory tracks intended-but-unreleased changes to `@uxfront/testlane`, the
 only published package in this workspace. `apps/docs` is private and is never
 versioned or published.
 
@@ -37,7 +37,7 @@ Releases run on `main` through `.github/workflows/changesets.yml`.
    bumps `version` and writes `CHANGELOG.md`. It publishes nothing while a
    changeset is pending.
 2. Merging the "Version Packages" PR empties `.changeset/`. The workflow runs
-   again and **publishes** `@uxfront/uxd` if that version is not on the
+   again and **publishes** `@uxfront/testlane` if that version is not on the
    registry. It then pushes the git tag and creates the matching GitHub
    release.
 
@@ -68,5 +68,5 @@ that reads like a missing package.
 `pnpm release` runs `pnpm run guard:packaging` before `changeset publish`. That
 guard builds the CLI and asserts that every promised verb still resolves from
 the built entrypoint. `1.0.0` shipped without `dist/src/commands/setup.js` and
-`uxd setup` failed for everyone who installed it; this guard is why that cannot
+`testlane setup` failed for everyone who installed it; this guard is why that cannot
 reach the registry again. Do not move it out of the `release` script.

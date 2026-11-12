@@ -27,7 +27,7 @@ imports already carried `.ts` extensions, so both a "compile to JS" and a
 
 Two live options were surfaced for how the bin runs on Node:
 
-- **A) Compile TS→JS** — ship `dist/bin/uxd.js`, `#!/usr/bin/env node`,
+- **A) Compile TS→JS** — ship `dist/bin/testlane.js`, `#!/usr/bin/env node`,
   `engines.node >=18`. Adds a build step; `bin`/`files` point at compiled
   output. **Steelman:** widest install floor (every current LTS incl. Node 20),
   least surprise, no dependence on young runtime features. Chosen.
@@ -42,9 +42,9 @@ clean Node twin** — SEA is experimental and clunky.
 
 ## Decision
 
-We will run `uxd` on **stock Node ≥ 18** via **strategy A**: TypeScript is
+We will run Testlane on **stock Node ≥ 18** via **strategy A**: TypeScript is
 compiled to JavaScript (`tsc`, `rewriteRelativeImportExtensions` emitting `.js`
-specifiers), the published bin is `dist/bin/uxd.js` with `#!/usr/bin/env node`,
+specifiers), the published bin is `dist/bin/testlane.js` with `#!/usr/bin/env node`,
 and every Bun API is replaced by its Node equivalent. `bun:test` is replaced by
 **vitest**. The standalone `bun build --compile` binary is **dropped from
 scope**; the npm bin is the sole install path and **SEA is deferred**. Adopting
@@ -54,7 +54,7 @@ dependency budget (three → four runtime packages), made per ADR-001's own
 
 ## Consequences
 
-Good: `uxd` installs and runs on every current Node LTS with no Bun
+Good: Testlane installs and runs on every current Node LTS with no Bun
 prerequisite — the "universally available" goal is met at the widest floor;
 the migration held parity (133/133 green on Node v24.18.0 at land time); the
 build step is internal and reversible.

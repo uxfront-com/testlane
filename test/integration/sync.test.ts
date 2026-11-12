@@ -14,7 +14,7 @@ let origin: ReturnType<typeof makeFixtureOrigin>;
 let env: Harness;
 
 beforeEach(() => {
-  tmp = mkdtempSync(join(tmpdir(), "uxd-sync-"));
+  tmp = mkdtempSync(join(tmpdir(), "testlane-sync-"));
   origin = makeFixtureOrigin(tmp);
   origin.commit("main", { "README.md": "# fixture\n" });
   origin.commit("feature-x", { "feat.txt": "hello\n" });

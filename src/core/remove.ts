@@ -72,7 +72,7 @@ export async function disposeWorkspace(
     if (existsSync(ws.path)) {
       await removeWorktree(g, ws.path, force);
     }
-    // PR branches are uxd-owned → always deletable; user branches only with --force.
+    // PR branches are testlane-owned → always deletable; user branches only with --force.
     if (ws.kind === "pr" && ws.number !== undefined) {
       await deleteBranch(g, `pr/${ws.number}`);
     } else if (ws.kind === "branch" && ws.branch && force) {

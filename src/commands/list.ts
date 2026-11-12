@@ -150,10 +150,10 @@ export async function list(input: ProjectInput): Promise<number> {
 }
 
 /**
- * Interactive picker for bare `uxd <project>` on a TTY (§4.3/M2, built on the
+ * Interactive picker for bare `testlane <project>` on a TTY (§4.3/M2, built on the
  * same state as `list`). Non-interactive (no TTY) or `--json` degrades to a
  * plain `list`. On selection, prints the chosen workspace's path to stdout so it
- * composes with `cd "$(uxd <project>)"`; an empty answer cancels.
+ * composes with `cd "$(testlane <project>)"`; an empty answer cancels.
  */
 export async function pick(input: ProjectInput): Promise<number> {
   const { ctx, project } = input;

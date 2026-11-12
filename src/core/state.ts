@@ -2,7 +2,7 @@
 
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, writeFileSync, writeSync } from "node:fs";
 import { join } from "node:path";
-import { UxdError, gitError } from "../lib/errors.ts";
+import { TestlaneError, gitError } from "../lib/errors.ts";
 import { stateDir } from "../lib/paths.ts";
 import type { Logger } from "../lib/log.ts";
 
@@ -59,13 +59,13 @@ export function loadState(project: string): State {
   try {
     parsed = JSON.parse(readFileSync(file, "utf8")) as State;
   } catch (e) {
-    throw new UxdError("E_CONFIG", `state file ${file} is corrupt: ${(e as Error).message}`, {
+    throw new TestlaneError("E_CONFIG", `state file ${file} is corrupt: ${(e as Error).message}`, {
       hint: "remove or repair the file",
     });
   }
   if (parsed.version !== STATE_VERSION) {
-    throw new UxdError("E_CONFIG", `state file ${file} has unknown version ${parsed.version}`, {
-      hint: `this uxd understands version ${STATE_VERSION}; upgrade uxd or migrate the file`,
+    throw new TestlaneError("E_CONFIG", `state file ${file} has unknown version ${parsed.version}`, {
+      hint: `this Testlane understands version ${STATE_VERSION}; upgrade Testlane or migrate the file`,
     });
   }
   if (!parsed.workspaces) parsed.workspaces = {};
@@ -131,7 +131,7 @@ export interface FileLockOptions {
   timeoutMs: number;
   log: Logger;
   /** The error thrown when a live holder outlasts `timeoutMs`. */
-  onTimeout(holder: LockContents | null): UxdError;
+  onTimeout(holder: LockContents | null): TestlaneError;
 }
 
 /**

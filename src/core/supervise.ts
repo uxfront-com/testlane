@@ -4,7 +4,7 @@
 import { closeSync, existsSync, fstatSync, openSync, readFileSync, readSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { connect } from "node:net";
 import { join } from "node:path";
-import { UxdError } from "../lib/errors.ts";
+import { TestlaneError } from "../lib/errors.ts";
 import { capture } from "../lib/proc.ts";
 import { pidAlive } from "./state.ts";
 
@@ -100,7 +100,7 @@ function signalGroup(pgid: number, signal: NodeJS.Signals): void {
     const code = (e as NodeJS.ErrnoException).code;
     if (code === "ESRCH") return; // already gone
     if (code === "EPERM") {
-      throw new UxdError("E_SETUP", `not permitted to signal process group ${pgid}`, {
+      throw new TestlaneError("E_SETUP", `not permitted to signal process group ${pgid}`, {
         hint: "it belongs to another user; stop it as that user",
       });
     }

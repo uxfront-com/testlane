@@ -57,7 +57,7 @@ function requireWorkspace(project: ProjectConfig, ref: RefSpec): { spec: RefSpec
   const state = loadState(project.name);
   const ws = state.workspaces[slug];
   if (!ws || !existsSync(ws.path)) {
-    throw resolveError(`no workspace for '${slug}'`, "run `uxd <project> <ref> checkout` first");
+    throw resolveError(`no workspace for '${slug}'`, "run `testlane <project> <ref> checkout` first");
   }
   return { spec, slug, ws };
 }
@@ -70,7 +70,7 @@ async function syncReset(ctx: Ctx, project: ProjectConfig, ref: RefSpec, mode: M
     const slug = slugFor(spec);
     const ws = state.workspaces[slug];
     if (!ws || !existsSync(ws.path)) {
-      throw resolveError(`no workspace for '${slug}'`, "run `uxd <project> <ref> checkout` first");
+      throw resolveError(`no workspace for '${slug}'`, "run `testlane <project> <ref> checkout` first");
     }
 
     // 1. Re-fetch for the workspace's kind (forced for PRs, §7.4.1). PR heads
@@ -89,7 +89,7 @@ async function syncReset(ctx: Ctx, project: ProjectConfig, ref: RefSpec, mode: M
     let stashRef: string | null = null;
     if (await isDirty(ws.path)) {
       if (mode === "stash") {
-        stashRef = await stashPush(ws.path, `uxd sync ${new Date().toISOString()}`);
+        stashRef = await stashPush(ws.path, `testlane sync ${new Date().toISOString()}`);
       } else if (mode === "discard") {
         await resetHard(ws.path, "HEAD");
         await cleanUntracked(ws.path);
@@ -127,12 +127,12 @@ async function syncFresh(ctx: Ctx, project: ProjectConfig, ref: RefSpec): Promis
       const spec = resolveLast(project, ref);
       const slug = slugFor(spec);
       const ws = state.workspaces[slug];
-      if (!ws) throw resolveError(`no workspace for '${slug}'`, "run `uxd <project> <ref> checkout` first");
+      if (!ws) throw resolveError(`no workspace for '${slug}'`, "run `testlane <project> <ref> checkout` first");
 
       if (existsSync(ws.path) && !ws.adopted && (await isDirty(ws.path))) {
         throw gitError(
           "worktree is dirty; refusing --fresh",
-          "commit/stash your changes, or `uxd <project> <ref> rm --force` first",
+          "commit/stash your changes, or `testlane <project> <ref> rm --force` first",
         );
       }
       await disposeWorkspace(ctx, project, ws, false);

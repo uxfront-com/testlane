@@ -1,4 +1,4 @@
-// `uxd setup` — onboarding: create the config dir + scaffold the first project.
+// `testlane setup` — onboarding: create the config dir + scaffold the first project.
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
@@ -10,7 +10,7 @@ let tmp: string;
 let configDir: string;
 
 beforeEach(() => {
-  tmp = mkdtempSync(join(tmpdir(), "uxd-setup-cmd-"));
+  tmp = mkdtempSync(join(tmpdir(), "testlane-setup-cmd-"));
   // A path that does NOT exist yet — setup must create it.
   configDir = join(tmp, "config");
 });
@@ -46,7 +46,7 @@ async function run(argv: string[]): Promise<RunResult> {
   }
 }
 
-describe("uxd setup", () => {
+describe("testlane setup", () => {
   it("creates the config dir, seeds defaults.root, and scaffolds a valid project", async () => {
     const root = join(tmp, "root");
     const r = await run([

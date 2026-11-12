@@ -38,7 +38,7 @@ async function emit(args: string[]): Promise<{ code: number; out: string }> {
 }
 
 beforeEach(() => {
-  tmp = mkdtempSync(join(tmpdir(), "uxd-comp-"));
+  tmp = mkdtempSync(join(tmpdir(), "testlane-comp-"));
   configDir = join(tmp, "config");
   mkdirSync(configDir, { recursive: true });
   writeFileSync(join(configDir, "n8n.toml"), 'repo = "git@github.com:n8n-io/n8n.git"\nrepo_path = "/tmp/r"\nworktrees_path = "/tmp/w"\n');
@@ -51,25 +51,25 @@ describe("completions §9.13", () => {
   it("bash script bakes in top verbs and project names", async () => {
     const { code, out } = await emit(["bash"]);
     expect(code).toBe(0);
-    expect(out).toContain("complete -F _uxd uxd");
+    expect(out).toContain("complete -F _testlane testlane");
     expect(out).toContain("setup projects doctor config completions help version");
     expect(out).toContain("n8n styleframe");
-    // dynamic slug completion shells out to `uxd <project> list --json`
+    // dynamic slug completion shells out to `testlane <project> list --json`
     expect(out).toContain("list --json");
   });
 
   it("zsh script is compdef-tagged and lists project verbs", async () => {
     const { out } = await emit(["zsh"]);
-    expect(out).toContain("#compdef uxd");
+    expect(out).toContain("#compdef testlane");
     expect(out).toContain("checkout code run exec shell sync diff info rm");
     expect(out).toContain("projects=(n8n styleframe)");
   });
 
   it("fish script emits a per-project completion rule", async () => {
     const { out } = await emit(["fish"]);
-    expect(out).toContain("complete -c uxd");
+    expect(out).toContain("complete -c testlane");
     expect(out).toContain("-a 'n8n'");
-    expect(out).toContain("__fish_uxd_slugs");
+    expect(out).toContain("__fish_testlane_slugs");
   });
 
   it.each(["bash", "zsh", "fish"])("P1-C9 — the %s script offers start, stop, logs and ps", async (shell) => {

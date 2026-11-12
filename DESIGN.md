@@ -1,4 +1,4 @@
-# uxd — Design Document
+# Testlane — Design Document
 
 **Status:** Ready for implementation
 **Audience:** Implementing engineer / coding agent (Claude Code). This document is the source of truth; where it makes a decision, follow it. Where behavior is unspecified, prefer the simplest option consistent with §13 (Output & UX conventions) and leave a `// DESIGN: unspecified` comment.
@@ -9,12 +9,12 @@
 
 AI coding agents produce branches and PRs faster than they can be reviewed on GitHub. Reading diffs in a browser is reviewing blind: you can't run the app, click through the UI, or poke at the change locally without a manual clone/fetch/checkout/install/env-setup dance — multiplied by every concurrent agent branch, and colliding with your own working copy.
 
-**uxd** is a CLI that materializes any ref of a configured project into an isolated, runnable local workspace with one command:
+**Testlane** is a CLI that materializes any ref of a configured project into an isolated, runnable local workspace with one command:
 
 ```
-uxd n8n 19234 code        # PR #19234 → worktree → open in editor
-uxd n8n 19234 run dev     # same workspace → install deps → start dev server
-uxd n8n clean --merged    # dispose of workspaces whose PRs merged
+testlane n8n 19234 code      # PR #19234 → worktree → open in editor
+testlane n8n 19234 run dev   # same workspace → install deps → start dev server
+testlane n8n clean --merged  # dispose of workspaces whose PRs merged
 ```
 
 ### Core abstraction
@@ -33,7 +33,7 @@ resolve(ref) → materialize(workspace) → act(command)
 
 ### Isolation model
 
-- One **bare, partial clone** per project (the "primary repo") owned by uxd — never the user's daily checkout.
+- One **bare, partial clone** per project (the "primary repo") owned by Testlane — never the user's daily checkout.
 - One **git worktree** per ref, in a flat directory of disposable workspaces.
 - One **data dir** and **port block** per workspace, so multiple instances run concurrently without collisions.
 
@@ -46,13 +46,13 @@ resolve(ref) → materialize(workspace) → act(command)
 1. One command from "agent pushed a branch/PR" to "app running locally / open in my editor".
 2. Concurrent workspaces for the same project that do not fight over ports, databases, or caches.
 3. Cheap disposal: workspaces are cattle; `clean` reclaims disk and git state safely.
-4. Scriptable: stable stdout contracts and `--json` so uxd composes with other automation (e.g. an n8n workflow that posts `uxd n8n 19234 code` into Slack).
+4. Scriptable: stable stdout contracts and `--json` so Testlane composes with other automation (e.g. an n8n workflow that posts `testlane n8n 19234 code` into Slack).
 5. Fast repeat use: setup (dependency install) is cached and skipped when lockfiles are unchanged.
 6. Trustworthy: `--dry-run` shows exactly what would execute; `doctor` diagnoses the environment.
 
 ### Non-goals (v1)
 
-- Process supervision beyond one detached process per workspace (`start`, `stop`, `logs`, `ps`, §9.14–9.17). uxd doesn't restart a crashed process, reap orphans or orchestrate services.
+- Process supervision beyond one detached process per workspace (`start`, `stop`, `logs`, `ps`, §9.14–9.17). Testlane doesn't restart a crashed process, reap orphans or orchestrate services.
 - File watching / auto-sync on new commits — the calling automation's job.
 - Docker / docker-compose service orchestration per workspace.
 - Native Windows. WSL2 is expected to work; do not add Windows-specific code paths.
@@ -66,13 +66,13 @@ resolve(ref) → materialize(workspace) → act(command)
 | Term | Meaning |
 |---|---|
 | **project** | A named configuration (`<name>.toml` in the config dir) pointing at one git repository. |
-| **primary repo** | The uxd-owned bare partial clone at `repo_path`. Never opened in an editor, never has a working tree. |
+| **primary repo** | The Testlane-owned bare partial clone at `repo_path`. Never opened in an editor, never has a working tree. |
 | **ref** | User input identifying what to materialize: PR number, branch, commit SHA, URL, `-`, or a filesystem path. |
 | **RefSpec** | The parsed, typed form of a ref (see §6). |
 | **workspace** | A materialized ref: worktree directory + state entry + data dir + port block. |
 | **slug** | Filesystem-safe identifier for a workspace, derived from the ref (§6.3). Directory name and state key. |
-| **adopted workspace** | A workspace created from a `path` ref — an existing directory uxd runs commands in but does not lifecycle-manage. |
-| **verb** | A uxd subcommand (`checkout`, `code`, `run`, `list`, …). |
+| **adopted workspace** | A workspace created from a `path` ref — an existing directory Testlane runs commands in but does not lifecycle-manage. |
+| **verb** | A Testlane subcommand (`checkout`, `code`, `run`, `list`, …). |
 
 ---
 
@@ -81,9 +81,9 @@ resolve(ref) → materialize(workspace) → act(command)
 ### 4.1 Synopsis
 
 ```
-uxd [global flags] <project|url> <ref> [verb [args...]] [-- passthrough...]   # workspace commands
-uxd [global flags] <project> <project-verb> [args...]                        # project commands
-uxd [global flags] <top-verb> [args...]                                      # global commands
+testlane [global flags] <project|url> <ref> [verb [args...]] [-- passthrough...]  # workspace commands
+testlane [global flags] <project> <project-verb> [args...]                   # project commands
+testlane [global flags] <top-verb> [args...]                                 # global commands
 ```
 
 ### 4.2 Verb tables
@@ -128,14 +128,14 @@ uxd [global flags] <top-verb> [args...]                                      # g
 
 Implement exactly this, in `src/cli/parse.ts`:
 
-1. **Tokenize.** Scan argv left to right. The first bare `--` token ends uxd parsing; every subsequent token is collected verbatim into `passthrough`.
+1. **Tokenize.** Scan argv left to right. The first bare `--` token ends Testlane parsing; every subsequent token is collected verbatim into `passthrough`.
 2. **Global flags.** Before a verb has been fixed, any `-`/`--`-prefixed token must be a *global* flag (table in §4.5); unknown flags here are a usage error (exit 2). Note: a lone `-` is a positional (the "last ref" shorthand), not a flag.
 3. **Positional 0 (`p0`):**
    - If `p0` ∈ top-level verbs → dispatch top-level; remaining tokens go to that verb's parser.
    - Else if `p0` matches `^https?://` or `^git@` → **URL form**: find the project whose `repo` matches the URL's host+owner+repo (normalize `.git` suffix, ssh↔https). Zero matches → error `E_RESOLVE` listing configured repos. If the URL encodes a ref (`/pull/<n>` → PR ref; `/tree/<branch>` → branch ref), consume it as the ref; otherwise the next positional is the ref.
    - Else → `p0` must name a project (`<p0>.toml` exists in the config dir). If not, exit 3 with the list of known projects (and a nearest-name suggestion if edit distance ≤ 2).
 4. **Positional 1 (`p1`):**
-   - Absent → treat as `list` (i.e. bare `uxd n8n` ≡ `uxd n8n list`).
+   - Absent → treat as `list` (i.e. bare `testlane n8n` ≡ `testlane n8n list`).
    - If `p1` ∈ project verbs → project command; remaining tokens are its args/flags.
    - Else → `p1` is the **ref** (parsed per §6).
 5. **Positional 2 (`p2`):**
@@ -148,25 +148,25 @@ Implement exactly this, in `src/cli/parse.ts`:
 ### 4.4 Examples (canonical — these must all work)
 
 ```
-uxd n8n 19234                          # PR 19234 → default_command (code)
-uxd n8n 19234 code
-uxd n8n pr/19234 run dev
-uxd n8n '#19234' shell
-uxd n8n ai/fix-canvas-drag checkout
-uxd n8n ai/fix-canvas-drag dev         # sugar → run dev
-uxd n8n - run test                     # last-used ref for n8n
-uxd n8n ~/agents/wt-3 run test         # adopt existing directory
-uxd https://github.com/n8n-io/n8n/pull/19234 code
-uxd https://github.com/n8n-io/n8n/tree/ai/fix-canvas-drag diff
-uxd n8n 19234 exec -- pnpm why lodash
-uxd n8n 19234 run dev -- --host 0.0.0.0    # passthrough appended to command argv
-uxd n8n list --json
-uxd n8n clean --merged --older-than 14d --yes
-uxd n8n 19234 sync --fresh
-uxd projects
-uxd doctor
-uxd config edit n8n
-cd "$(uxd n8n 19234 checkout)"         # works because of the stdout contract (§13)
+testlane n8n 19234                     # PR 19234 → default_command (code)
+testlane n8n 19234 code
+testlane n8n pr/19234 run dev
+testlane n8n '#19234' shell
+testlane n8n ai/fix-canvas-drag checkout
+testlane n8n ai/fix-canvas-drag dev    # sugar → run dev
+testlane n8n - run test                # last-used ref for n8n
+testlane n8n ~/agents/wt-3 run test    # adopt existing directory
+testlane https://github.com/n8n-io/n8n/pull/19234 code
+testlane https://github.com/n8n-io/n8n/tree/ai/fix-canvas-drag diff
+testlane n8n 19234 exec -- pnpm why lodash
+testlane n8n 19234 run dev -- --host 0.0.0.0  # passthrough appended to command argv
+testlane n8n list --json
+testlane n8n clean --merged --older-than 14d --yes
+testlane n8n 19234 sync --fresh
+testlane projects
+testlane doctor
+testlane config edit n8n
+cd "$(testlane n8n 19234 checkout)"    # works because of the stdout contract (§13)
 ```
 
 ### 4.5 Global flags
@@ -183,7 +183,7 @@ Recognized anywhere before the verb; also accepted after it (verb parsers must t
 | `--yes`, `-y` | Skip confirmation prompts (required for destructive ops when stdin is not a TTY). |
 | `--no-color` | Disable ANSI colors (also honors `NO_COLOR` env and non-TTY stderr). |
 
-Ref disambiguators (workspace commands only): `--pr <n>`, `--branch <name>`, `--path <p>` force the ref interpretation and replace the positional ref (e.g. `uxd n8n --branch 1234 code` for a branch literally named `1234`).
+Ref disambiguators (workspace commands only): `--pr <n>`, `--branch <name>`, `--path <p>` force the ref interpretation and replace the positional ref (e.g. `testlane n8n --branch 1234 code` for a branch literally named `1234`).
 
 ---
 
@@ -191,7 +191,7 @@ Ref disambiguators (workspace commands only): `--pr <n>`, `--branch <name>`, `--
 
 ### 5.1 Discovery
 
-Config directory resolution order: `--config-dir` flag → `UXD_CONFIG_DIR` env → `~/.uxd` (default). If the directory does not exist, every command except `help`/`version`/`config path` fails with exit 3 and a hint to create it.
+Config directory resolution order: `--config-dir` flag → `TESTLANE_CONFIG_DIR` env → `~/.testlane` (default). Testlane 2.x also falls back to the 1.x variable and directory, with a warning (§5.6). If the directory does not exist, every command except `help`/`version`/`config path` fails with exit 3 and a hint to create it.
 
 ### 5.2 Layout
 
@@ -211,7 +211,7 @@ Project names must match `^[a-z0-9][a-z0-9._-]*$` (the filename without `.toml`)
 ### 5.3 `defaults.toml`
 
 ```toml
-root = "~/dev/uxd"        # base dir for derived repo_path / worktrees_path
+root = "~/dev/testlane"   # base dir for derived repo_path / worktrees_path
 editor = "zed"            # fallback editor preset or template
 default_command = "code"  # fallback default verb
 ```
@@ -224,25 +224,25 @@ Annotated example (`n8n.toml`):
 
 ```toml
 # ── Repository ────────────────────────────────────────────────
-repo = "git@github.com:n8n-io/n8n.git"      # required. ssh or https.
-repo_path = "~/dev/uxd/n8n/repo"            # optional. default: {root}/{project}/repo
-worktrees_path = "~/dev/uxd/n8n/trees"      # optional. default: {root}/{project}/trees
-default_branch = "master"                   # optional. default: auto-detect from origin HEAD
+repo = "git@github.com:n8n-io/n8n.git"       # required. ssh or https.
+repo_path = "~/dev/testlane/n8n/repo"        # optional. default: {root}/{project}/repo
+worktrees_path = "~/dev/testlane/n8n/trees"  # optional. default: {root}/{project}/trees
+default_branch = "master"                    # optional. default: auto-detect from origin HEAD
 
 # ── Behavior ──────────────────────────────────────────────────
-editor = "zed"                              # optional. preset name or template (§10)
-default_command = "code"                    # optional. verb or configured command name
-ports = 1                                   # optional. contiguous ports per workspace, 1–10
-base_port = 5700                            # optional. default: 3000 + (fnv1a32(project) % 40) * 100
+editor = "zed"                               # optional. preset name or template (§10)
+default_command = "code"                     # optional. verb or configured command name
+ports = 1                                    # optional. contiguous ports per workspace, 1–10
+base_port = 5700                             # optional. default: 3000 + (fnv1a32(project) % 40) * 100
 
 # ── Setup (runs after checkout, before run/exec/shell) ────────
 [setup]
-run = "pnpm install --frozen-lockfile"      # optional. bash -c string
+run = "pnpm install --frozen-lockfile"       # optional. bash -c string
 cache_key = ["pnpm-lock.yaml", "**/package.json"]  # globs, relative to worktree
 seed_files = [".env.local", "packages/cli/.env"]   # relative paths to seed (§8.4)
-seed_from = "~/dev/n8n"                     # optional extra seed source (§8.4)
+seed_from = "~/dev/n8n"                      # optional extra seed source (§8.4)
 
-# ── Environment for run/exec/shell/hooks (templated, §5.6) ────
+# ── Environment for run/exec/shell/hooks (templated, §5.5) ────
 [env]
 N8N_PORT = "{port}"
 N8N_USER_FOLDER = "{data_dir}"
@@ -250,9 +250,9 @@ VITE_BASE_URL = "http://localhost:{port}"
 
 # ── Named commands ────────────────────────────────────────────
 [commands.dev]
-run = "pnpm dev"                            # required. bash -c string, templated
-cwd = "packages/frontend/editor-ui"         # optional, relative to worktree root
-[commands.dev.env]                          # optional, overrides [env]
+run = "pnpm dev"                             # required. bash -c string, templated
+cwd = "packages/frontend/editor-ui"          # optional, relative to worktree root
+[commands.dev.env]                           # optional, overrides [env]
 NODE_OPTIONS = "--max-old-space-size=8192"
 
 [commands.test]
@@ -304,7 +304,24 @@ Interpolated (single pass, `{name}` syntax, unknown name ⇒ error `E_CONFIG` at
 | `{port}` | First allocated port |
 | `{port+N}` | `port + N`, valid for `N < ports` (literal digits, e.g. `{port+1}`) |
 
-The same values are always exported to child processes as `UXD_PATH`, `UXD_REPO_PATH`, `UXD_DATA_DIR`, `UXD_PROJECT`, `UXD_REF`, `UXD_BRANCH`, `UXD_SLUG`, `UXD_PORT`, `UXD_PORT_1`…`UXD_PORT_{ports-1}` (§11.2), whether or not the config references them.
+The same values are always exported to child processes as `TESTLANE_PATH`, `TESTLANE_REPO_PATH`, `TESTLANE_DATA_DIR`, `TESTLANE_PROJECT`, `TESTLANE_REF`, `TESTLANE_BRANCH`, `TESTLANE_SLUG`, `TESTLANE_PORT`, `TESTLANE_PORT_1`…`TESTLANE_PORT_{ports-1}` (§11.2), whether or not the config references them.
+
+### 5.6 Compatibility with uxd
+
+Testlane was called uxd until 2.0. For the 2.x line it still reads what uxd wrote, so a user can upgrade the package first and move their files later. All of it lives in `src/lib/compat.ts`, the only module that names uxd, so 3.0 removes the fallbacks by deleting that file and its tests.
+
+| What | Resolution order |
+|---|---|
+| Config dir | `--config-dir` → `$TESTLANE_CONFIG_DIR` → `$UXD_CONFIG_DIR` (warns) → `~/.testlane` if it exists → `~/.uxd` if it exists (warns) → `~/.testlane` |
+| State dir | `<state>/testlane` if it exists → `<state>/uxd` if it exists (warns) → `<state>/testlane`, where `<state>` is `${XDG_STATE_HOME:-~/.local/state}` |
+| Debug | `TESTLANE_DEBUG=1` → `UXD_DEBUG=1` (warns), read only when `TESTLANE_DEBUG` is unset or empty |
+| Exported | every `TESTLANE_*` variable (§5.5), then its `UXD_*` twin with the same value, in layer 2 of §11.2 |
+
+- **Warnings.** Each fallback prints one line on stderr, `warning: using <old>, the <what> of uxd. Testlane 3.0 reads only <new>.` and the fix, like `mv ~/.uxd ~/.testlane`. A run prints each warning at most once (`main()` resets them), however often it resolves the path. They never reach stdout, so the stdout contracts and `--json` hold.
+- **Both present.** The new name wins and nothing warns. A set `TESTLANE_DEBUG`, even `0`, wins over `UXD_DEBUG`.
+- **No migration.** Testlane never moves the user's files. `setup` on a machine with neither config dir creates `~/.testlane`.
+- **No `uxd` binary.** The package ships only `testlane`, because a second bin named `uxd` would clash with an installed `@uxfront/uxd`.
+- **Exported twins don't warn.** Testlane can't see which process reads `$UXD_PORT`, so the aliases are silent. Layers 3–5 of §11.2 override either name.
 
 ---
 
@@ -316,7 +333,7 @@ Parsed in this order (first match wins). Disambiguator flags (`--pr`, `--branch`
 
 | # | Pattern | RefSpec | Example |
 |---|---|---|---|
-| 1 | `-` | last-used ref for this project (from state; error `E_RESOLVE` if none) | `uxd n8n - shell` |
+| 1 | `-` | last-used ref for this project (from state; error `E_RESOLVE` if none) | `testlane n8n - shell` |
 | 2 | starts with `/`, `./`, `../`, or `~` | `{ kind: "path", path }` | `~/agents/wt-3` |
 | 3 | `^#?\\d+$` | `{ kind: "pr", number }` | `19234`, `#19234` |
 | 4 | `^pr/(\\d+)$` (case-insensitive) | `{ kind: "pr", number }` | `pr/19234` |
@@ -382,7 +399,7 @@ git -C <repo_path> fetch origin <name> --no-tags
 git -C <repo_path> worktree add <worktrees_path>/<slug> -B <name> --track origin/<name>
 ```
 
-If the branch is already checked out in another uxd worktree, git refuses; catch that error and re-point the user at the existing workspace path (this is the dedupe path — normally the slug lookup in state short-circuits earlier).
+If the branch is already checked out in another Testlane worktree, git refuses; catch that error and re-point the user at the existing workspace path (this is the dedupe path — normally the slug lookup in state short-circuits earlier).
 
 PR ref (same-repo and fork alike for the read path):
 
@@ -419,7 +436,7 @@ Cache the returned PR metadata in state (`pr.title`, `pr.author`, `pr.state`, `p
 2. Determine target: `@{u}` if upstream configured, else the just-fetched `refs/heads/pr/<n>`.
 3. If the worktree is dirty (`git status --porcelain=v2` non-empty):
    - default → exit 5 listing dirty paths, hint: `--stash` or `--discard`.
-   - `--stash` → `git stash push --include-untracked -m "uxd sync <timestamp>"`, continue, and print the stash ref.
+   - `--stash` → `git stash push --include-untracked -m "testlane sync <timestamp>"`, continue, and print the stash ref.
    - `--discard` → `git reset --hard && git clean -fd`, continue.
 4. `git reset --hard <target>` (worktrees are disposable; merge/rebase preservation is a non-goal).
 5. Run `post_sync` hook. Invalidate nothing else — setup cache re-checks hashes naturally on next `run`.
@@ -431,7 +448,7 @@ Per workspace: run `pre_clean` hook → `git -C <repo_path> worktree remove <dir
 
 ### 7.6 Locking
 
-All state-mutating operations (init, fetch+worktree add, sync, clean/rm, state writes) take a per-project lock: create `${XDG_STATE_HOME:-~/.local/state}/uxd/<project>.lock` exclusively (`O_CREAT|O_EXCL`), write `{"pid":…,"startedAt":…}`. On contention: if the holder pid is dead, steal and warn; if alive, wait up to 30s polling at 250ms, then exit 5 with the holder's pid. Release in a `finally`. Read-only commands (`list`, `info`, `projects`, `diff`) skip the lock.
+All state-mutating operations (init, fetch+worktree add, sync, clean/rm, state writes) take a per-project lock: create `${XDG_STATE_HOME:-~/.local/state}/testlane/<project>.lock` exclusively (`O_CREAT|O_EXCL`), write `{"pid":…,"startedAt":…}`. On contention: if the holder pid is dead, steal and warn; if alive, wait up to 30s polling at 250ms, then exit 5 with the holder's pid. Release in a `finally`. Read-only commands (`list`, `info`, `projects`, `diff`) skip the lock.
 
 ---
 
@@ -460,7 +477,7 @@ ensureWorkspace(project, refSpec, opts { setup: boolean }):
 
 ### 8.2 State file
 
-`${XDG_STATE_HOME:-~/.local/state}/uxd/<project>.json`, schema-versioned, written atomically (temp file + rename):
+`${XDG_STATE_HOME:-~/.local/state}/testlane/<project>.json`, schema-versioned, written atomically (temp file + rename):
 
 ```jsonc
 {
@@ -473,7 +490,7 @@ ensureWorkspace(project, refSpec, opts { setup: boolean }):
       "ref": "19234",                       // as originally typed
       "kind": "pr", "number": 19234,
       "branch": "pr/19234",
-      "path": "/home/alex/dev/uxd/n8n/trees/pr-19234",
+      "path": "/home/alex/dev/testlane/n8n/trees/pr-19234",
       "adopted": false,
       "ports": [5701],
       "createdAt": "2026-07-21T09:12:00Z",
@@ -491,9 +508,9 @@ Unknown `version` → exit 3 with an upgrade hint. Entries whose `path` no longe
 
 ### 8.3 Data directories
 
-`<worktrees_path>/.data/<slug>/`, created at materialization, exported as `{data_dir}`/`UXD_DATA_DIR`. Purpose: per-workspace mutable state (SQLite files, user folders, caches) so concurrent instances never share; e.g. `N8N_USER_FOLDER = "{data_dir}"`. Lives beside the worktrees (not inside them — keeps `git status` clean) and dies with the workspace.
+`<worktrees_path>/.data/<slug>/`, created at materialization, exported as `{data_dir}`/`TESTLANE_DATA_DIR`. Purpose: per-workspace mutable state (SQLite files, user folders, caches) so concurrent instances never share; e.g. `N8N_USER_FOLDER = "{data_dir}"`. Lives beside the worktrees (not inside them — keeps `git status` clean) and dies with the workspace.
 
-uxd keeps three files of its own there for `start` (§9.14): `process.json`, the record of the one detached process (`pid`, its `lstart` start time as `ps -o lstart=` prints it, `command`, `port`, `log`, `startedAt`), `process.log`, which that process's stdout and stderr are appended to, and `start.lock`, held while a `start` runs. `stop` removes `process.json` and keeps the log.
+Testlane keeps three files of its own there for `start` (§9.14): `process.json`, the record of the one detached process (`pid`, its `lstart` start time as `ps -o lstart=` prints it, `command`, `port`, `log`, `startedAt`), `process.log`, which that process's stdout and stderr are appended to, and `start.lock`, held while a `start` runs. `stop` removes `process.json` and keeps the log.
 
 ### 8.4 Setup: seeding + install, cached
 
@@ -518,15 +535,15 @@ Common behavior for all workspace verbs: run `ensureWorkspace` first; honor `--f
 ### 9.1 `checkout`
 
 ```
-uxd <project> <ref> checkout [--fetch] [--setup] [--json]
+testlane <project> <ref> checkout [--fetch] [--setup] [--json]
 ```
 
-Materialize only. **stdout: the absolute worktree path, one line, nothing else** — this is a stable contract (`cd "$(uxd n8n 19234 checkout)"`). `--json`: `{ "project", "slug", "ref", "kind", "branch", "path", "ports", "created": bool }`. Exit 0 on success (whether created or reused).
+Materialize only. **stdout: the absolute worktree path, one line, nothing else** — this is a stable contract (`cd "$(testlane n8n 19234 checkout)"`). `--json`: `{ "project", "slug", "ref", "kind", "branch", "path", "ports", "created": bool }`. Exit 0 on success (whether created or reused).
 
 ### 9.2 `code`
 
 ```
-uxd <project> <ref> code [--editor <preset|template>] [--fetch]
+testlane <project> <ref> code [--editor <preset|template>] [--fetch]
 ```
 
 Materialize, then launch the editor (§10). GUI editors: spawn detached, don't wait, exit 0 immediately. Terminal editors (`wait: true` presets): inherit stdio, propagate exit code. stdout: nothing (path is logged to stderr).
@@ -534,15 +551,15 @@ Materialize, then launch the editor (§10). GUI editors: spawn detached, don't w
 ### 9.3 `run <name>`
 
 ```
-uxd <project> <ref> run <name> [--port <n>] [--env K=V ...] [--no-setup] [-- extra args]
+testlane <project> <ref> run <name> [--port <n>] [--env K=V ...] [--no-setup] [-- extra args]
 ```
 
-Materialize + setup, then execute `commands.<name>`: template `run`, execute via `bash -c` with cwd = worktree (+ command `cwd`), env per §11.2, stdio fully inherited. Passthrough args are appended to the command line, shell-escaped, separated by a space (i.e. `bash -c '<run> "$@"' uxd <extra…>` — implement exactly this so quoting is safe). `--port` overrides the block's first port for this invocation (env + templates see the override; state unchanged). Unknown `<name>` → exit 2 listing configured commands. uxd's exit code = child's exit code (129+signal on signal death); SIGINT/SIGTERM are forwarded to the child's process group and uxd waits for it to exit.
+Materialize + setup, then execute `commands.<name>`: template `run`, execute via `bash -c` with cwd = worktree (+ command `cwd`), env per §11.2, stdio fully inherited. Passthrough args are appended to the command line, shell-escaped, separated by a space (i.e. `bash -c '<run> "$@"' testlane <extra…>` — implement exactly this so quoting is safe). `--port` overrides the block's first port for this invocation (env + templates see the override; state unchanged). Unknown `<name>` → exit 2 listing configured commands. Testlane's exit code = child's exit code (129+signal on signal death); SIGINT/SIGTERM are forwarded to the child's process group and Testlane waits for it to exit.
 
 ### 9.4 `exec`
 
 ```
-uxd <project> <ref> exec [--no-setup] -- <argv...>
+testlane <project> <ref> exec [--no-setup] -- <argv...>
 ```
 
 Same environment/cwd as `run`, but the passthrough argv is spawned **directly, no shell**. Missing `--` or empty argv → exit 2. Exit code propagation identical to `run`.
@@ -550,15 +567,15 @@ Same environment/cwd as `run`, but the passthrough argv is spawned **directly, n
 ### 9.5 `shell`
 
 ```
-uxd <project> <ref> shell [--no-setup]
+testlane <project> <ref> shell [--no-setup]
 ```
 
-Spawn `$SHELL` (fallback `bash`), interactive, cwd = worktree, env per §11.2. Print one stderr banner first: `uxd: <project>/<slug> — port <p> — <path>`. Exit code = shell's.
+Spawn `$SHELL` (fallback `bash`), interactive, cwd = worktree, env per §11.2. Print one stderr banner first: `testlane: <project>/<slug> — port <p> — <path>`. Exit code = shell's.
 
 ### 9.6 `sync`
 
 ```
-uxd <project> <ref> sync [--stash | --discard | --fresh]
+testlane <project> <ref> sync [--stash | --discard | --fresh]
 ```
 
 Per §7.4. stdout: nothing. stderr summarizes: old SHA → new SHA, files changed count, stash ref if created.
@@ -566,7 +583,7 @@ Per §7.4. stdout: nothing. stderr summarizes: old SHA → new SHA, files change
 ### 9.7 `diff`
 
 ```
-uxd <project> <ref> diff [--stat] [--tool] [-- git-diff args]
+testlane <project> <ref> diff [--stat] [--tool] [-- git-diff args]
 ```
 
 PR workspaces with `gh` available: delegate to `gh pr diff <n>` (respects PR base). Otherwise: `git -C <ws> diff <merge-base>...HEAD` where merge-base = `git merge-base origin/<defaultBranch> HEAD`, passing through `--stat` and post-`--` args. Pager: inherit stdio and let git/gh page normally.
@@ -574,8 +591,8 @@ PR workspaces with `gh` available: delegate to `gh pr diff <n>` (respects PR bas
 ### 9.8 `list` / `info`
 
 ```
-uxd <project> list [--json]
-uxd <project> <ref> info [--json]
+testlane <project> list [--json]
+testlane <project> <ref> info [--json]
 ```
 
 `list` human output — aligned columns to stdout, one row per workspace, sorted by `lastUsedAt` desc:
@@ -592,9 +609,9 @@ adopted-wt-3  path    (adopted)            clean    5721   1d    1d          —
 ### 9.9 `clean` / `rm`
 
 ```
-uxd <project> clean [--merged] [--closed] [--older-than <Nd|Nh>] [--all]
+testlane <project> clean [--merged] [--closed] [--older-than <Nd|Nh>] [--all]
                     [--include-adopted] [--prune-state] [--force] [--yes]
-uxd <project> <ref> rm [--force] [--yes]
+testlane <project> <ref> rm [--force] [--yes]
 ```
 
 Filters OR together; no filter and no `--all` → exit 2. `--merged`/`--closed` use cached/refreshed PR state when available, else fall back to `git branch --merged origin/<defaultBranch>`. Always print the plan first (slug, reason, dirty?, disk size), then confirm (TTY prompt, or require `--yes`). Dirty workspaces are skipped with a warning unless `--force`. Then remove per §7.5. `rm` is `clean` targeting exactly one workspace. stdout after completion: one line per removed slug (machine-usable); stderr: freed disk total.
@@ -628,15 +645,15 @@ Runs the checks below; each prints `ok` / `warn` / `fail` + one-line detail to s
 
 ### 9.13 `completions <bash|zsh|fish>` (M2)
 
-Static script completing: top-level verbs, project names (reads config dir), project/workspace verbs, configured command names and workspace slugs via `uxd <project> list --json`.
+Static script completing: top-level verbs, project names (reads config dir), project/workspace verbs, configured command names and workspace slugs via `testlane <project> list --json`.
 
 ### 9.14 `start <name>`
 
 ```
-uxd <project> <ref> start <name> [--timeout <seconds>] [--env K=V ...] [--no-setup] [--reseed] [--fetch] [-- extra args]
+testlane <project> <ref> start <name> [--timeout <seconds>] [--env K=V ...] [--no-setup] [--reseed] [--fetch] [-- extra args]
 ```
 
-Runs `commands.<name>` in the background, so an agent or a script can hand back a running app. Materialize + setup + `pre_run`, then build the command exactly as `run` does (§9.3, same `bash -c '<run> "$@"' uxd <extra…>` and env), and spawn it with `detach` (§11.1): its own session and process group, stdout and stderr appended to `<data_dir>/process.log`.
+Runs `commands.<name>` in the background, so an agent or a script can hand back a running app. Materialize + setup + `pre_run`, then build the command exactly as `run` does (§9.3, same `bash -c '<run> "$@"' testlane <extra…>` and env), and spawn it with `detach` (§11.1): its own session and process group, stdout and stderr appended to `<data_dir>/process.log`.
 
 Record `<data_dir>/process.json` (§8.3) before waiting, so an interrupted `start` can still be stopped. Then poll `127.0.0.1:{port}` until it accepts a TCP connection, and return. The rules:
 
@@ -650,7 +667,7 @@ stdout: the URL `http://127.0.0.1:<port>`. `--json`: one object with `project`, 
 ### 9.15 `stop`
 
 ```
-uxd <project> <ref> stop
+testlane <project> <ref> stop
 ```
 
 When the entry is live (§9.14), send SIGTERM to its process group (`kill(-pid)`), so children of the shell (a `vite` under `bash -c`) die too. Wait up to 10 seconds for the group to empty, then SIGKILL it. Remove `process.json` and keep the log.
@@ -660,7 +677,7 @@ A dead or reused PID is never signalled: the entry is cleared and `stop` exits 0
 ### 9.16 `logs`
 
 ```
-uxd <project> <ref> logs [-f | --follow]
+testlane <project> <ref> logs [-f | --follow]
 ```
 
 Print `<data_dir>/process.log` to stdout. With `-f`, keep printing new lines until SIGINT/SIGTERM, starting over when the file shrinks. No log → exit 2 with a message.
@@ -668,7 +685,7 @@ Print `<data_dir>/process.log` to stdout. With `-f`, keep printing new lines unt
 ### 9.17 `ps`
 
 ```
-uxd <project> ps [--json]
+testlane <project> ps [--json]
 ```
 
 One row per `process.json` found in the project's workspaces (the state's slugs plus every directory under `<worktrees_path>/.data`): `SLUG  COMMAND  PID  PORT  STATUS  STARTED  LOG`, sorted by slug, where `STATUS` is `running` for a live entry (§9.14) and `exited` otherwise. `--json`: an array of `{ slug, command, pid, port, status, startedAt, log }`.
@@ -689,7 +706,7 @@ One row per `process.json` found in the project's workspaces (the state's slugs 
 | `vim` / `nvim` / `helix` / `hx` | `<name> {path}` | **yes** |
 | `terminal` | spawn `$SHELL` interactive, cwd `{path}` | **yes** |
 
-Custom templates run via `bash -c` with `{path}` substituted **shell-escaped**; `wait` defaults to `no` (append `:wait` to the template, e.g. `"my-editor {path} :wait"`, to flip it). `no-wait` launches are detached (new session, stdio ignored) so uxd exits immediately.
+Custom templates run via `bash -c` with `{path}` substituted **shell-escaped**; `wait` defaults to `no` (append `:wait` to the template, e.g. `"my-editor {path} :wait"`, to flip it). `no-wait` launches are detached (new session, stdio ignored) so Testlane exits immediately.
 
 ---
 
@@ -702,16 +719,16 @@ reports a missing executable as an async `error` event (ENOENT), not a sync
 throw, so `capture`/passthrough map that to the setup/external error contract
 below rather than relying on a synchronous failure:
 
-- `capture(argv, { cwd, env }): { code, stdout, stderr }` — for git/gh plumbing. Non-zero exit throws `UxdError(E_GIT | E_EXTERNAL)` carrying trimmed stderr; callers that expect failure pass `{ allowFailure: true }`.
+- `capture(argv, { cwd, env }): { code, stdout, stderr }` — for git/gh plumbing. Non-zero exit throws `TestlaneError(E_GIT | E_EXTERNAL)` carrying trimmed stderr; callers that expect failure pass `{ allowFailure: true }`.
 - `passthrough(argv, { cwd, env, detach? }): exitCode` — stdio inherited (or detached per §10); used by run/exec/shell/editor/hooks/setup. Installs SIGINT/SIGTERM forwarding to the child process group for the duration.
-- `detach(argv, { cwd, env, log? }): { pid, exited }` is the detached half of `passthrough`, which `passthrough({ detach: true })` calls. The child gets a new session and process group (its PGID is its PID) and is unref'd so uxd can exit. stdio is ignored, or appended to `log`. `exited` settles with the exit code, so `start` notices a child that dies before its port is ready.
+- `detach(argv, { cwd, env, log? }): { pid, exited }` is the detached half of `passthrough`, which `passthrough({ detach: true })` calls. The child gets a new session and process group (its PGID is its PID) and is unref'd so Testlane can exit. stdio is ignored, or appended to `log`. `exited` settles with the exit code, so `start` notices a child that dies before its port is ready.
 
-Config-supplied *strings* (`setup.run`, `commands.*.run`, `hooks.*`, custom editor templates) always execute as `["bash", "-c", string]` — documented trust model: config is user-authored code on the user's machine; uxd does not sandbox it. Internal operations never string-concatenate shell commands.
+Config-supplied *strings* (`setup.run`, `commands.*.run`, `hooks.*`, custom editor templates) always execute as `["bash", "-c", string]` — documented trust model: config is user-authored code on the user's machine; Testlane does not sandbox it. Internal operations never string-concatenate shell commands.
 
 ### 11.2 Environment composition (later wins)
 
-1. `process.env` (uxd inherits the caller's PATH — nvm/fnm shims included);
-2. computed `UXD_*` vars (§5.5);
+1. `process.env` (Testlane inherits the caller's PATH — nvm/fnm shims included);
+2. computed `TESTLANE_*` vars (§5.5), then their 1.x twins (§5.6);
 3. project `[env]` (templated);
 4. `commands.<name>.env` (templated);
 5. `--env K=V` flags.
@@ -739,8 +756,8 @@ Four hooks, all optional strings run via `bash -c`, cwd = worktree, env = §11.2
 2. **`--json`** replaces stdout with a single JSON document (object or array). Never mix human text into JSON stdout.
 3. **Logging levels.** Default: one `→`-prefixed stderr line per significant step (`→ fetching pull/19234`, `→ worktree ready (reused)`). `--verbose` adds every external command with duration. `--quiet` silences all stderr except warnings/errors. Colors only when stderr is a TTY, minus `NO_COLOR`/`--no-color`.
 4. **`--dry-run`** prints, to stdout, the external commands that would run (one per line, shell-quoted) plus `mkdir`/`cp`/`rm` lines for filesystem mutations; performs no writes, takes no locks, and skips confirmations. Read-only introspection (loading config/state) still happens.
-5. **Errors**: single stderr block — `error(E_CODE): message`, optional `hint: …` second line. No stack traces except with `--verbose` or `UXD_DEBUG=1`.
-6. **No spinners, no animation.** Line-oriented output only; uxd will be invoked by other automation and read in logs.
+5. **Errors**: single stderr block — `error(E_CODE): message`, optional `hint: …` second line. No stack traces except with `--verbose` or `TESTLANE_DEBUG=1`.
+6. **No spinners, no animation.** Line-oriented output only; Testlane will be invoked by other automation and read in logs.
 
 ---
 
@@ -757,7 +774,7 @@ Four hooks, all optional strings run via `bash -c`, cwd = worktree, env = §11.2
 | 6 | `E_SETUP` | setup command or blocking hook failed |
 | child's | — | `run`/`exec`/`shell`/waiting editors propagate the child's exit code verbatim (may collide with the table above; documented and accepted) |
 
-`UxdError { code: ExitCode; errCode: string; message: string; hint?: string }` is the only error type `main.ts` formats; anything else is `E_INTERNAL`.
+`TestlaneError { code: ExitCode; errCode: string; message: string; hint?: string }` is the only error type `main.ts` formats; anything else is `E_INTERNAL`.
 
 
 ---
@@ -767,13 +784,13 @@ Four hooks, all optional strings run via `bash -c`, cwd = worktree, env = §11.2
 ### 15.1 Repository layout
 
 ```
-uxd/
-  package.json            # "bin": { "uxd": "./dist/bin/uxd.js" }, scripts: dev/test/build (tsc)
-  bin/uxd.ts              # source entry → imports src/main.ts; compiled to dist/bin/uxd.js (#!/usr/bin/env node)
+testlane/
+  package.json            # "bin": { "testlane": "./dist/bin/testlane.js" }, scripts: dev/test/build (tsc)
+  bin/testlane.ts         # source entry → imports src/main.ts; compiled to dist/bin/testlane.js (#!/usr/bin/env node)
   tsconfig.json           # strict: true, noUncheckedIndexedAccess: true
   DESIGN.md               # this file
   src/
-    main.ts               # entry: parse → dispatch → top-level UxdError formatting
+    main.ts               # entry: parse → dispatch → top-level TestlaneError formatting
     cli/
       parse.ts            # tokenizer + classification algorithm (§4.3)
       help.ts             # usage text per verb
@@ -800,7 +817,8 @@ uxd/
       log.ts              # stderr steps, levels, color gating
       template.ts         # {var} interpolation (§5.5)
       paths.ts            # ~ expansion, XDG dirs
-      errors.ts           # UxdError, exit codes (§14)
+      compat.ts           # 1.x fallbacks and warnings (§5.6)
+      errors.ts           # TestlaneError, exit codes (§14)
   test/
     unit/                 # parse, resolve, slug, template, ports, schema
     integration/          # real-git scenarios (§17)
@@ -876,7 +894,7 @@ argv ─▶ cli/parse ─▶ config/load ─▶ commands/<verb>
 
 | Concern | Choice | Rationale |
 |---|---|---|
-| Runtime | **Node ≥ 18** (TypeScript compiled to JS via `tsc`; the published bin is `dist/bin/uxd.js`) | universal availability with no Bun prerequisite; Node stdlib (`node:child_process`, `node:net`, `fs/promises`) plus `tinyglobby` cover proc/glob/fs needs. Superseded the original Bun runtime — see **ADR-002**. |
+| Runtime | **Node ≥ 18** (TypeScript compiled to JS via `tsc`; the published bin is `dist/bin/testlane.js`) | universal availability with no Bun prerequisite; Node stdlib (`node:child_process`, `node:net`, `fs/promises`) plus `tinyglobby` cover proc/glob/fs needs. Superseded the original Bun runtime — see **ADR-002**. |
 | CLI parsing | **hand-rolled** (§4.3) over `node:util` `parseArgs` tokens | the grammar is positional and context-dependent (dynamic project names, freeform refs, verb-position rules); frameworks fight this. ~150 lines, table-driven tests. See ADR-001. |
 | TOML | `smol-toml` | small, spec-complete, typed. |
 | Validation | `zod` | schema + inferred types + good error paths for §5.4's aggregate reporting. |
@@ -916,7 +934,7 @@ makeFixtureOrigin(tmp): {
   forcePush(branch, files): sha;
 }
 makeEnv(tmp, projects): { configDir, stateHome, run(argv): {code, stdout, stderr} }
-// run() invokes main() in-process with UXD_CONFIG_DIR/XDG_STATE_HOME pointed at tmp
+// run() invokes main() in-process with TESTLANE_CONFIG_DIR/XDG_STATE_HOME pointed at tmp
 ```
 
 Scenarios (each asserts exit code, stdout contract, stderr contains, and on-disk git state):
@@ -929,11 +947,11 @@ Scenarios (each asserts exit code, stdout contract, stderr contains, and on-disk
 6. seeding — file lands from seeds dir; never overwrites; `--reseed` does.
 7. `clean --merged` — merge PR branch into default in origin, fetch, plan includes it, removal drops worktree+branch+data+state; adopted workspace untouched.
 8. adopt path ref — commands run there; `rm` leaves the directory.
-9. env composition — `run` of `env`-dumping command shows §11.2 precedence, `UXD_PORT` set.
+9. env composition — `run` of `env`-dumping command shows §11.2 precedence, `TESTLANE_PORT` set.
 10. `--dry-run checkout` on a fresh project — prints clone/fetch/worktree commands, creates nothing.
 11. lock contention — two concurrent `checkout`s serialize (second waits), stale lock with dead pid is stolen.
 12. `list --json` shape; `doctor` on a corrupted repo (deleted fetch refspec) fails with the fix hint.
-13. `start`, `stop`, `logs` and `ps` (`test/integration/lifecycle.test.ts`): a `node` server on `$UXD_PORT` outlives `main()`, repeat and concurrent starts leave one process, an early exit and a timeout exit 6, `stop` kills a `bash -c` tree and never signals a reused PID, and `rm` stops the process before it removes anything. Each test kills what it started.
+13. `start`, `stop`, `logs` and `ps` (`test/integration/lifecycle.test.ts`): a `node` server on `$TESTLANE_PORT` outlives `main()`, repeat and concurrent starts leave one process, an early exit and a timeout exit 6, `stop` kills a `bash -c` tree and never signals a reused PID, and `rm` stops the process before it removes anything. Each test kills what it started.
 
 ---
 
@@ -949,15 +967,15 @@ Scenarios (each asserts exit code, stdout contract, stderr contains, and on-disk
 
 ### M1 — the daily driver
 
-- [ ] setup pipeline: seeding, cache-key hashing, install (§8.4); data dirs; port allocation + `{port}`/`UXD_*` env (§8.5, §11.2)
+- [ ] setup pipeline: seeding, cache-key hashing, install (§8.4); data dirs; port allocation + `{port}`/`TESTLANE_*` env (§8.5, §11.2)
 - [ ] `run` (+ passthrough, `--port`, `--env`), `exec`, `shell`, command-name sugar, `default_command`, `-` ref
 - [ ] `sync` (`--stash`/`--discard`/`--fresh`), `clean --older-than/--merged` (git-only fallback), hooks (§12)
-- **Accept:** three concurrent `uxd n8n <ref> run dev` instances serve on distinct ports with distinct data dirs; scenarios 4–9 pass.
+- **Accept:** three concurrent `testlane n8n <ref> run dev` instances serve on distinct ports with distinct data dirs; scenarios 4–9 pass.
 
 ### M2 — polish & ecosystem
 
 - [ ] `gh` metadata in `list`/`info` (stale-while-revalidate), fork-PR push-back, `diff`, `info --json`/`list --json` finalized, `clean --closed --prune-state`
-- [ ] URL-form invocation, commit refs, adopted-workspace edge cases, `completions`, remaining `doctor` checks (§9.11), interactive picker on bare `uxd <project>` when TTY (fallback: `list`)
+- [ ] URL-form invocation, commit refs, adopted-workspace edge cases, `completions`, remaining `doctor` checks (§9.11), interactive picker on bare `testlane <project>` when TTY (fallback: `list`)
 - **Accept:** scenario 12; completions demo in zsh; fork-PR flow manually verified against a real GitHub fork.
 
 ### M3 — deferred (do not build now)
@@ -970,42 +988,42 @@ Scenarios (each asserts exit code, stdout contract, stderr contains, and on-disk
 
 1. **Bare clones have no fetch refspec.** Without §7.1's `config remote.origin.fetch`, `origin/*` tracking refs never appear and `--track` fails. `doctor` checks this because users will hand-create repos.
 2. **Force-fetch PR refs** (`+refs/pull/…`). Agents rewrite history; a plain fetch fails on non-fast-forward and the error is cryptic.
-3. **`push.default upstream` is set in the shared bare repo config** — it applies to all worktrees of that repo. That's intended (the repo is uxd-owned), but never write it to a user's own repo (adopted workspaces are untouched).
-4. **`.git` in a worktree is a file**, not a directory — it points at `<repo>/worktrees/<name>`. Tools that assume a `.git` dir (some Docker volume setups, old scripts) break; nothing for uxd to fix, but `doctor`'s husky/hooksPath warning and README should mention it.
+3. **`push.default upstream` is set in the shared bare repo config** — it applies to all worktrees of that repo. That's intended (the repo is Testlane-owned), but never write it to a user's own repo (adopted workspaces are untouched).
+4. **`.git` in a worktree is a file**, not a directory — it points at `<repo>/worktrees/<name>`. Tools that assume a `.git` dir (some Docker volume setups, old scripts) break; nothing for Testlane to fix, but `doctor`'s husky/hooksPath warning and README should mention it.
 5. **`core.hooksPath` + husky**: repos that set relative hook paths can resolve them wrong from worktrees; also `pnpm install` may try to install hooks into the bare repo. Warn, don't fix.
 6. **Partial clone needs network for new blobs.** First checkout of a worktree and `diff` across unfetched trees will lazily fetch. Offline mode is degraded by design; error messages should say "network required (partial clone)".
 7. **Branch already checked out** in another worktree → git refuses `worktree add`. Catch and point at the existing workspace.
 8. **Manual `rm -rf` of a worktree dir** leaves git metadata behind; run `git worktree prune` during `clean` and flag orphans in `doctor`.
-9. **Atomic state writes** (temp + rename) and the project lock prevent two uxd invocations from corrupting state — n8n workflows *will* fire uxd concurrently.
+9. **Atomic state writes** (temp + rename) and the project lock prevent two Testlane invocations from corrupting state — n8n workflows *will* fire Testlane concurrently.
 10. **Spawn argv arrays everywhere** except the documented `bash -c` cases; paths contain spaces.
 11. **pnpm in worktrees** is fine — the global content-addressable store means per-worktree `node_modules` are mostly hardlinks; still, surface disk usage in `clean` because dozens of workspaces add up.
 12. **`git worktree remove` refuses dirty trees** without `--force` — the plan/confirm flow in §9.9 depends on that; don't pre-force.
 13. **Signal handling in `run`**: spawn the child in its own process group and forward signals to the group, or dev-server child trees (vite + esbuild workers) survive Ctrl-C.
-14. **Name check**: before publishing anywhere, verify `uxd` is free on npm/brew; the binary name is otherwise an easy rename (single constant).
+14. **Name check**: before publishing anywhere, verify `testlane` is free on npm/brew; the binary name is otherwise an easy rename (single constant).
 
 ---
 
 ## Appendix A — sample session
 
 ```
-$ uxd n8n 19234 run dev
+$ testlane n8n 19234 run dev
 → resolving pr/19234
-→ cloning n8n (bare, partial) into ~/dev/uxd/n8n/repo   # first use only
+→ cloning n8n (bare, partial) into ~/dev/testlane/n8n/repo  # first use only
 → fetching pull/19234 → pr/19234
-→ worktree ready: ~/dev/uxd/n8n/trees/pr-19234
+→ worktree ready: ~/dev/testlane/n8n/trees/pr-19234
 → push-back wired to origin/ai/fix-canvas-drag
 → seeded .env.local, packages/cli/.env
 → setup: pnpm install --frozen-lockfile (cache miss)
 → running dev on port 5701  (Ctrl-C to stop)
 … vite output …
 ^C
-$ uxd n8n 19234 code
+$ testlane n8n 19234 code
 → worktree ready (reused)
 → opening in zed
-$ uxd n8n list
+$ testlane n8n list
 SLUG       KIND  BRANCH               STATUS   PORT   AGE  LAST USED  TITLE
 pr-19234   pr    ai/fix-canvas-drag   open ✓   5701   5m   just now   fix(editor): canvas drag
-$ uxd n8n clean --merged --yes        # …a week later
+$ testlane n8n clean --merged --yes   # …a week later
 → plan: pr-19234 (merged, clean, 1.9 GB)
 pr-19234
 → freed 1.9 GB

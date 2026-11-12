@@ -2,7 +2,7 @@
 
 import { spawn } from "node:child_process";
 import { closeSync, openSync } from "node:fs";
-import { UxdError, type ErrCode } from "./errors.ts";
+import { TestlaneError, type ErrCode } from "./errors.ts";
 
 // Optional recorder: when set, every spawned argv is recorded before execution.
 // Used by integration tests to assert which external commands ran (§17.2).
@@ -28,7 +28,7 @@ export interface CaptureResult {
 
 /**
  * Run `argv` capturing stdout/stderr. Argv-based, never through a shell.
- * Non-zero exit throws UxdError unless `allowFailure` is set (§11.1).
+ * Non-zero exit throws TestlaneError unless `allowFailure` is set (§11.1).
  */
 export async function capture(argv: string[], opts: CaptureOptions = {}): Promise<CaptureResult> {
   recorder?.(argv);
@@ -55,7 +55,7 @@ export async function capture(argv: string[], opts: CaptureOptions = {}): Promis
       const exit = code ?? (signal ? 128 + signalNumber(signal) : 1);
       if (exit !== 0 && !opts.allowFailure) {
         const trimmed = stderr.trim() || stdout.trim() || `exited with code ${exit}`;
-        reject(new UxdError(opts.errCode ?? "E_EXTERNAL", `${argv[0]}: ${trimmed}`));
+        reject(new TestlaneError(opts.errCode ?? "E_EXTERNAL", `${argv[0]}: ${trimmed}`));
         return;
       }
       resolve({ code: exit, stdout, stderr });
@@ -69,7 +69,7 @@ export interface PassthroughOptions {
   /** Detach into a new session with ignored stdio (GUI editors, §10). */
   detach?: boolean;
   /**
-   * Send the child's stdout to uxd's stderr. Setup and hooks use it under
+   * Send the child's stdout to Testlane's stderr. Setup and hooks use it under
    * `--json`, so an install's output never lands in front of the JSON (§13.2).
    */
   stdoutToStderr?: boolean;
@@ -90,7 +90,7 @@ export interface Detached {
 
 /**
  * Spawn `argv` in a new session and process group (its PGID is its PID), then
- * unref it so uxd can exit while it runs. stdio is ignored, or appended to
+ * unref it so Testlane can exit while it runs. stdio is ignored, or appended to
  * `log` when given (§10, §9.14).
  */
 export async function detach(argv: string[], opts: DetachOptions = {}): Promise<Detached> {
@@ -176,16 +176,16 @@ function signalNumber(sig: string): number {
 }
 
 /**
- * Map a spawn failure to a clean UxdError. A missing binary (ENOENT) is an
+ * Map a spawn failure to a clean TestlaneError. A missing binary (ENOENT) is an
  * environment problem the user can fix, so it becomes E_SETUP with a hint
  * instead of surfacing as E_INTERNAL (§14). node:child_process reports ENOENT
  * asynchronously via the `error` event, unlike Bun's synchronous throw.
  */
-function mapSpawnError(e: unknown, argv: string[]): UxdError {
+function mapSpawnError(e: unknown, argv: string[]): TestlaneError {
   if ((e as NodeJS.ErrnoException).code === "ENOENT") {
-    return new UxdError("E_SETUP", `command not found: ${argv[0]}`, {
+    return new TestlaneError("E_SETUP", `command not found: ${argv[0]}`, {
       hint: `ensure '${argv[0]}' is installed and on your PATH`,
     });
   }
-  return new UxdError("E_EXTERNAL", `${argv[0]}: ${(e as Error).message}`);
+  return new TestlaneError("E_EXTERNAL", `${argv[0]}: ${(e as Error).message}`);
 }

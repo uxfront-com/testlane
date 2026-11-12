@@ -32,27 +32,27 @@ const CODE_FOR: Record<ErrCode, ExitCode> = {
   E_EXTERNAL: ExitCode.GIT,
 };
 
-export class UxdError extends Error {
+export class TestlaneError extends Error {
   readonly code: ExitCode;
   readonly errCode: ErrCode;
   readonly hint?: string;
 
   constructor(errCode: ErrCode, message: string, opts?: { hint?: string; code?: ExitCode }) {
     super(message);
-    this.name = "UxdError";
+    this.name = "TestlaneError";
     this.errCode = errCode;
     this.code = opts?.code ?? CODE_FOR[errCode];
     this.hint = opts?.hint;
   }
 }
 
-export function isUxdError(e: unknown): e is UxdError {
-  return e instanceof UxdError;
+export function isTestlaneError(e: unknown): e is TestlaneError {
+  return e instanceof TestlaneError;
 }
 
 // Convenience constructors keep call sites terse.
-export const usage = (message: string, hint?: string) => new UxdError("E_USAGE", message, { hint });
-export const configError = (message: string, hint?: string) => new UxdError("E_CONFIG", message, { hint });
-export const resolveError = (message: string, hint?: string) => new UxdError("E_RESOLVE", message, { hint });
-export const gitError = (message: string, hint?: string) => new UxdError("E_GIT", message, { hint });
-export const setupError = (message: string, hint?: string) => new UxdError("E_SETUP", message, { hint });
+export const usage = (message: string, hint?: string) => new TestlaneError("E_USAGE", message, { hint });
+export const configError = (message: string, hint?: string) => new TestlaneError("E_CONFIG", message, { hint });
+export const resolveError = (message: string, hint?: string) => new TestlaneError("E_RESOLVE", message, { hint });
+export const gitError = (message: string, hint?: string) => new TestlaneError("E_GIT", message, { hint });
+export const setupError = (message: string, hint?: string) => new TestlaneError("E_SETUP", message, { hint });

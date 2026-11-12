@@ -1,7 +1,7 @@
 // Worktree add/remove/prune/status (§7.2, §7.5).
 
 import { capture } from "../lib/proc.ts";
-import { UxdError } from "../lib/errors.ts";
+import { TestlaneError } from "../lib/errors.ts";
 import type { GitEnv } from "./repo.ts";
 
 const env = () => ({ ...(process.env as Record<string, string>), GIT_TERMINAL_PROMPT: "0" });
@@ -39,7 +39,7 @@ export function addCommitWorktreeArgv(repoPath: string, dir: string, sha: string
 export async function addBranchWorktree(g: GitEnv, dir: string, name: string): Promise<void> {
   const res = await runGit(g, addBranchWorktreeArgv(g.repoPath, dir, name), { allowFailure: true });
   throwIfAlreadyCheckedOut(res, name);
-  if (res.code !== 0) throw new UxdError("E_GIT", `git worktree add: ${res.stderr.trim()}`);
+  if (res.code !== 0) throw new TestlaneError("E_GIT", `git worktree add: ${res.stderr.trim()}`);
   g.log.step(`worktree ready: ${dir}`);
 }
 
@@ -47,7 +47,7 @@ export async function addBranchWorktree(g: GitEnv, dir: string, name: string): P
 export async function addPrWorktree(g: GitEnv, dir: string, n: number): Promise<void> {
   const res = await runGit(g, addPrWorktreeArgv(g.repoPath, dir, n), { allowFailure: true });
   throwIfAlreadyCheckedOut(res, `pr/${n}`);
-  if (res.code !== 0) throw new UxdError("E_GIT", `git worktree add: ${res.stderr.trim()}`);
+  if (res.code !== 0) throw new TestlaneError("E_GIT", `git worktree add: ${res.stderr.trim()}`);
   g.log.step(`worktree ready: ${dir}`);
 }
 
@@ -55,7 +55,7 @@ export async function addPrWorktree(g: GitEnv, dir: string, n: number): Promise<
 export async function addCommitWorktree(g: GitEnv, dir: string, sha: string): Promise<void> {
   const res = await runGit(g, addCommitWorktreeArgv(g.repoPath, dir, sha), { allowFailure: true });
   throwIfAlreadyCheckedOut(res, sha);
-  if (res.code !== 0) throw new UxdError("E_GIT", `git worktree add: ${res.stderr.trim()}`);
+  if (res.code !== 0) throw new TestlaneError("E_GIT", `git worktree add: ${res.stderr.trim()}`);
   g.log.step(`worktree ready: ${dir}`);
 }
 
@@ -64,8 +64,8 @@ function throwIfAlreadyCheckedOut(
   ref: string,
 ): void {
   if (res.code !== 0 && /already (checked out|used by worktree)/i.test(res.stderr)) {
-    throw new UxdError("E_GIT", `'${ref}' is already checked out in another workspace`, {
-      hint: "use that workspace, or remove it first with `uxd <project> <ref> rm`",
+    throw new TestlaneError("E_GIT", `'${ref}' is already checked out in another workspace`, {
+      hint: "use that workspace, or remove it first with `testlane <project> <ref> rm`",
     });
   }
 }
@@ -135,7 +135,7 @@ export async function stashPush(dir: string, message: string): Promise<string | 
     ["git", "-C", dir, "stash", "push", "--include-untracked", "-m", message],
     { allowFailure: true, env: env() },
   );
-  if (res.code !== 0) throw new UxdError("E_GIT", `git stash push: ${res.stderr.trim()}`);
+  if (res.code !== 0) throw new TestlaneError("E_GIT", `git stash push: ${res.stderr.trim()}`);
   if (/no local changes/i.test(res.stdout)) return null;
   return "stash@{0}";
 }

@@ -1,9 +1,10 @@
 // Entry point: config-dir resolution, parse, dispatch, error formatting (§4, §14).
 
 import { existsSync } from "node:fs";
-import { ExitCode, UxdError, isUxdError } from "./lib/errors.ts";
+import { ExitCode, TestlaneError, isTestlaneError } from "./lib/errors.ts";
 import { Logger, colorEnabled } from "./lib/log.ts";
 import { defaultConfigDir } from "./lib/paths.ts";
+import { legacyConfigDirFromEnv, legacyDebugFromEnv, resetCompatWarnings } from "./lib/compat.ts";
 import { parse, type ParseDeps, type ParseResult } from "./cli/parse.ts";
 import {
   listProjectNames,
@@ -41,6 +42,8 @@ export interface MainOptions {
 }
 
 export async function main(argv: string[], opts: MainOptions = {}): Promise<number> {
+  // Each run warns about each 1.x fallback once (§5.6, `compat.ts`).
+  resetCompatWarnings();
   const debug = wantsDebug(argv);
   try {
     const configDir = resolveConfigDir(argv);
@@ -68,13 +71,16 @@ export async function main(argv: string[], opts: MainOptions = {}): Promise<numb
 
 // ── Config-dir resolution (§5.1) ────────────────────────────────────────────
 
-/** --config-dir flag → $UXD_CONFIG_DIR → ~/.uxd. */
+/**
+ * --config-dir flag → $TESTLANE_CONFIG_DIR → the 1.x variable → ~/.testlane if it
+ * exists → the 1.x dir if it exists → ~/.testlane. The 1.x fallbacks warn (§5.6).
+ */
 function resolveConfigDir(argv: string[]): string {
   const fromFlag = preScanConfigDir(argv);
   if (fromFlag) return fromFlag;
-  const fromEnv = process.env.UXD_CONFIG_DIR;
+  const fromEnv = process.env.TESTLANE_CONFIG_DIR;
   if (fromEnv && fromEnv.trim() !== "") return fromEnv;
-  return defaultConfigDir();
+  return legacyConfigDirFromEnv() ?? defaultConfigDir();
 }
 
 /** Lightweight pre-scan for --config-dir before parse (deps need it first). */
@@ -89,7 +95,10 @@ function preScanConfigDir(argv: string[]): string | undefined {
 }
 
 function wantsDebug(argv: string[]): boolean {
-  if (process.env.UXD_DEBUG === "1") return true;
+  const fromEnv = process.env.TESTLANE_DEBUG;
+  if (fromEnv === "1") return true;
+  // A set TESTLANE_DEBUG wins over the 1.x variable, even when it turns debug off.
+  if ((fromEnv === undefined || fromEnv === "") && legacyDebugFromEnv()) return true;
   const cut = argv.indexOf("--");
   const pre = cut === -1 ? argv : argv.slice(0, cut);
   return pre.includes("--verbose") || pre.includes("-v");
@@ -147,7 +156,7 @@ function resolveUrlProject(
 function guardConfigDir(result: ParseResult, configDir: string): void {
   if (isExemptFromConfigDir(result)) return;
   if (existsSync(configDir)) return;
-  throw new UxdError("E_CONFIG", `config directory does not exist: ${configDir}`, {
+  throw new TestlaneError("E_CONFIG", `config directory does not exist: ${configDir}`, {
     hint: "create it and add <project>.toml files, or pass --config-dir",
   });
 }
@@ -175,7 +184,7 @@ async function dispatch(result: ParseResult, ctx: Ctx, defaults: Defaults): Prom
         process.stdout.write(HELP);
         return ExitCode.SUCCESS;
       case "version":
-        process.stdout.write(`uxd ${version()}\n`);
+        process.stdout.write(`testlane ${version()}\n`);
         return ExitCode.SUCCESS;
       case "projects":
         return projects({ ctx, args: result.args });
@@ -194,7 +203,7 @@ async function dispatch(result: ParseResult, ctx: Ctx, defaults: Defaults): Prom
     const project = loadProject(ctx.configDir, result.project, defaults);
     switch (result.verb) {
       case "list":
-        // Bare `uxd <project>` on a TTY opens the interactive picker; an explicit
+        // Bare `testlane <project>` on a TTY opens the interactive picker; an explicit
         // `list` verb (or non-TTY/--json) always prints the plain table (§4.3/M2).
         return result.defaulted
           ? pick({ ctx, project, args: result.args })
@@ -242,14 +251,14 @@ async function dispatch(result: ParseResult, ctx: Ctx, defaults: Defaults): Prom
     case "logs":
       return logs(wi);
     default:
-      throw new UxdError("E_INTERNAL", "unhandled workspace verb");
+      throw new TestlaneError("E_INTERNAL", "unhandled workspace verb");
   }
 }
 
 // ── Error formatting (§13.5) ─────────────────────────────────────────────────
 
 function formatError(e: unknown, debug: boolean): number {
-  if (isUxdError(e)) {
+  if (isTestlaneError(e)) {
     process.stderr.write(`error(${e.errCode}): ${e.message}\n`);
     if (e.hint) process.stderr.write(`hint: ${e.hint}\n`);
     if (debug && e.stack) process.stderr.write(`${e.stack}\n`);

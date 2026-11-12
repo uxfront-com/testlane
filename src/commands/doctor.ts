@@ -161,7 +161,7 @@ async function checkProject(
     });
 
     // orphaned worktrees (§9.11): reconcile git's worktree list with state, both
-    // directions. Git-known dirs uxd doesn't track, and tracked (non-adopted)
+    // directions. Git-known dirs Testlane doesn't track, and tracked (non-adopted)
     // paths git no longer knows, both warrant a `clean --prune-state` nudge.
     await checkOrphans(name, project.repoPath, checks);
 
@@ -216,7 +216,7 @@ async function checkProject(
 }
 
 /**
- * Warn on drift between git's worktree list, the filesystem, and uxd state
+ * Warn on drift between git's worktree list, the filesystem, and Testlane state
  * (§9.11). The bare repo itself is excluded, and adopted (`kind: path`) entries
  * are ignored since they live outside this repo. A parse failure here is silent
  * — the state-file check in checkProject reports it separately.
@@ -255,7 +255,7 @@ async function checkOrphans(name: string, repoPath: string, checks: Check[]): Pr
   checks.push({
     name: `project ${name}: worktrees`,
     status: "warn",
-    detail: `${bits.join("; ")} — reconcile with \`uxd ${name} clean --prune-state\``,
+    detail: `${bits.join("; ")} — reconcile with \`testlane ${name} clean --prune-state\``,
   });
 }
 
