@@ -4,6 +4,15 @@ import {
 	DOCS_SECTIONS,
 } from "./app/constants/sections";
 
+// Workers Builds sets WORKERS_CI. There the site builds as static files that
+// the root wrangler.jsonc serves. Without a preset, Nitro would pick
+// cloudflare-module, whose generated wrangler.json replaces wrangler.jsonc and
+// points at a server entry that a static build never writes. An explicit
+// NITRO_PRESET still wins. Every other build keeps Nitro's server output.
+if (process.env.WORKERS_CI) {
+	process.env.NITRO_PRESET ||= "cloudflare_pages_static";
+}
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
 	extends: ["@uxfront/layer-docs"],
@@ -75,7 +84,7 @@ export default defineNuxtConfig({
 	},
 
 	site: {
-		url: "https://uxd.uxfront.com",
+		url: "https://testlane.dev",
 		name: "uxfront — Documentation",
 	},
 
