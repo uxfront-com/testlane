@@ -107,8 +107,9 @@ export default defineNuxtConfig({
 	},
 
 	nitro: {
-		// The site runs as a Nitro server (Docker, Nixpacks or Vercel), with every
-		// page prerendered into .output/public.
+		// Every page is prerendered. On Workers Builds (WORKERS_CI, above) that's
+		// the static production site in dist/. Elsewhere it's a Nitro server
+		// (Docker, Nixpacks or Vercel) with the pages in .output/public.
 		prerender: {
 			crawlLinks: true,
 			// /docs only redirects, so crawling the docs starts from the introduction.

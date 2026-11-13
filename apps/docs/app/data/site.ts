@@ -1,6 +1,6 @@
 import { DOCS_ENTRY } from "../../redirects";
 
-export const SITE_URL = "https://testlane.uxfront.com";
+export const SITE_URL = "https://testlane.dev";
 
 /** The docs open on the introduction: `/docs` itself only redirects there. */
 export const DOCS_URL = DOCS_ENTRY;

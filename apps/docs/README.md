@@ -1,6 +1,6 @@
 # @uxfront/docs
 
-The Nuxt site for https://testlane.uxfront.com: the homepage and the documentation at `/docs`, prerendered and served by a Nitro server. It's built like [uxfront.com](https://github.com/uxfront-com/uxfront/tree/main/apps/web), [opencomponents.dev](https://github.com/uxfront-com/open-components) and [unframework.dev](https://github.com/uxfront-com/unframework/tree/main/apps/web), from the same homepage kit, with the docs on [Docus](https://docus.dev).
+The Nuxt site for https://testlane.dev: the homepage and the documentation at `/docs`, with every page prerendered. Production is the static build that Cloudflare Workers serves, and the Nitro server build serves the other hosts (see [Deploying](#deploying)). It's built like [uxfront.com](https://github.com/uxfront-com/uxfront/tree/main/apps/web), [opencomponents.dev](https://github.com/uxfront-com/open-components) and [unframework.dev](https://github.com/uxfront-com/unframework/tree/main/apps/web), from the same homepage kit, with the docs on [Docus](https://docus.dev).
 
 ## Commands
 
