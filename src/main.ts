@@ -9,7 +9,7 @@ import { parse, type ParseDeps, type ParseResult } from "./cli/parse.ts";
 import {
   listProjectNames,
   loadDefaults,
-  loadProject,
+  loadEffectiveProject,
   projectExists,
 } from "./config/load.ts";
 import {
@@ -109,7 +109,7 @@ function wantsDebug(argv: string[]): boolean {
 function buildDeps(configDir: string, defaults: Defaults): ParseDeps {
   const commandNames = (name: string): string[] => {
     try {
-      return Object.keys(loadProject(configDir, name, defaults).commands);
+      return Object.keys(loadEffectiveProject(configDir, name, defaults).commands);
     } catch {
       return [];
     }
@@ -120,7 +120,7 @@ function buildDeps(configDir: string, defaults: Defaults): ParseDeps {
     projectCommandNames: commandNames,
     projectDefaultCommand: (name) => {
       try {
-        return loadProject(configDir, name, defaults).defaultCommand;
+        return loadEffectiveProject(configDir, name, defaults).defaultCommand;
       } catch {
         return "code";
       }
@@ -139,7 +139,7 @@ function resolveUrlProject(
   for (const name of listProjectNames(configDir)) {
     let proj: ProjectConfig;
     try {
-      proj = loadProject(configDir, name, defaults);
+      proj = loadEffectiveProject(configDir, name, defaults);
     } catch {
       continue;
     }
@@ -167,12 +167,28 @@ function isExemptFromConfigDir(result: ParseResult): boolean {
   if (result.verb === "completions") return true;
   // `setup` creates the config dir, so it must run when the dir is still absent.
   if (result.verb === "setup") return true;
-  // `config path` is exempt; `config edit/validate` are not.
+  // `config path` is exempt; `config edit/validate` are not. `config add <url>`
+  // is, since it creates the config dir on a new machine (§9.12).
   if (result.verb === "config") {
     const sub = result.args[0];
+    if (sub === "add") return configAddTarget(result.args.slice(1)) !== undefined;
     return sub === undefined || sub === "path";
   }
   return false;
+}
+
+/** The URL `config add` was given, skipping its `--name`/`--root` values. */
+function configAddTarget(args: string[]): string | undefined {
+  for (let i = 0; i < args.length; i++) {
+    const tok = args[i]!;
+    if (tok === "--name" || tok === "--root") {
+      i += 1;
+      continue;
+    }
+    if (tok.startsWith("-") && tok !== "-") continue;
+    return parseUrlInput(tok) ? tok : undefined;
+  }
+  return undefined;
 }
 
 // ── Dispatch ─────────────────────────────────────────────────────────────────
@@ -200,7 +216,7 @@ async function dispatch(result: ParseResult, ctx: Ctx, defaults: Defaults): Prom
   }
 
   if (result.kind === "project") {
-    const project = loadProject(ctx.configDir, result.project, defaults);
+    const project = loadEffectiveProject(ctx.configDir, result.project, defaults);
     switch (result.verb) {
       case "list":
         // Bare `testlane <project>` on a TTY opens the interactive picker; an explicit
@@ -216,7 +232,7 @@ async function dispatch(result: ParseResult, ctx: Ctx, defaults: Defaults): Prom
   }
 
   // workspace
-  const project = loadProject(ctx.configDir, result.project, defaults);
+  const project = loadEffectiveProject(ctx.configDir, result.project, defaults);
   const wi = {
     ctx,
     project,
