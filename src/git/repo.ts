@@ -85,7 +85,8 @@ export async function detectDefaultBranch(g: GitEnv): Promise<string | undefined
 /** Fetch a branch's remote-tracking ref (§7.2). */
 export async function fetchBranch(g: GitEnv, name: string): Promise<void> {
   g.log.step(`fetching origin/${name}`);
-  const res = await runGit(g, ["git", "-C", g.repoPath, "fetch", "origin", name, "--no-tags"], {
+  // `--end-of-options` keeps a name like `--upload-pack=<cmd>` from reaching git as an option.
+  const res = await runGit(g, ["git", "-C", g.repoPath, "fetch", "--no-tags", "origin", "--end-of-options", name], {
     allowFailure: true,
   });
   if (res.code !== 0) throw classifyFetchError(res.stderr, `branch '${name}'`);

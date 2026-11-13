@@ -318,7 +318,7 @@ function dryRunPlan(ctx: Ctx, project: ProjectConfig, refSpec: RefSpec): EnsureR
   lines.push(`mkdir -p ${project.worktreesPath}`);
 
   if (spec.kind === "branch") {
-    lines.push(shellJoin(["git", "-C", project.repoPath, "fetch", "origin", spec.name, "--no-tags"]));
+    lines.push(shellJoin(["git", "-C", project.repoPath, "fetch", "--no-tags", "origin", "--end-of-options", spec.name]));
     lines.push(shellJoin(addBranchWorktreeArgv(project.repoPath, dir, spec.name)));
   } else if (spec.kind === "pr") {
     lines.push(

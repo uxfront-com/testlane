@@ -11,6 +11,8 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { makeEnv, makeFixtureOrigin, type Harness, type ProjectSpec } from "../fixtures.ts";
 import { builtCli, McpClient } from "../mcp-client.ts";
+import { fetchBranch } from "../../src/git/repo.ts";
+import { Logger } from "../../src/lib/log.ts";
 
 // A server on $TESTLANE_PORT that logs one line once it listens.
 const SERVER =
@@ -381,6 +383,38 @@ describe("errors", () => {
     // Nothing was started or checked out.
     expect((await c.call("list", { project: "app" })).value).toEqual([]);
     await c.close();
+  });
+
+  it("C7 — a ref that starts with '-' is rejected, so it can't reach git as an option", async () => {
+    const env = makeMcpEnv({ app: "" });
+    const c = connect(env);
+    await c.initialize();
+    const cases = [
+      { tool: "checkout", args: { ref: `--upload-pack=touch ${join(tmp, "PWNED1")}; git-upload-pack`, kind: "branch" }, file: "PWNED1" },
+      { tool: "checkout", args: { ref: `--upload-pack=touch\${IFS}${join(tmp, "PWNED2")};git-upload-pack` }, file: "PWNED2" },
+      { tool: "start", args: { ref: `--upload-pack=touch ${join(tmp, "PWNED3")}; git-upload-pack`, kind: "branch", command: "web" }, file: "PWNED3" },
+      { tool: "start", args: { ref: `--upload-pack=touch\${IFS}${join(tmp, "PWNED4")};git-upload-pack`, command: "web" }, file: "PWNED4" },
+    ];
+    for (const { tool, args, file } of cases) {
+      const r = await c.call(tool, { project: "app", timeout: 20, ...args });
+      expect(r.isError, `${tool} ${file}`).toBe(true);
+      expect(r.value.error.errCode, `${tool} ${file}`).toBe("E_RESOLVE");
+      expect(existsSync(join(tmp, file)), `${tool} ${file}`).toBe(false);
+    }
+    await c.close();
+  });
+
+  it("C7 — git fetch ends its options before the branch name, so even an unchecked one runs nothing", async () => {
+    const repo = join(tmp, "bare.git");
+    spawnSync("git", ["clone", "-q", "--bare", origin.path, repo]);
+    const log = new Logger({ quiet: true, verbose: false, color: false });
+    const pwned = join(tmp, "PWNED-FETCH");
+    await expect(
+      fetchBranch({ repoPath: repo, dryRun: false, log }, `--upload-pack=touch ${pwned}; git-upload-pack`),
+    ).rejects.toThrow();
+    expect(existsSync(pwned)).toBe(false);
+    // A real branch still fetches.
+    await fetchBranch({ repoPath: repo, dryRun: false, log }, "feature-x");
   });
 
   it("C7 — with a missing config dir the server starts, doctor works and projects fails with E_CONFIG", async () => {

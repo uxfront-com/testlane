@@ -6,6 +6,7 @@ import {
   normalizeRepoUrl,
   parseRef,
   parseUrlInput,
+  refFromDisambiguator,
   slug,
 } from "../../src/core/resolve.ts";
 
@@ -94,4 +95,27 @@ describe("URL normalization & extraction — §4.3", () => {
     expect(u?.ref).toEqual({ kind: "branch", name: "ai/fix-canvas-drag" });
   });
   it("non-url returns null", () => expect(normalizeRepoUrl("not a url")).toBeNull());
+});
+
+describe("a ref can't start with '-' (it would reach git as an option)", () => {
+  const attack = "--upload-pack=touch${IFS}/tmp/x;git-upload-pack";
+
+  it("C7 — isValidBranchName rejects a leading '-'", () => {
+    expect(isValidBranchName("-x")).toBe(false);
+    expect(isValidBranchName(attack)).toBe(false);
+    expect(isValidBranchName("x-y")).toBe(true);
+  });
+
+  it("C7 — parseRef rejects it with E_RESOLVE", () => {
+    expect(() => parseRef(attack)).toThrow(/could not parse ref/);
+    // `-` alone stays the last-used ref.
+    expect(parseRef("-")).toEqual({ kind: "last" });
+  });
+
+  it("C7 — --branch rejects it with E_RESOLVE", () => {
+    expect(() => refFromDisambiguator("branch", "--upload-pack=touch /tmp/x; git-upload-pack")).toThrow(
+      /--branch expects a branch name/,
+    );
+    expect(refFromDisambiguator("branch", "feat/x")).toEqual({ kind: "branch", name: "feat/x" });
+  });
 });
