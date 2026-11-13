@@ -1,6 +1,6 @@
 // Verb tables (§4.2). Shared by parse.ts and config validation.
 
-export const TOP_LEVEL_VERBS = ["setup", "projects", "doctor", "config", "completions", "help", "version"] as const;
+export const TOP_LEVEL_VERBS = ["setup", "projects", "doctor", "config", "completions", "help", "version", "mcp"] as const;
 
 export const PROJECT_VERBS = ["list", "clean", "ps"] as const;
 

@@ -10,7 +10,7 @@ import { workspaceDiskBytes } from "../core/remove.ts";
 import { ghRepoSlug } from "../core/workspace.ts";
 import { pad } from "../lib/table.ts";
 import { promptLine } from "../lib/prompt.ts";
-import type { Ctx, ProjectConfig } from "../config/schema.ts";
+import { stdoutOf, type Ctx, type ProjectConfig } from "../config/schema.ts";
 import type { ProjectInput, WorkspaceInput } from "./types.ts";
 import { slug as slugFor } from "../core/resolve.ts";
 
@@ -120,7 +120,7 @@ export async function list(input: ProjectInput): Promise<number> {
   if (ctx.flags.json) {
     // JSON reflects persisted state entries plus computed fields — no gh refresh,
     // so output stays deterministic and offline-safe (§9.8).
-    process.stdout.write(JSON.stringify(du ? rows : stripDisk(rows)) + "\n");
+    stdoutOf(ctx).write(JSON.stringify(du ? rows : stripDisk(rows)) + "\n");
     return ExitCode.SUCCESS;
   }
 
@@ -142,9 +142,9 @@ export async function list(input: ProjectInput): Promise<number> {
     age(r.lastUsedAt),
   ]);
   const widths = header.map((h, i) => Math.max(h.length, ...body.map((row) => row[i]!.length)));
-  process.stdout.write(header.map((h, i) => pad(h, widths[i]!)).join("  ").trimEnd() + "\n");
+  stdoutOf(ctx).write(header.map((h, i) => pad(h, widths[i]!)).join("  ").trimEnd() + "\n");
   for (const row of body) {
-    process.stdout.write(row.map((c, i) => pad(c, widths[i]!)).join("  ").trimEnd() + "\n");
+    stdoutOf(ctx).write(row.map((c, i) => pad(c, widths[i]!)).join("  ").trimEnd() + "\n");
   }
   return ExitCode.SUCCESS;
 }
@@ -184,7 +184,7 @@ export async function pick(input: ProjectInput): Promise<number> {
       "re-checkout the ref, or sweep it with `clean --prune-state`",
     );
   }
-  process.stdout.write(ws.path + "\n");
+  stdoutOf(ctx).write(ws.path + "\n");
   return ExitCode.SUCCESS;
 }
 
@@ -205,7 +205,7 @@ export async function info(input: WorkspaceInput): Promise<number> {
     return ExitCode.RESOLVE;
   }
   if (ctx.flags.json) {
-    process.stdout.write(JSON.stringify(du ? row : stripDisk([row])[0]) + "\n");
+    stdoutOf(ctx).write(JSON.stringify(du ? row : stripDisk([row])[0]) + "\n");
     return ExitCode.SUCCESS;
   }
   const fresh = await refreshPrMeta(ctx, project, [row]);
@@ -222,7 +222,7 @@ export async function info(input: WorkspaceInput): Promise<number> {
   ];
   if (row.pr) lines.push(["pr", `${row.pr.state} — ${row.pr.title}`], ["pr url", row.pr.url]);
   if (du && row.diskBytes != null) lines.push(["disk", humanBytes(row.diskBytes)]);
-  for (const [k, v] of lines) process.stdout.write(`${k}: ${v}\n`);
+  for (const [k, v] of lines) stdoutOf(ctx).write(`${k}: ${v}\n`);
   return ExitCode.SUCCESS;
 }
 

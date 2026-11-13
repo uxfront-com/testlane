@@ -56,3 +56,13 @@ export const configError = (message: string, hint?: string) => new TestlaneError
 export const resolveError = (message: string, hint?: string) => new TestlaneError("E_RESOLVE", message, { hint });
 export const gitError = (message: string, hint?: string) => new TestlaneError("E_GIT", message, { hint });
 export const setupError = (message: string, hint?: string) => new TestlaneError("E_SETUP", message, { hint });
+
+/** What a verb throws when `testlane mcp` stops its call on a timeout or a cancel. */
+export function abortedError(): TestlaneError {
+  return new TestlaneError("E_SETUP", "stopped: the call timed out or was cancelled");
+}
+
+/** Throw `abortedError()` once `signal` has fired. */
+export function throwIfAborted(signal: AbortSignal | undefined): void {
+  if (signal?.aborted) throw abortedError();
+}

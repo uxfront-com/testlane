@@ -58,6 +58,13 @@ describe("completions §9.13", () => {
     expect(out).toContain("list --json");
   });
 
+  it("C2 — every shell's script offers mcp as a top-level verb", async () => {
+    for (const shell of ["bash", "zsh", "fish"]) {
+      const { out } = await emit([shell]);
+      expect(out, shell).toMatch(/\bmcp\b/);
+    }
+  });
+
   it("zsh script is compdef-tagged and lists project verbs", async () => {
     const { out } = await emit(["zsh"]);
     expect(out).toContain("#compdef testlane");

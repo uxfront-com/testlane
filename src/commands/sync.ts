@@ -47,7 +47,7 @@ function pickMode(stash: boolean, discard: boolean, fresh: boolean): Mode {
 }
 
 function gitEnv(ctx: Ctx, project: ProjectConfig): GitEnv {
-  return { repoPath: project.repoPath, dryRun: ctx.flags.dryRun, log: ctx.log };
+  return { repoPath: project.repoPath, dryRun: ctx.flags.dryRun, log: ctx.log, signal: ctx.signal };
 }
 
 /** Locate an existing, on-disk workspace for `ref`, or throw E_RESOLVE. */

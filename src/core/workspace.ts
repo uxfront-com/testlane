@@ -59,7 +59,7 @@ export function dataDirFor(project: ProjectConfig, slug: string): string {
 }
 
 function gitEnv(ctx: Ctx, project: ProjectConfig, planned?: string[][]): GitEnv {
-  return { repoPath: project.repoPath, dryRun: ctx.flags.dryRun, log: ctx.log, planned };
+  return { repoPath: project.repoPath, dryRun: ctx.flags.dryRun, log: ctx.log, planned, signal: ctx.signal };
 }
 
 /** Resolve a `last` ref against saved state; other kinds pass through. */
@@ -84,7 +84,7 @@ export async function ensureWorkspace(
     return dryRunPlan(ctx, project, refSpec);
   }
 
-  const lock = await acquireLock(project.name, ctx.log);
+  const lock = await acquireLock(project.name, ctx.log, ctx.signal);
   try {
     const spec = resolveLast(project, refSpec);
     const state = loadState(project.name);

@@ -13,6 +13,8 @@ export interface GitEnv {
   log: Logger;
   /** Collector for dry-run command lines (argv arrays). */
   planned?: string[][];
+  /** Kills a running git command when it fires (`testlane mcp`). */
+  signal?: AbortSignal;
 }
 
 const NON_INTERACTIVE = { GIT_TERMINAL_PROMPT: "0" } as const;
@@ -32,7 +34,7 @@ async function runGit(
     return { code: 0, stdout: "", stderr: "" };
   }
   g.log.debug(argv.join(" "));
-  return capture(argv, { env: env(), errCode: "E_GIT", allowFailure: opts.allowFailure });
+  return capture(argv, { env: env(), errCode: "E_GIT", allowFailure: opts.allowFailure, signal: g.signal });
 }
 
 // ── Argv builders (pure — shared by exec + dry-run planning) ─────────────────
