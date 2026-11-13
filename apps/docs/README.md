@@ -79,11 +79,43 @@ Until 2.0 the docs lived one level deeper, under a prefix with the CLI's old nam
 
 ## Deploying
 
-The site runs as a Nitro server (`node .output/server/index.mjs`), which serves the prerendered pages from `.output/public` and answers the redirects. Three setups build it from the repository root, each with `pnpm install --frozen-lockfile --filter @uxfront/docs` and `pnpm --filter @uxfront/docs run build`:
+The site deploys to Cloudflare Workers through Workers Builds, on the Worker `testlane`. A merge to `main` deploys `testlane.dev`, and every other branch gets a preview of its own.
 
-- `Dockerfile`, for Dokploy or any Docker host, listening on port 3000.
-- `nixpacks.toml`, for Nixpacks builders like Dokploy or Railway (`NIXPACKS_CONFIG_FILE=apps/docs/nixpacks.toml`).
-- `vercel.json`, for Vercel, with `apps/docs` as the root directory.
+Workers Builds reads these settings from the Cloudflare dashboard, under the Worker's Settings > Build:
+
+| Setting                      | Value                                                                             |
+| ---------------------------- | --------------------------------------------------------------------------------- |
+| Root directory               | `/`                                                                               |
+| Build command                | `NODE_OPTIONS=--max-old-space-size=4096 pnpm --filter @uxfront/docs run generate` |
+| Deploy command               | `npx wrangler deploy`                                                             |
+| Non-production branch builds | on, with the default deploy command (`npx wrangler versions upload`)              |
+| Build variables              | none                                                                              |
+| Custom domain                | `testlane.dev`                                                                    |
+
+Here's how the pieces fit:
+
+- **The build is static.** Workers Builds sets `WORKERS_CI`, and `nuxt.config.ts` then defaults `NITRO_PRESET` to `cloudflare_pages_static`. `nuxt generate` prerenders every page into `apps/docs/dist`, with `_headers`, `_redirects`, `404.html` and the content database dumps that the pages query in the browser. Set `NITRO_PRESET` yourself to build another preset there.
+- **`wrangler.jsonc` sits at the repository root**, because the deploy command runs from the root. It serves `apps/docs/dist` as static assets, with no Worker script, and answers unknown paths with the 404 page. Wrangler's `versions upload` stops without its `previews` block, so the block stays, even though it's empty.
+- **`modules/workers-redirects.ts` rewrites `_redirects` after the build**, because Nitro writes two rules that Workers handle wrongly. It removes the `/* /404.html 404` rule, which Workers reject, failing the whole upload. It also turns a target like `/docs/uxd/cli/**` into `/docs/uxd/cli/:splat`, since Workers read `**` as part of the path and forward the matched part only through `:splat`. Its test is `test/workers-redirects.test.ts`.
+
+A static site has no server, so one feature of the server build doesn't run on Cloudflare: the layer's redirect from `/` to `/llms.txt` for `curl` and for requests that accept `text/markdown`.
+
+To try the Cloudflare build locally, build it and serve it with Wrangler from the repository root:
+
+```sh
+WORKERS_CI=1 NODE_OPTIONS=--max-old-space-size=4096 pnpm --filter @uxfront/docs run generate
+npx wrangler dev
+```
+
+Keep in mind that `wrangler dev` only serves your machine. Never run `wrangler deploy` or `wrangler versions upload` by hand, since each one changes the live Worker.
+
+### Other hosts
+
+Every build without `WORKERS_CI` keeps Nitro's server output, `.output/server/index.mjs`, so these still work:
+
+- **Vercel** builds with `vercel.json`.
+- **Docker** builds with `Dockerfile`, from the repository root.
+- **Nixpacks** builds with `nixpacks.toml`, from the repository root, with `NIXPACKS_CONFIG_FILE=apps/docs/nixpacks.toml`.
 
 The prerenderer needs more memory than Node's default, so the builds set `NODE_OPTIONS=--max-old-space-size=4096`.
 

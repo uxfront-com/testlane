@@ -8,6 +8,15 @@ const DESCRIPTION =
 // and llms.txt at build time, and for the sitemap when it's prerendered.
 process.env.NUXT_SITE_URL ||= SITE_URL;
 
+// Workers Builds sets WORKERS_CI. There the site builds as static files that
+// the root wrangler.jsonc serves. Without a preset, Nitro would pick
+// cloudflare-module, whose generated wrangler.json replaces wrangler.jsonc and
+// points at a server entry that a static build never writes. An explicit
+// NITRO_PRESET still wins. Every other build keeps Nitro's server output.
+if (process.env.WORKERS_CI) {
+	process.env.NITRO_PRESET ||= "cloudflare_pages_static";
+}
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
 	compatibilityDate: "2025-07-22",
