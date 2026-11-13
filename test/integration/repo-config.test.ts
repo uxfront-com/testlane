@@ -484,3 +484,181 @@ describe("config add", () => {
     expect(existsSync(join(env.configDir, "fresh.toml"))).toBe(false);
   });
 });
+
+describe("QA round 1", () => {
+  it("a tampered approval: the run asks for trust, config trust repairs it, config-only commands keep working", async () => {
+    env = makeEnv(tmp, {
+      app: { repo: origin.url, defaultBranch: "main", extraToml: `[commands.mine]\nrun = "echo mine > {data_dir}/mine.txt"` },
+    });
+    expect((await env.run(["--yes", "app", "main", "checkout"])).code).toBe(0);
+    const file = join(env.stateHome, "testlane", "app.json");
+    const s = JSON.parse(readFileSync(file, "utf8")) as StateFile;
+    s.repoConfig!.content += "# tampered\n";
+    writeFileSync(file, JSON.stringify(s));
+
+    const blocked = await env.run(["app", "main", "run", "mine"]);
+    expect(blocked.code).toBe(3);
+    expect(blocked.stderr).toContain("is unusable (the approved snapshot does not match its sha256)");
+    expect(blocked.stderr).toContain("hint: testlane config trust app");
+
+    // Commands that only read config treat it as no snapshot.
+    const projects = await env.run(["--json", "projects"]);
+    expect((JSON.parse(projects.stdout) as Array<{ repo: string }>)[0]!.repo).toBe(origin.url);
+    expect((await env.run(["--json", "config", "show", "app"])).code).toBe(0);
+    expect((await env.run(["config", "validate", "app"])).code).toBe(3);
+
+    const repaired = await env.run(["--yes", "config", "trust", "app"]);
+    expect(repaired.code).toBe(0);
+    expect(repaired.stderr).toContain("would run:");
+    expect(state()!.repoConfig!.content).toBe(MAIN_FILE);
+
+    expect((await env.run(["app", "main", "run", "mine"])).code).toBe(0);
+    expect((await env.run(["config", "validate", "app"])).code).toBe(0);
+  });
+
+  it("URL routing still finds a project whose approval is unusable", async () => {
+    env = makeEnv(tmp, { app: { repo: "https://github.com/acme/app.git", defaultBranch: "main" } });
+    mkdirSync(join(env.stateHome, "testlane"), { recursive: true });
+    const content = `editor = "zed"\n`;
+    writeFileSync(
+      join(env.stateHome, "testlane", "app.json"),
+      JSON.stringify({ version: 1, workspaces: {}, repoConfig: { sha256: sha256(content), blob: "b", content, approvedAt: "x" } }),
+    );
+    const r = await env.run(["--dry-run", "https://github.com/acme/app/tree/main", "checkout"]);
+    expect(r.code, r.stderr).toBe(0);
+  });
+
+  it("untrusted: a commit-ref checkout is gated", async () => {
+    const sha = origin.commit("main", { "c.txt": "c\n" });
+    const r = await env.run(["app", sha, "checkout"]);
+    expect(r.code).toBe(3);
+    expect(r.stderr).toContain("app:.testlane.toml is not trusted");
+    expect(existsSync(join(env.worktreesPath("app"), `sha-${sha.slice(0, 10)}`))).toBe(false);
+  });
+
+  it("untrusted: an adopted path is gated once the primary repo exists", async () => {
+    expect((await env.run(["app", "main", "checkout"])).code).toBe(3); // clones, then refuses
+    const adopted = join(tmp, "adopted");
+    expect(spawnSync("git", ["init", "-q", adopted]).status).toBe(0);
+    const r = await env.run(["app", "--path", adopted, "checkout"]);
+    expect(r.code).toBe(3);
+    expect(r.stderr).toContain("app:.testlane.toml is not trusted");
+    expect(state()?.workspaces ?? {}).toEqual({});
+  });
+
+  it("start re-checks the command after the gate approves a change that drops it", async () => {
+    expect((await env.run(["--yes", "config", "trust", "app"])).code).toBe(0);
+    expect((await env.run(["app", "main", "checkout"])).code).toBe(0);
+    origin.commit("main", { ".testlane.toml": `[commands.other]\nrun = "true"\n` });
+    const r = await env.run(["--yes", "app", "main", "start", "which", "--fetch"]);
+    expect(r.code).toBe(2);
+    expect(r.stderr).toContain("error(E_USAGE): unknown command 'which'");
+  });
+
+  it("config trust fetches the default branch, so it sees an upstream change", async () => {
+    expect((await env.run(["--yes", "config", "trust", "app"])).code).toBe(0);
+    const v2 = MAIN_FILE + "# v2\n";
+    origin.commit("main", { ".testlane.toml": v2 });
+    const asked = await env.run(["config", "trust", "app"]);
+    expect(asked.code).toBe(3);
+    expect(asked.stderr).toContain("app:.testlane.toml changed since you trusted it");
+    expect(asked.stderr).toContain("+# v2");
+    expect((await env.run(["--yes", "config", "trust", "app"])).code).toBe(0);
+    expect(state()!.repoConfig!.sha256).toBe(sha256(v2));
+  });
+
+  it("doctor warns when the file is removed upstream with an approval stored", async () => {
+    expect((await env.run(["--yes", "config", "trust", "app"])).code).toBe(0);
+    origin.remove("main", [".testlane.toml"]);
+    fetchMain();
+    const r = await env.run(["--json", "doctor"]);
+    const check = (JSON.parse(r.stdout) as { checks: Array<{ name: string; status: string; detail: string }> }).checks.find(
+      (c) => c.name === "project app: repo file",
+    );
+    expect(check).toMatchObject({ status: "warn" });
+    expect(check!.detail).toContain("removed upstream");
+  });
+
+  it("config show --json carries approvedAt", async () => {
+    expect((await env.run(["--yes", "config", "trust", "app"])).code).toBe(0);
+    const doc = JSON.parse((await env.run(["--json", "config", "show", "app"])).stdout) as {
+      approved: { approvedAt: string };
+    };
+    expect(doc.approved.approvedAt).toBe(state()!.repoConfig!.approvedAt);
+    expect(Number.isNaN(Date.parse(doc.approved.approvedAt))).toBe(false);
+  });
+});
+
+describe("config add, QA round 1", () => {
+  const saved: Record<string, string | undefined> = {};
+  const setEnv = (key: string, value: string) => {
+    if (!(key in saved)) saved[key] = process.env[key];
+    process.env[key] = value;
+  };
+  let plain: FixtureOrigin;
+
+  beforeEach(() => {
+    plain = makeFixtureOrigin(join(tmp, "plain"));
+    plain.commit("main", { "README.md": "# plain\n" });
+    setEnv("GIT_CONFIG_COUNT", "2");
+    setEnv("GIT_CONFIG_KEY_0", `url.${plain.url}.insteadOf`);
+    setEnv("GIT_CONFIG_VALUE_0", "https://github.com/acme/plain.git");
+    setEnv("GIT_CONFIG_KEY_1", `url.file://${join(tmp, "nowhere.git")}.insteadOf`);
+    setEnv("GIT_CONFIG_VALUE_1", "https://github.com/acme/missing.git");
+    env = makeEnv(tmp, {});
+    rmSync(join(env.configDir, "app.toml"));
+    writeFileSync(join(env.configDir, "defaults.toml"), `root = ${JSON.stringify(join(tmp, "root"))}\n`);
+  });
+
+  afterEach(() => {
+    for (const [key, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+      delete saved[key];
+    }
+  });
+
+  it("(c) opens the editor on the seeded template", async () => {
+    setEnv("EDITOR", "touch {path}.opened");
+    const r = await env.run(["config", "add", "https://github.com/acme/plain"]);
+    expect(r.code).toBe(0);
+    expect(existsSync(join(env.configDir, "plain.toml.opened"))).toBe(true);
+  });
+
+  it("derives the name from a URL with a trailing slash and a .git suffix", async () => {
+    const r = await env.run(["--dry-run", "config", "add", "https://github.com/acme/My_App.git/"]);
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain(`write ${join(env.configDir, "my_app.toml")}`);
+    expect(r.stdout).toContain(`repo = "https://github.com/acme/My_App.git"`);
+  });
+
+  it("a leftover state file from an earlier project of the same name lends no approval", async () => {
+    setEnv("EDITOR", "true");
+    mkdirSync(join(env.stateHome, "testlane"), { recursive: true });
+    const content = `[commands.old]\nrun = "true"\n`;
+    writeFileSync(
+      join(env.stateHome, "testlane", "plain.json"),
+      JSON.stringify({ version: 1, workspaces: {}, repoConfig: { sha256: sha256(content), blob: "b", content, approvedAt: "x" } }),
+    );
+    const r = await env.run(["config", "add", "https://github.com/acme/plain"]);
+    expect(r.code).toBe(0);
+    expect(readFileSync(join(env.configDir, "plain.toml"), "utf8")).toContain("testlane config validate plain");
+    expect(state("plain")!.repoConfig).toBeUndefined();
+  });
+
+  it("a failed clone on a new machine puts back the config dir and defaults.toml it created", async () => {
+    rmSync(env.configDir, { recursive: true, force: true });
+    const root = join(tmp, "root2");
+    const r = await env.run(["--yes", "config", "add", "--root", root, "https://github.com/acme/missing"]);
+    expect(r.code).toBe(5);
+    expect(existsSync(env.configDir)).toBe(false);
+    expect(existsSync(join(root, "missing"))).toBe(false);
+  });
+
+  it("a failed clone restores an existing defaults.toml it appended root to", async () => {
+    writeFileSync(join(env.configDir, "defaults.toml"), `editor = "zed"\n`);
+    const r = await env.run(["--yes", "config", "add", "--root", join(tmp, "root2"), "https://github.com/acme/missing"]);
+    expect(r.code).toBe(5);
+    expect(readFileSync(join(env.configDir, "defaults.toml"), "utf8")).toBe(`editor = "zed"\n`);
+  });
+});

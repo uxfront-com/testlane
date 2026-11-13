@@ -260,17 +260,42 @@ export function snapshotLayer(name: string, approval: RepoApproval): RawRepo {
       {
         file: repoLabel(name),
         path: "(root)",
-        message: `the approved snapshot does not match its sha256; run \`testlane config trust ${name}\``,
+        message: "the approved snapshot does not match its sha256",
       },
     ]);
   }
   return parseRepoConfig(name, approval.content);
 }
 
+export interface SnapshotRead {
+  approval?: RepoApproval;
+  /** The validated layer, when the approval is usable. */
+  layer?: RawRepo;
+  /** Why a stored approval is unusable: a hash mismatch or a schema error. */
+  error?: ConfigValidationError;
+}
+
+/**
+ * Validate a stored approval without throwing. A broken one has `error` set
+ * and no `layer`: everything treats it as no approval, and `config trust`
+ * asks again as on first use (§5.7).
+ */
+export function readSnapshot(name: string, approval: RepoApproval | undefined): SnapshotRead {
+  if (!approval) return {};
+  try {
+    return { approval, layer: snapshotLayer(name, approval) };
+  } catch (e) {
+    if (e instanceof ConfigValidationError) return { approval, error: e };
+    throw e;
+  }
+}
+
 /**
  * The config a run uses: the user file plus the last approved snapshot of the
  * repo's `.testlane.toml` from project state (§5.7). Never throws on state: a
- * missing, corrupt or newer-version state file means "no snapshot".
+ * missing, corrupt or newer-version state file, or a snapshot that no longer
+ * validates, means "no snapshot". `config validate` and `doctor` report the
+ * last case through `snapshotError`.
  */
 export function loadEffectiveProject(configDir: string, name: string, defaults: Defaults): ProjectConfig {
   return loadEffectiveProjectWithSources(configDir, name, defaults).project;
@@ -280,11 +305,14 @@ export function loadEffectiveProjectWithSources(
   configDir: string,
   name: string,
   defaults: Defaults,
-): LoadedProject & { approval?: RepoApproval } {
+): LoadedProject & { approval?: RepoApproval; snapshotError?: ConfigValidationError } {
   // An invalid name never reaches the state dir; loadProject reports it.
-  const approval = PROJECT_NAME_RE.test(name) ? readRepoApproval(name) : undefined;
-  const layer = approval ? snapshotLayer(name, approval) : undefined;
-  return { ...loadProjectWithSources(configDir, name, defaults, layer), approval };
+  const snap = readSnapshot(name, PROJECT_NAME_RE.test(name) ? readRepoApproval(name) : undefined);
+  return {
+    ...loadProjectWithSources(configDir, name, defaults, snap.layer),
+    approval: snap.layer ? snap.approval : undefined,
+    snapshotError: snap.error,
+  };
 }
 
 export interface ValidateOptions {
@@ -304,8 +332,12 @@ export function validateAll(configDir: string, opts: ValidateOptions = {}): Conf
   }
   for (const name of listProjectNames(configDir)) {
     try {
-      if (opts.snapshots) loadEffectiveProject(configDir, name, defaults);
-      else loadProject(configDir, name, defaults);
+      if (opts.snapshots) {
+        const loaded = loadEffectiveProjectWithSources(configDir, name, defaults);
+        if (loaded.snapshotError) issues.push(...loaded.snapshotError.issues);
+      } else {
+        loadProject(configDir, name, defaults);
+      }
     } catch (e) {
       if (e instanceof ConfigValidationError) issues.push(...e.issues);
       else if (e instanceof TestlaneError) issues.push({ file: `${name}.toml`, path: "(root)", message: e.message });

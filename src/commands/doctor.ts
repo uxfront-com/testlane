@@ -9,7 +9,7 @@ import { listWorktrees } from "../git/worktree.ts";
 import {
   listProjectNames,
   loadDefaults,
-  loadEffectiveProject,
+  loadEffectiveProjectWithSources,
   loadProject,
   ConfigValidationError,
 } from "../config/load.ts";
@@ -155,7 +155,9 @@ async function checkProject(
   // the repo-file check below, since the user file itself is fine.
   let snapshotError: unknown;
   try {
-    project = loadEffectiveProject(configDir, name, defaults);
+    const loaded = loadEffectiveProjectWithSources(configDir, name, defaults);
+    project = loaded.project;
+    snapshotError = loaded.snapshotError;
   } catch (e) {
     snapshotError = e;
   }
@@ -244,7 +246,7 @@ function issueDetail(e: unknown): string {
 async function repoFileCheck(name: string, project: ProjectConfig, snapshotError: unknown): Promise<Check> {
   const check = (status: Status, detail: string): Check => ({ name: `project ${name}: repo file`, status, detail });
   if (snapshotError !== undefined) {
-    return check("fail", `the trusted snapshot no longer validates: ${issueDetail(snapshotError)}`);
+    return check("fail", `the stored approval is unusable (${issueDetail(snapshotError)}) — run \`testlane config trust ${name}\``);
   }
   if (!isInitialized(project.repoPath)) return check("ok", "not cloned yet");
   const approval = readRepoApproval(name);

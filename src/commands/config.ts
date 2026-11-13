@@ -1,8 +1,8 @@
 // `config path | edit | add | validate | show | trust` (§9.12). `add <project>` is
 // an alias of `edit`; `add <url>` adds a project from its repo (§5.7).
 
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdirSync, readFileSync, rmdirSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { ExitCode, TestlaneError, configError, usage } from "../lib/errors.ts";
 import { parseFlags } from "../cli/flags.ts";
 import { passthrough } from "../lib/proc.ts";
@@ -143,7 +143,8 @@ function validate(input: TopInput, project?: string): number {
       throw usage(`unknown project '${project}'`, `no config file at ${projectFilePath(ctx.configDir, project)}`);
     }
     try {
-      loadEffectiveProject(ctx.configDir, project, loadDefaults(ctx.configDir));
+      const loaded = loadEffectiveProjectWithSources(ctx.configDir, project, loadDefaults(ctx.configDir));
+      if (loaded.snapshotError) throw loaded.snapshotError;
     } catch (e) {
       process.stderr.write(`${(e as Error).message}\n`);
       return ExitCode.CONFIG;
@@ -286,19 +287,24 @@ export function cloneUrlFor(input: string): string | null {
   return `${m[1]}://${m[2]}/${m[3]}/${m[4]}.git`;
 }
 
+/** The repo's name in a clone URL, lower-cased: `git@host:org/My_App.git/` → `my_app`. */
+export function repoNameOf(cloneUrl: string): string {
+  const path = cloneUrl.replace(/\/+$/, "").replace(/\.git$/, "");
+  return path.slice(Math.max(path.lastIndexOf("/"), path.lastIndexOf(":")) + 1).toLowerCase();
+}
+
 /**
  * `config add <url>`: write a minimal `<name>.toml`, clone the primary repo,
  * then trust its `.testlane.toml` — or, without one, seed today's template and
  * open the editor (§9.12). Every check runs before anything is written.
  */
 async function addUrl(ctx: Ctx, url: string, flags: { name?: string; root?: string }): Promise<number> {
-  const parsed = parseUrlInput(url)!;
-  const name = flags.name ?? parsed.coords.repo;
+  const repo = cloneUrlFor(url);
+  if (!repo) throw usage(`cannot derive a clone URL from '${url}'`, "pass an ssh or https repository URL");
+  const name = flags.name ?? repoNameOf(repo);
   if (!isValidProjectName(name)) {
     throw usage(`invalid project name '${name}'`, `${PROJECT_NAME_RULE}; pass --name <name>`);
   }
-  const repo = cloneUrlFor(url);
-  if (!repo) throw usage(`cannot derive a clone URL from '${url}'`, "pass an ssh or https repository URL");
 
   const configDir = ctx.configDir;
   const dirExisted = existsSync(configDir);
@@ -344,6 +350,22 @@ async function addUrl(ctx: Ctx, url: string, flags: { name?: string; root?: stri
   }
 
   // ── Apply. ────────────────────────────────────────────────────────────────
+  // What a failed clone puts back, so a retry starts from where this run did.
+  const defaultsBefore = existsSync(defaultsFile) ? readFileSync(defaultsFile, "utf8") : undefined;
+  const rollback = (): void => {
+    rmSync(projectFile, { force: true });
+    if (writeRoot) {
+      if (defaultsBefore === undefined) rmSync(defaultsFile, { force: true });
+      else writeFileSync(defaultsFile, defaultsBefore);
+    }
+    for (const dir of [dirname(repoPath), ...(dirExisted ? [] : [configDir])]) {
+      try {
+        rmdirSync(dir); // only when empty
+      } catch {
+        // not empty, or already gone
+      }
+    }
+  };
   if (!dirExisted) {
     mkdirSync(configDir, { recursive: true });
     ctx.log.step(`created config dir ${configDir}`);
@@ -369,18 +391,23 @@ async function addUrl(ctx: Ctx, url: string, flags: { name?: string; root?: stri
     try {
       await initPrimaryRepo(g, repo);
     } catch (e) {
-      rmSync(projectFile, { force: true });
+      // repo_path didn't exist before this run (checked above).
       rmSync(project.repoPath, { recursive: true, force: true });
+      rollback();
       if (e instanceof TestlaneError && e.errCode === "E_GIT") throw e;
       throw new TestlaneError("E_GIT", `cloning ${repo} failed: ${(e as Error).message}`);
     }
 
     const state = loadState(name);
+    // A state file left by an earlier project of this name must not lend its
+    // approval to this repo.
+    const stale = state.repoConfig !== undefined;
+    delete state.repoConfig;
     const result = await trustGate(fresh, project, state, {
       explicit: true,
       untrustedHint: `testlane config trust ${name}`,
     });
-    if (result.stateChanged) saveState(name, state);
+    if (result.stateChanged || stale) saveState(name, state);
     if (result.outcome !== "no-file" && result.outcome !== "no-ref") {
       ctx.log.step(`next: testlane ${name} ${result.branch ?? "<branch|pr|path>"}`);
       return ExitCode.SUCCESS;

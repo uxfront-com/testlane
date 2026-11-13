@@ -11,7 +11,7 @@ import { configError } from "../lib/errors.ts";
 import { sha256Hex } from "../lib/hash.ts";
 import { capture } from "../lib/proc.ts";
 import { promptLine } from "../lib/prompt.ts";
-import { loadProject, snapshotLayer } from "../config/load.ts";
+import { loadProject, readSnapshot } from "../config/load.ts";
 import { parseRepoConfig, REPO_FILE, repoLabel } from "../config/repo.ts";
 import type { Ctx, ProjectConfig, RawRepo } from "../config/schema.ts";
 import { detectDefaultBranch, isInitialized, readBlob, symbolicHead, treeEntry, type GitEnv } from "../git/repo.ts";
@@ -74,6 +74,21 @@ export function validApproval(rc: unknown): RepoApproval | undefined {
 }
 
 /**
+ * The stored approval, if it can still be used. One that no longer matches its
+ * sha256 or no longer validates counts as none, with a warning, so the gate
+ * shows the file and asks again as on first use, and `config trust` repairs it.
+ */
+function usableApproval(ctx: Ctx, name: string, state: State): RepoApproval | undefined {
+  const snap = readSnapshot(name, validApproval(state.repoConfig));
+  if (snap.error) {
+    const why = snap.error.issues.map((i) => i.message).join("; ");
+    ctx.log.warn(`the stored approval of ${repoLabel(name)} is unusable (${why}); asking again`);
+    return undefined;
+  }
+  return snap.approval;
+}
+
+/**
  * The branch whose tip holds the repo file: the user's `default_branch`, else
  * the bare clone's HEAD (origin's default at clone time), else `detect` — the
  * network lookup, `git ls-remote --symref origin HEAD`, when the caller allows it.
@@ -133,7 +148,7 @@ export async function trustGate(
   const branch = await repoConfigBranch(project, () => detectDefaultBranch(g));
   if (!branch) return { outcome: "no-ref", stateChanged: false };
   const tip = await readRepoTip(project.repoPath, branch, name);
-  const approval = validApproval(state.repoConfig);
+  const approval = usableApproval(ctx, name, state);
 
   if (tip.kind === "no-ref") return { outcome: "no-ref", branch, stateChanged: false };
 
@@ -196,8 +211,7 @@ export async function trustGate(
  * gate settled. A default branch detected at clone time is kept.
  */
 export function settleProject(ctx: Ctx, project: ProjectConfig, state: State): void {
-  const approval = validApproval(state.repoConfig);
-  const layer = approval ? snapshotLayer(project.name, approval) : undefined;
+  const { layer } = readSnapshot(project.name, validApproval(state.repoConfig));
   const fresh = loadProject(ctx.configDir, project.name, ctx.defaults, layer);
   if (!fresh.defaultBranch && project.defaultBranch) fresh.defaultBranch = project.defaultBranch;
   Object.assign(project, fresh);
@@ -216,6 +230,30 @@ export async function runTrustGate(ctx: Ctx, project: ProjectConfig, state: Stat
 
 // ── What the user is shown ──────────────────────────────────────────────────
 
+// Characters a terminal would act on instead of print: C0 and C1 controls, DEL,
+// and the bidi controls that reorder text. A repo file can carry them through
+// TOML escapes (`\u001b`, `\r`) or raw (C1, bidi), so they could repaint or
+// reorder the very lines the user approves from.
+const BIDI = "\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069";
+const UNSAFE_IN_LINE = new RegExp(`[\u0000-\u001f\u007f-\u009f${BIDI}]`, "g");
+// In a block, tab, newline and a CR that ends a CRLF line stay as they are.
+const UNSAFE_IN_BLOCK = new RegExp(`[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f${BIDI}]|\r(?!\n)`, "g");
+const NAMED: Record<string, string> = { "\t": "\\t", "\n": "\\n", "\r": "\\r" };
+
+function escapeChar(c: string): string {
+  return NAMED[c] ?? `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`;
+}
+
+/** One value on one line: every control character escaped, newlines included. */
+export function printableLine(text: string): string {
+  return text.replace(UNSAFE_IN_LINE, escapeChar);
+}
+
+/** A file or a diff: control characters escaped, line breaks and tabs kept. */
+export function printableBlock(text: string): string {
+  return text.replace(UNSAFE_IN_BLOCK, escapeChar);
+}
+
 async function show(
   io: TrustIO,
   label: string,
@@ -226,24 +264,27 @@ async function show(
 ): Promise<void> {
   if (approval) {
     io.write(`${label} on origin/${branch} changed since you trusted it:\n`);
-    io.write(await unifiedDiff(approval.content, content, `origin/${branch}`));
+    io.write(printableBlock(await unifiedDiff(approval.content, content, `origin/${branch}`)));
     return;
   }
   io.write(summary(label, branch, layer));
   io.write(`--- ${label} (origin/${branch}) ---\n`);
-  io.write(content.endsWith("\n") || content === "" ? content : `${content}\n`);
+  const shown = printableBlock(content);
+  io.write(shown.endsWith("\n") || shown === "" ? shown : `${shown}\n`);
   io.write(`---\n`);
 }
 
 /** What a first-use file would run: setup, each command (with its cwd), each hook. */
 export function summary(label: string, branch: string, layer: RawRepo): string {
   const rows: Array<[string, string]> = [];
-  if (layer.setup?.run !== undefined) rows.push(["setup.run", layer.setup.run]);
+  const line = printableLine;
+  if (layer.setup?.run !== undefined) rows.push(["setup.run", line(layer.setup.run)]);
   for (const [cname, c] of Object.entries(layer.commands ?? {})) {
-    rows.push([`commands.${cname}.run`, c.cwd !== undefined ? `${c.run}   (cwd: ${c.cwd})` : c.run]);
+    const run = line(c.run);
+    rows.push([`commands.${cname}.run`, c.cwd !== undefined ? `${run}   (cwd: ${line(c.cwd)})` : run]);
   }
   for (const [hook, run] of Object.entries(layer.hooks ?? {})) {
-    if (run !== undefined) rows.push([`hooks.${hook}`, run]);
+    if (run !== undefined) rows.push([`hooks.${hook}`, line(run)]);
   }
   if (rows.length === 0) return `${label} on origin/${branch} defines no commands, hooks or setup.\n`;
   const width = Math.max(...rows.map(([k]) => k.length));

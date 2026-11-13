@@ -221,3 +221,29 @@ describe("merge", () => {
     });
   });
 });
+
+describe("validateAll and approved snapshots", () => {
+  it("reads snapshots only when asked, and reports an unusable one by its label", async () => {
+    const { validateAll } = await import("../../src/config/load.ts");
+    const prev = process.env.XDG_STATE_HOME;
+    process.env.XDG_STATE_HOME = join(dir, "state");
+    try {
+      write("app.toml", `repo = "x"\nrepo_path = "/r"\nworktrees_path = "/t"\n`);
+      const { mkdirSync } = await import("node:fs");
+      mkdirSync(join(dir, "state", "testlane"), { recursive: true });
+      const content = `editor = "zed"\n`;
+      const sha256 = (await import("node:crypto")).createHash("sha256").update(content).digest("hex");
+      writeFileSync(
+        join(dir, "state", "testlane", "app.json"),
+        JSON.stringify({ version: 1, workspaces: {}, repoConfig: { sha256, blob: "b", content, approvedAt: "x" } }),
+      );
+      expect(validateAll(dir)).toEqual([]);
+      expect(validateAll(dir, { snapshots: true })).toEqual([
+        { file: "app:.testlane.toml", path: "editor", message: "user-only key; set it in app.toml" },
+      ]);
+    } finally {
+      if (prev === undefined) delete process.env.XDG_STATE_HOME;
+      else process.env.XDG_STATE_HOME = prev;
+    }
+  });
+});

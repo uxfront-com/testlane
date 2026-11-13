@@ -342,6 +342,8 @@ Validation is aggregate, as in §5.4, and every issue names the file as `<projec
 - The gate (§8.1) compares the tip's blob id with the stored one, so an unchanged file needs no blob read and no network. When they differ, it reads and validates the tip (a schema error fails the run with exit 3; it does not fall back), then shows what it would run: on first use, `setup.run`, each `commands.<name>.run` with its `cwd`, each hook, then the whole file; on a change, a unified diff from the approved content. Then it asks `Trust <project>:.testlane.toml? [y/N]` on stderr.
 - `--yes` approves without asking. With stdin not a TTY and no `--yes`, the run fails with `E_CONFIG`: `<project>:.testlane.toml is not trusted` (first use) or `<project>:.testlane.toml changed since you trusted it`, both with `hint: testlane config trust <project>`.
 - Declining on first use runs the user file on its own. Declining a change keeps the version approved before.
+- A stored approval that no longer matches its sha256 or no longer validates (a hand-edited state file, or a schema change) counts as none: commands that only read config use the user file alone, the gate asks again as on first use, and `config validate` and `doctor` report it.
+- Every value, file and diff the gate shows has its control characters (C0, C1, DEL) and bidi controls escaped, like `\r` or `\u001b`, so the file can't repaint or reorder the lines you approve from.
 - A file removed upstream drops the stored approval, with one `→` line.
 - Repo commands are known at parse time only once approved, so `testlane app 12 dev` reads `dev` as a ref until then. Run `config add <url>` or `config trust <project>` first. `run`/`start` check the command again after the gate, and an approved change that drops it is `E_USAGE`.
 
@@ -690,7 +692,7 @@ Runs the checks below; each prints `ok` / `warn` / `fail` + one-line detail to s
 | orphaned worktrees (`git worktree list` entries missing from state, tracked entries git no longer knows, and tracked entries whose directory is gone from disk — git does not auto-prune, so the disk check is what catches a hand-`rm -rf`) | warn, hint `clean --prune-state` |
 | configured command name shadows a built-in verb | warn |
 | repo `core.hooksPath` set to a path outside the repo / husky installed | warn (hooks may misbehave in worktrees) |
-| `project <name>: repo file` (§5.7), comparing blob ids only, so offline | ok: no file, trusted, or not cloned yet; warn: untrusted, changed since approval, or removed upstream with an approval stored; fail: the stored snapshot no longer validates |
+| `project <name>: repo file` (§5.7), comparing blob ids only, so offline | ok: no file, trusted, or not cloned yet; warn: untrusted, changed since approval, or removed upstream with an approval stored; fail: the stored approval no longer matches its sha256 or no longer validates |
 
 ### 9.12 `config`
 
@@ -702,11 +704,12 @@ Runs the checks below; each prints `ok` / `warn` / `fail` + one-line detail to s
 - It writes `<name>.toml` with one line, `repo = "<clone url>"`: an ssh URL verbatim, or `https://<host>/<owner>/<repo>.git` with the original case.
 - It needs `defaults.root`. On a new machine, `--root <dir>` creates the config dir and writes `root` to `defaults.toml`, as `setup` does, so `config add <url>` is exempt from the config-dir guard (§5.1). Without either, it fails with `E_CONFIG` and `hint: pass --root <dir>, for example --root ~/dev/testlane`. A `--root` that differs from an existing `defaults.root` is `E_USAGE`.
 - An existing `<name>.toml` or `repo_path` is `E_CONFIG`. Every check runs before anything is written.
-- It then clones the primary repo (§7.1). A failed clone removes the file it wrote and exits 5.
+- It then clones the primary repo (§7.1). A failed clone puts back what the run wrote (the project file, and the config dir and `root` line it created) and exits 5.
+- A state file left by an earlier project of the same name loses its approval, so it never vouches for this repo.
 - With a `.testlane.toml` on the default branch, it shows it and asks for trust (§5.7). Off a TTY without `--yes`, the project stays and the run exits 3 with `hint: testlane config trust <name>`. Without a repo file, it writes the §9.12 template with the real `repo` line and opens the editor, as `config add <name>` does.
 - `--dry-run` prints the files it would write and the clone commands, and touches nothing.
 
-`config trust <project>` → under the lock, clone the primary repo if needed, fetch the default branch, then show the repo file (first use) or the diff from the approved one, ask, and record the approval. It prints "already trusted" or "no .testlane.toml on origin/<default>" and exits 0 when there is nothing to approve. Off a TTY without `--yes`, it exits 3 with `hint: re-run on a terminal, or pass --yes`. It loads the user file alone, so a broken snapshot never stops it.
+`config trust <project>` → under the lock, clone the primary repo if needed, fetch the default branch, then show the repo file (first use) or the diff from the approved one, ask, and record the approval. When there is nothing to approve, it reports "already trusted" or "no .testlane.toml on origin/<default>" as a `→` step line (silenced by `--quiet`) and exits 0. A stored approval that no longer matches its sha256 or no longer validates counts as none, so `config trust` shows the file and asks again as on first use. Off a TTY without `--yes`, it exits 3 with `hint: re-run on a terminal, or pass --yes`. It loads the user file alone, so a broken snapshot never stops it.
 
 `config show <project>` → the merged config, offline, one `key = value  # source` line per key, where the source is `user`, `repo` or `default` (`defaults.toml` and built-in defaults). `--json` prints one object: `{ project, approved: { sha256, approvedAt } | null, config, sources }`, where `config` uses TOML key names and `sources` maps a dotted key (`commands.dev`, `env.PORT`, `setup.run`) to its source.
 

