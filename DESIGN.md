@@ -704,8 +704,8 @@ Runs the checks below; each prints `ok` / `warn` / `fail` + one-line detail to s
 - It writes `<name>.toml` with one line, `repo = "<clone url>"`: an ssh URL verbatim, or `https://<host>/<owner>/<repo>.git` with the original case.
 - It needs `defaults.root`. On a new machine, `--root <dir>` creates the config dir and writes `root` to `defaults.toml`, as `setup` does, so `config add <url>` is exempt from the config-dir guard (§5.1). Without either, it fails with `E_CONFIG` and `hint: pass --root <dir>, for example --root ~/dev/testlane`. A `--root` that differs from an existing `defaults.root` is `E_USAGE`.
 - An existing `<name>.toml` or `repo_path` is `E_CONFIG`. Every check runs before anything is written.
-- It then clones the primary repo (§7.1). A failed clone puts back what the run wrote (the project file, and the config dir and `root` line it created) and exits 5.
-- A state file left by an earlier project of the same name loses its approval, so it never vouches for this repo.
+- It then clones the primary repo (§7.1). A failed clone puts back what the run wrote (the project file, and the config dir, `root` line and root directory it created) and exits 5.
+- A state file left by an earlier project of the same name loses its approval, saved before the trust prompt, so it never vouches for this repo, even when the run then stops at the prompt.
 - With a `.testlane.toml` on the default branch, it shows it and asks for trust (§5.7). Off a TTY without `--yes`, the project stays and the run exits 3 with `hint: testlane config trust <name>`. Without a repo file, it writes the §9.12 template with the real `repo` line and opens the editor, as `config add <name>` does.
 - `--dry-run` prints the files it would write and the clone commands, and touches nothing.
 

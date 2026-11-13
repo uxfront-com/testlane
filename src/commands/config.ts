@@ -352,13 +352,17 @@ async function addUrl(ctx: Ctx, url: string, flags: { name?: string; root?: stri
   // ── Apply. ────────────────────────────────────────────────────────────────
   // What a failed clone puts back, so a retry starts from where this run did.
   const defaultsBefore = existsSync(defaultsFile) ? readFileSync(defaultsFile, "utf8") : undefined;
+  const rootDir = resolvePath(root);
+  const rootExisted = existsSync(rootDir);
   const rollback = (): void => {
     rmSync(projectFile, { force: true });
     if (writeRoot) {
       if (defaultsBefore === undefined) rmSync(defaultsFile, { force: true });
       else writeFileSync(defaultsFile, defaultsBefore);
     }
-    for (const dir of [dirname(repoPath), ...(dirExisted ? [] : [configDir])]) {
+    // Innermost first; each only if this run created it and it's empty.
+    const created = [dirname(repoPath), ...(rootExisted ? [] : [rootDir]), ...(dirExisted ? [] : [configDir])];
+    for (const dir of created) {
       try {
         rmdirSync(dir); // only when empty
       } catch {
@@ -401,13 +405,16 @@ async function addUrl(ctx: Ctx, url: string, flags: { name?: string; root?: stri
     const state = loadState(name);
     // A state file left by an earlier project of this name must not lend its
     // approval to this repo.
-    const stale = state.repoConfig !== undefined;
-    delete state.repoConfig;
+    // Saved before the gate, which throws off a terminal without --yes.
+    if (state.repoConfig !== undefined) {
+      delete state.repoConfig;
+      saveState(name, state);
+    }
     const result = await trustGate(fresh, project, state, {
       explicit: true,
       untrustedHint: `testlane config trust ${name}`,
     });
-    if (result.stateChanged || stale) saveState(name, state);
+    if (result.stateChanged) saveState(name, state);
     if (result.outcome !== "no-file" && result.outcome !== "no-ref") {
       ctx.log.step(`next: testlane ${name} ${result.branch ?? "<branch|pr|path>"}`);
       return ExitCode.SUCCESS;

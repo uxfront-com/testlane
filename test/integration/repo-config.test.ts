@@ -485,7 +485,7 @@ describe("config add", () => {
   });
 });
 
-describe("QA round 1", () => {
+describe("unusable approvals and more gated paths", () => {
   it("a tampered approval: the run asks for trust, config trust repairs it, config-only commands keep working", async () => {
     env = makeEnv(tmp, {
       app: { repo: origin.url, defaultBranch: "main", extraToml: `[commands.mine]\nrun = "echo mine > {data_dir}/mine.txt"` },
@@ -589,7 +589,7 @@ describe("QA round 1", () => {
   });
 });
 
-describe("config add, QA round 1", () => {
+describe("config add: names, leftovers and rollback", () => {
   const saved: Record<string, string | undefined> = {};
   const setEnv = (key: string, value: string) => {
     if (!(key in saved)) saved[key] = process.env[key];
@@ -646,13 +646,38 @@ describe("config add, QA round 1", () => {
     expect(state("plain")!.repoConfig).toBeUndefined();
   });
 
-  it("a failed clone on a new machine puts back the config dir and defaults.toml it created", async () => {
+  it("a failed clone on a new machine puts back the config dir, defaults.toml and root it created", async () => {
     rmSync(env.configDir, { recursive: true, force: true });
     const root = join(tmp, "root2");
     const r = await env.run(["--yes", "config", "add", "--root", root, "https://github.com/acme/missing"]);
     expect(r.code).toBe(5);
     expect(existsSync(env.configDir)).toBe(false);
-    expect(existsSync(join(root, "missing"))).toBe(false);
+    expect(existsSync(root)).toBe(false);
+  });
+
+  it("a leftover approval is dropped from disk even when the gate then refuses off a terminal", async () => {
+    const other = makeFixtureOrigin(join(tmp, "other"));
+    other.commit("main", { ".testlane.toml": `[commands.newcmd]\nrun = "true"\n` });
+    setEnv("GIT_CONFIG_COUNT", "3");
+    setEnv("GIT_CONFIG_KEY_2", `url.${other.url}.insteadOf`);
+    setEnv("GIT_CONFIG_VALUE_2", "https://github.com/acme/other.git");
+    mkdirSync(join(env.stateHome, "testlane"), { recursive: true });
+    const content = `[commands.oldcmd]\nrun = "echo OLD-REPO-COMMAND"\n`;
+    writeFileSync(
+      join(env.stateHome, "testlane", "other.json"),
+      JSON.stringify({ version: 1, workspaces: {}, repoConfig: { sha256: sha256(content), blob: "b", content, approvedAt: "x" } }),
+    );
+
+    const r = await env.run(["config", "add", "https://github.com/acme/other"]);
+    expect(r.code).toBe(3);
+    expect(r.stderr).toContain("other:.testlane.toml is not trusted");
+    expect(r.stderr).not.toContain("changed since you trusted it");
+    expect(state("other")!.repoConfig).toBeUndefined();
+
+    const show = await env.run(["config", "show", "other"]);
+    expect(show.stdout).not.toContain("oldcmd");
+    const trust = await env.run(["config", "trust", "other"]);
+    expect(trust.stderr).toContain("other:.testlane.toml is not trusted"); // first use, not a diff against the old file
   });
 
   it("a failed clone restores an existing defaults.toml it appended root to", async () => {
