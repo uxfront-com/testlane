@@ -37,6 +37,7 @@ import { wsContext } from "./env.ts";
 import { runHook } from "./hooks.ts";
 import { runSetup } from "./setup.ts";
 import { fnv1a32 } from "../lib/hash.ts";
+import { runTrustGate } from "./trust.ts";
 
 export interface EnsureOptions {
   setup: boolean;
@@ -94,12 +95,22 @@ export async function ensureWorkspace(
     let created = false;
     let ws: Workspace;
 
+    // The repo-config trust gate (§5.7): after this run's fetch, before any
+    // worktree is added and before post_checkout or setup. It settles `project`
+    // in place and writes an approval into the `state` held here, saved at once
+    // so a later failure in this run can't lose it.
+    const gate = async (): Promise<void> => {
+      const result = await runTrustGate(ctx, project, state);
+      if (result.stateChanged) saveState(project.name, state);
+    };
+
     if (existing && existsSync(existing.path)) {
       ws = existing;
       ctx.log.step("worktree ready (reused)");
       if (opts.fetch) await refetch(ctx, project, ws);
+      await gate();
     } else {
-      ws = await materialize(ctx, project, spec, slug, state.workspaces);
+      ws = await materialize(ctx, project, spec, slug, state.workspaces, gate);
       created = true;
       state.workspaces[ws.slug] = ws;
       // Persist immediately so a failing post_checkout/setup below leaves the
@@ -138,6 +149,8 @@ async function materialize(
   spec: RefSpec,
   baseSlug: string,
   existing: Record<string, Workspace>,
+  /** Runs after the ref fetch and before anything is created (§8.1). */
+  beforeAdd: () => Promise<void>,
 ): Promise<Workspace> {
   const now = new Date().toISOString();
 
@@ -145,6 +158,7 @@ async function materialize(
     const abs = resolvePath(spec.path);
     if (!existsSync(abs)) throw resolveError(`path does not exist: ${abs}`);
     if (!(await isGitWorktree(abs))) throw resolveError(`not a git working tree: ${abs}`);
+    await beforeAdd();
     const slug = baseSlug;
     const ports = await allocateFor(project, slug, existing);
     mkdirSync(dataDirFor(project, slug), { recursive: true });
@@ -183,11 +197,13 @@ async function materialize(
   let ref: string;
   if (spec.kind === "branch") {
     await fetchBranch(g, spec.name);
+    await beforeAdd();
     await addBranchWorktree(g, dir, spec.name);
     branch = spec.name;
     ref = spec.name;
   } else if (spec.kind === "pr") {
     await fetchPr(g, spec.number);
+    await beforeAdd();
     await addPrWorktree(g, dir, spec.number);
     branch = `pr/${spec.number}`;
     number = spec.number;
@@ -195,6 +211,7 @@ async function materialize(
   } else if (spec.kind === "commit") {
     // commit ref (§6.2, §7.2): ensure the object is present, then detach (M2).
     await fetchCommit(g, spec.sha);
+    await beforeAdd();
     await addCommitWorktree(g, dir, spec.sha);
     ref = spec.sha;
   } else {

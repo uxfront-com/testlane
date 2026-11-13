@@ -1,9 +1,9 @@
 // Ref → RefSpec (§6.1), slug() (§6.3), and URL extraction (§4.3).
 
-import { createHash } from "node:crypto";
 import { basename } from "node:path";
 import { resolvePath } from "../lib/paths.ts";
 import { resolveError } from "../lib/errors.ts";
+import { sha256Hex } from "../lib/hash.ts";
 
 export type RefSpec =
   | { kind: "pr"; number: number }
@@ -12,7 +12,6 @@ export type RefSpec =
   | { kind: "path"; path: string } // adopted
   | { kind: "last" }; // resolved before use
 
-const sha256hex = (s: string): string => createHash("sha256").update(s).digest("hex");
 
 // ── Ref parsing (§6.1) ──────────────────────────────────────────────────────
 
@@ -89,7 +88,7 @@ export function slug(spec: RefSpec): string {
       return branchSlug(spec.name);
     case "path": {
       const abs = resolvePath(spec.path);
-      return `adopted-${sanitize(basename(abs))}-${sha256hex(abs).slice(0, 7)}`;
+      return `adopted-${sanitize(basename(abs))}-${sha256Hex(abs).slice(0, 7)}`;
     }
     case "last":
       throw resolveError("cannot slug an unresolved 'last' ref");
@@ -107,13 +106,13 @@ function sanitize(name: string): string {
 function branchSlug(name: string): string {
   const s = sanitize(name);
   if (s.length <= 60) return s;
-  return `${s.slice(0, 52)}-${sha256hex(name).slice(0, 7)}`;
+  return `${s.slice(0, 52)}-${sha256Hex(name).slice(0, 7)}`;
 }
 
 /** Append the hash suffix unconditionally, for collision resolution (§6.3). */
 export function collisionSlug(name: string): string {
   const base = branchSlug(name).slice(0, 52);
-  return `${base}-${sha256hex(name).slice(0, 7)}`;
+  return `${base}-${sha256Hex(name).slice(0, 7)}`;
 }
 
 // ── URL extraction (§4.3) ─────────────────────────────────────────────────

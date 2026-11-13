@@ -1,7 +1,7 @@
 // Primary repo init, fetch strategies, default-branch detection (§7.1–7.3).
 
 import { existsSync } from "node:fs";
-import { capture } from "../lib/proc.ts";
+import { capture, captureBytes } from "../lib/proc.ts";
 import { TestlaneError } from "../lib/errors.ts";
 import type { Logger } from "../lib/log.ts";
 
@@ -277,4 +277,71 @@ export async function hooksPathConfigured(repoPath: string): Promise<string | nu
   });
   const val = res.stdout.trim();
   return res.code === 0 && val !== "" ? val : null;
+}
+
+// ── Repo config reads (§5.7) ─────────────────────────────────────────────────
+
+/**
+ * The bare clone's HEAD branch, e.g. `main`. A bare clone's HEAD is origin's
+ * default branch at clone time, so this needs no network.
+ */
+export async function symbolicHead(repoPath: string): Promise<string | undefined> {
+  const res = await capture(["git", "-C", repoPath, "symbolic-ref", "--short", "HEAD"], {
+    allowFailure: true,
+    env: env(),
+  });
+  const name = res.stdout.trim();
+  return res.code === 0 && name !== "" ? name : undefined;
+}
+
+/** True when `ref` resolves to a commit in the local repo. */
+export async function refExists(repoPath: string, ref: string): Promise<boolean> {
+  const res = await capture(["git", "-C", repoPath, "rev-parse", "--verify", "--quiet", `${ref}^{commit}`], {
+    allowFailure: true,
+    env: env(),
+  });
+  return res.code === 0;
+}
+
+export interface TreeEntry {
+  mode: string;
+  type: string;
+  id: string;
+}
+
+/**
+ * The tree entry for `path` at the root of `ref`, or null when absent. Reads
+ * only tree objects, which a `blob:none` partial clone always has locally.
+ */
+export async function treeEntry(repoPath: string, ref: string, path: string): Promise<TreeEntry | null> {
+  const res = await capture(["git", "-C", repoPath, "ls-tree", "-z", ref, "--", path], {
+    allowFailure: true,
+    env: env(),
+    errCode: "E_GIT",
+  });
+  if (res.code !== 0) throw new TestlaneError("E_GIT", `git ls-tree failed for ${ref}: ${res.stderr.trim()}`);
+  const line = res.stdout.split("\0")[0] ?? "";
+  const m = line.match(/^(\d+) (\w+) ([0-9a-f]+)\t(.*)$/s);
+  if (!m || m[4] !== path) return null;
+  return { mode: m[1]!, type: m[2]!, id: m[3]! };
+}
+
+/** Largest repo file Testlane reads, in bytes (§5.7). */
+export const MAX_BLOB_BYTES = 1024 * 1024;
+
+/**
+ * Read a blob's raw bytes. A partial clone fetches it from origin on demand.
+ * Throws E_CONFIG for a blob over `MAX_BLOB_BYTES`, E_GIT on any git failure.
+ */
+export async function readBlob(repoPath: string, id: string, label: string): Promise<Buffer> {
+  const run = (argv: string[]) => captureBytes(argv, { env: env() });
+  const size = await run(["git", "-C", repoPath, "cat-file", "-s", id]);
+  if (size.code !== 0) throw new TestlaneError("E_GIT", `cannot read ${label}: ${size.stderr.trim()}`);
+  const bytes = Number(size.stdout.toString("utf8").trim());
+  if (!Number.isFinite(bytes) || bytes > MAX_BLOB_BYTES) {
+    throw new TestlaneError("E_CONFIG", `${label} is larger than ${MAX_BLOB_BYTES} bytes`);
+  }
+  const blob = await run(["git", "-C", repoPath, "cat-file", "blob", id]);
+  if (blob.code !== 0) throw new TestlaneError("E_GIT", `cannot read ${label}: ${blob.stderr.trim()}`);
+  return blob.stdout;
 }
