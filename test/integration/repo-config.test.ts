@@ -687,3 +687,90 @@ describe("config add: names, leftovers and rollback", () => {
     expect(readFileSync(join(env.configDir, "defaults.toml"), "utf8")).toBe(`editor = "zed"\n`);
   });
 });
+
+describe("integration review fixes (UXF-688)", () => {
+  const originMain = () =>
+    spawnSync("git", ["-C", env.repoPath("app"), "rev-parse", "refs/remotes/origin/main"], { encoding: "utf8" }).stdout.trim();
+
+  it("C11 — a crafted branch ref exits 4 and can't move origin/main to a PR's head", async () => {
+    origin.commit("feature", { "f.txt": "f\n" });
+    origin.commit("evil", { ".testlane.toml": `[hooks]\npost_checkout = "echo pwned > {data_dir}/../PWNED.txt"\n` });
+    origin.makePr(7, "evil");
+    expect((await env.run(["--yes", "app", "main", "checkout"])).code).toBe(0);
+    const before = originMain();
+    expect(before).toMatch(/^[0-9a-f]{40}$/);
+
+    const r = await env.run(["app", "--branch", "+refs/pull/7/head:refs/remotes/origin/main", "checkout"]);
+    expect(r.code, r.stderr).toBe(4);
+    expect(r.stderr).toContain("error(E_RESOLVE)");
+    expect(originMain()).toBe(before);
+
+    const next = await env.run(["--yes", "app", "feature", "checkout"]);
+    expect(next.code, next.stderr).toBe(0);
+    expect(existsSync(join(env.worktreesPath("app"), ".data", "PWNED.txt"))).toBe(false);
+    expect(state()!.repoConfig!.content).toBe(MAIN_FILE);
+  });
+
+  it("C11 — --dry-run prints the explicit refspec the real fetch runs", async () => {
+    const r = await env.run(["--dry-run", "app", "--branch", "feature/x", "checkout"]);
+    expect(r.code, r.stderr).toBe(0);
+    expect(r.stdout).toContain("fetch --no-tags origin --end-of-options +refs/heads/feature/x:refs/remotes/origin/feature/x");
+  });
+
+  it("C13 — control characters in repo file errors are escaped", async () => {
+    // A key the schema refuses, so its path is quoted in the issue.
+    origin.commit("main", { ".testlane.toml": `[env]\n"\\u001b]0;HIJACK\\u0007\\u001b[2K" = 1\n` });
+    const keyed = await env.run(["app", "main", "checkout"]);
+    // A raw ESC on a line the parser quotes.
+    origin.commit("main", { ".testlane.toml": `[env\n\u001b[2K = "x"\n` });
+    const parsed = await env.run(["app", "main", "checkout"]);
+
+    for (const r of [keyed, parsed]) {
+      expect(r.code, r.stderr).toBe(3);
+      expect(r.stderr).toContain("app:.testlane.toml");
+      expect(r.stderr).not.toContain("\u001b");
+      expect(r.stderr).not.toContain("\u0007");
+      expect(r.stderr).toContain("\\u001b");
+    }
+    expect(parsed.stderr).toContain("TOML parse error");
+    expect(state()?.repoConfig).toBeUndefined();
+  });
+
+  it("C14 — default_command names a repo command: trust approves it", async () => {
+    const withSrv = `[commands.srv]\nrun = "echo srv"\n` + MAIN_FILE;
+    origin.commit("main", { ".testlane.toml": withSrv });
+    env = makeEnv(tmp, { app: { repo: origin.url, defaultBranch: "main", extraToml: `default_command = "srv"` } });
+
+    const before = await env.run(["app", "main", "checkout"]);
+    expect(before.code, before.stderr).toBe(3);
+    expect(before.stderr).toContain("default_command");
+    expect(before.stderr).toContain("hint: testlane config trust app");
+
+    const trust = await env.run(["--yes", "config", "trust", "app"]);
+    expect(trust.code, trust.stderr).toBe(0);
+    expect(state()!.repoConfig!.content).toBe(withSrv);
+
+    const after = await env.run(["app", "main", "checkout"]);
+    expect(after.code, after.stderr).toBe(0);
+  });
+
+  it("C14 — default_command names a command the tip lacks: trust records nothing", async () => {
+    env = makeEnv(tmp, { app: { repo: origin.url, defaultBranch: "main", extraToml: `default_command = "srv"` } });
+
+    const trust = await env.run(["--yes", "config", "trust", "app"]);
+    expect(trust.code).toBe(3);
+    expect(trust.stderr).toContain("error(E_CONFIG)");
+    expect(trust.stderr).toContain("default_command");
+    expect(state()?.repoConfig).toBeUndefined();
+  });
+
+  it("C14 — with no repo file, trust still reports the user's unknown default_command", async () => {
+    origin.remove("main", [".testlane.toml"]);
+    env = makeEnv(tmp, { app: { repo: origin.url, defaultBranch: "main", extraToml: `default_command = "srv"` } });
+
+    const trust = await env.run(["--yes", "config", "trust", "app"]);
+    expect(trust.code).toBe(3);
+    expect(trust.stderr).toContain("default_command");
+    expect(state()?.repoConfig).toBeUndefined();
+  });
+});

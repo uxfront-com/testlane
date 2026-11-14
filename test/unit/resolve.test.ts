@@ -9,6 +9,7 @@ import {
   refFromDisambiguator,
   slug,
 } from "../../src/core/resolve.ts";
+import { fetchBranchArgv } from "../../src/git/repo.ts";
 
 describe("parseRef — §6.1 table", () => {
   it("'-' → last", () => expect(parseRef("-")).toEqual({ kind: "last" }));
@@ -117,5 +118,44 @@ describe("a ref can't start with '-' (it would reach git as an option)", () => {
       /--branch expects a branch name/,
     );
     expect(refFromDisambiguator("branch", "feat/x")).toEqual({ kind: "branch", name: "feat/x" });
+  });
+});
+
+describe("branch disambiguator: no refspec through a branch name (UXF-688)", () => {
+  it("C11 — refFromDisambiguator refuses refspec syntax with E_RESOLVE", () => {
+    for (const bad of ["+refs/pull/7/head:refs/remotes/origin/main", "a:b", "+x", "x^", "x*", "-x"]) {
+      expect(() => refFromDisambiguator("branch", bad), bad).toThrow(/--branch expects a branch name/);
+      try {
+        refFromDisambiguator("branch", bad);
+      } catch (e) {
+        expect((e as { errCode?: string }).errCode, bad).toBe("E_RESOLVE");
+      }
+    }
+  });
+
+  it("C11 — refFromDisambiguator accepts ordinary branch names", () => {
+    for (const ok of ["feature/x", "123", "release-1.2"]) {
+      expect(refFromDisambiguator("branch", ok)).toEqual({ kind: "branch", name: ok });
+    }
+  });
+
+  it("C11 — a plain ref starting with '+' is refused", () => {
+    expect(isValidBranchName("+x")).toBe(false);
+    expect(() => parseRef("+x")).toThrow(/could not parse ref/);
+  });
+
+  it("C11 — fetchBranchArgv refuses a refspec and spells out the one it fetches", () => {
+    expect(() => fetchBranchArgv("/r", "+refs/pull/7/head:refs/remotes/origin/main")).toThrow(/not a valid branch name/);
+    expect(() => fetchBranchArgv("/r", "+x")).toThrow(/not a valid branch name/);
+    expect(fetchBranchArgv("/r", "feature/x")).toEqual([
+      "git",
+      "-C",
+      "/r",
+      "fetch",
+      "--no-tags",
+      "origin",
+      "--end-of-options",
+      "+refs/heads/feature/x:refs/remotes/origin/feature/x",
+    ]);
   });
 });

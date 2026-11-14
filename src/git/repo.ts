@@ -2,7 +2,8 @@
 
 import { existsSync } from "node:fs";
 import { capture, captureBytes } from "../lib/proc.ts";
-import { TestlaneError } from "../lib/errors.ts";
+import { TestlaneError, resolveError } from "../lib/errors.ts";
+import { isValidBranchName } from "../core/resolve.ts";
 import type { Logger } from "../lib/log.ts";
 
 export const MIN_GIT_VERSION = "2.38";
@@ -55,6 +56,27 @@ export function initFetchArgv(repoPath: string): string[] {
   return ["git", "-C", repoPath, "fetch", "origin", "--no-tags"];
 }
 
+/**
+ * Fetch one branch into its own remote-tracking ref, and nothing else (§7.2).
+ * The name is checked and the refspec spelled out, so a name like
+ * `+refs/pull/7/head:refs/remotes/origin/main` can never move another ref.
+ */
+export function fetchBranchArgv(repoPath: string, name: string): string[] {
+  if (!isValidBranchName(name)) {
+    throw resolveError(`'${name}' is not a valid branch name`, "git would read it as a refspec, not a branch name");
+  }
+  return [
+    "git",
+    "-C",
+    repoPath,
+    "fetch",
+    "--no-tags",
+    "origin",
+    "--end-of-options",
+    `+refs/heads/${name}:refs/remotes/origin/${name}`,
+  ];
+}
+
 // ── Operations ───────────────────────────────────────────────────────────────
 
 export function isInitialized(repoPath: string): boolean {
@@ -84,11 +106,9 @@ export async function detectDefaultBranch(g: GitEnv): Promise<string | undefined
 
 /** Fetch a branch's remote-tracking ref (§7.2). */
 export async function fetchBranch(g: GitEnv, name: string): Promise<void> {
+  const argv = fetchBranchArgv(g.repoPath, name);
   g.log.step(`fetching origin/${name}`);
-  // `--end-of-options` keeps a name like `--upload-pack=<cmd>` from reaching git as an option.
-  const res = await runGit(g, ["git", "-C", g.repoPath, "fetch", "--no-tags", "origin", "--end-of-options", name], {
-    allowFailure: true,
-  });
+  const res = await runGit(g, argv, { allowFailure: true });
   if (res.code !== 0) throw classifyFetchError(res.stderr, `branch '${name}'`);
 }
 

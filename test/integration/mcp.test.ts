@@ -705,3 +705,66 @@ describe("a repo's .testlane.toml", () => {
     expect(await c.close()).toBe(0);
   });
 });
+
+describe("a repo's .testlane.toml, over MCP (UXF-688)", () => {
+  function repoState(env: Harness): { repoConfig?: { sha256: string; content: string } } | null {
+    const file = join(env.stateHome, "testlane", "app.json");
+    return existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : null;
+  }
+  const originMain = (env: Harness) =>
+    spawnSync("git", ["-C", env.repoPath("app"), "rev-parse", "refs/remotes/origin/main"], { encoding: "utf8" }).stdout.trim();
+
+  it("C11 — a crafted branch ref is refused and leaves origin/main where it was", async () => {
+    origin.commit("main", { ".testlane.toml": `[hooks]\npost_checkout = "echo main > {data_dir}/hook.txt"\n` });
+    origin.commit("evil", { ".testlane.toml": `[hooks]\npost_checkout = "echo pwned > {data_dir}/../PWNED.txt"\n` });
+    origin.makePr(7, "evil");
+    const env = makeMcpEnv({ app: "" });
+    expect((await env.run(["--yes", "config", "trust", "app"])).code).toBe(0);
+    const before = originMain(env);
+    expect(before).toMatch(/^[0-9a-f]{40}$/);
+
+    const c = connect(env);
+    await c.initialize();
+    const r = await c.call("checkout", { project: "app", ref: "+refs/pull/7/head:refs/remotes/origin/main", kind: "branch" });
+    expect(r.isError, JSON.stringify(r.value)).toBe(true);
+    expect(r.value.error).toMatchObject({ errCode: "E_RESOLVE", exitCode: 4 });
+    expect(originMain(env)).toBe(before);
+
+    // A later scripted run still reads main's file, not PR 7's.
+    expect((await env.run(["--yes", "app", "feature-x", "checkout"])).code).toBe(0);
+    expect(existsSync(join(env.worktreesPath("app"), ".data", "PWNED.txt"))).toBe(false);
+    expect(await c.close()).toBe(0);
+  });
+
+  it("C12 — a repo-only command starts after `config trust`", async () => {
+    origin.commit("main", { ".testlane.toml": `[commands.srv]\nrun = ${JSON.stringify(SERVER)}\n` });
+    const env = makeMcpEnv({ app: "" });
+    expect((await env.run(["--yes", "config", "trust", "app"])).code).toBe(0);
+
+    const c = connect(env);
+    await c.initialize();
+    const st = await c.call("start", { project: "app", ref: "main", command: "srv", timeout: 20 });
+    expect(st.isError, JSON.stringify(st.value)).toBe(false);
+    expect(await httpGet(st.value.port)).toBe("ok");
+    expect((await c.call("stop", { project: "app", ref: "main" })).isError).toBe(false);
+    expect(await c.close()).toBe(0);
+  });
+
+  it("C12 — rm runs the approved repo pre_clean", async () => {
+    const marker = join(tmp, "pre-clean-ran.txt");
+    origin.commit("main", { ".testlane.toml": `[hooks]\npre_clean = ${JSON.stringify(`echo {slug} > '${marker}'`)}\n` });
+    const env = makeMcpEnv({ app: "" });
+    expect((await env.run(["--yes", "config", "trust", "app"])).code).toBe(0);
+    expect(repoState(env)?.repoConfig).toBeDefined();
+
+    const c = connect(env);
+    await c.initialize();
+    const co = await c.call("checkout", { project: "app", ref: "feature-x" });
+    expect(co.isError, JSON.stringify(co.value)).toBe(false);
+    const gone = await c.call("rm", { project: "app", ref: "feature-x" });
+    expect(gone.isError, JSON.stringify(gone.value)).toBe(false);
+    expect(existsSync(co.value.path)).toBe(false);
+    expect(readFileSync(marker, "utf8").trim()).toBe("feature-x");
+    expect(await c.close()).toBe(0);
+  });
+});
