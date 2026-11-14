@@ -63,7 +63,7 @@ export function initFetchArgv(repoPath: string): string[] {
  */
 export function fetchBranchArgv(repoPath: string, name: string): string[] {
   if (!isValidBranchName(name)) {
-    throw resolveError(`'${name}' is not a valid branch name`, "git would read it as a refspec, not a branch name");
+    throw resolveError(`'${name}' is not a valid branch name`, "git refuses it as a branch name, or would read it as a refspec");
   }
   return [
     "git",

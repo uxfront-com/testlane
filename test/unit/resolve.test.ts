@@ -121,7 +121,7 @@ describe("a ref can't start with '-' (it would reach git as an option)", () => {
   });
 });
 
-describe("branch disambiguator: no refspec through a branch name (UXF-688)", () => {
+describe("branch disambiguator: no refspec through a branch name", () => {
   it("C11 — refFromDisambiguator refuses refspec syntax with E_RESOLVE", () => {
     for (const bad of ["+refs/pull/7/head:refs/remotes/origin/main", "a:b", "+x", "x^", "x*", "-x"]) {
       expect(() => refFromDisambiguator("branch", bad), bad).toThrow(/--branch expects a branch name/);
@@ -157,5 +157,17 @@ describe("branch disambiguator: no refspec through a branch name (UXF-688)", () 
       "--end-of-options",
       "+refs/heads/feature/x:refs/remotes/origin/feature/x",
     ]);
+  });
+});
+
+describe("branch disambiguator: HEAD is not a branch name", () => {
+  it("C11 — HEAD is refused everywhere a branch name reaches git fetch", () => {
+    expect(isValidBranchName("HEAD")).toBe(false);
+    expect(() => parseRef("HEAD")).toThrow(/could not parse ref/);
+    expect(() => refFromDisambiguator("branch", "HEAD")).toThrow(/--branch expects a branch name/);
+    expect(() => fetchBranchArgv("/r", "HEAD")).toThrow(/not a valid branch name/);
+    expect(parseUrlInput("https://github.com/acme/app/tree/HEAD")?.ref).toBeUndefined();
+    // Only the exact name: these stay ordinary branches.
+    for (const ok of ["head", "HEADS", "feature/HEAD", "HEAD-x"]) expect(isValidBranchName(ok), ok).toBe(true);
   });
 });

@@ -27,7 +27,7 @@ export function refFromDisambiguator(kind: "pr" | "branch" | "path", value: stri
   if (value.startsWith("-")) throw resolveError(`--branch expects a branch name, got '${value}'`, "a branch name can't start with '-'");
   // git would read `+src:dst`, `a:b` or `x*` as a refspec that writes other refs.
   if (!isValidBranchName(value)) {
-    throw resolveError(`--branch expects a branch name, got '${value}'`, "git would read it as a refspec, not a branch name");
+    throw resolveError(`--branch expects a branch name, got '${value}'`, "git refuses it as a branch name, or would read it as a refspec");
   }
   return { kind: "branch", name: value };
 }
@@ -72,6 +72,9 @@ export function isValidBranchName(name: string): boolean {
   if (name.startsWith("-")) return false;
   // In `git fetch`, a leading `+` makes a forced refspec.
   if (name.startsWith("+")) return false;
+  // git refuses it as a branch name, and `refs/remotes/origin/HEAD` is a symref
+  // to origin's default branch: a forced fetch into it would move that branch.
+  if (name === "HEAD") return false;
   if (name.startsWith("/") || name.endsWith("/")) return false;
   if (name.startsWith(".") || name.endsWith(".")) return false;
   if (name.endsWith(".lock")) return false;

@@ -688,7 +688,7 @@ describe("config add: names, leftovers and rollback", () => {
   });
 });
 
-describe("integration review fixes (UXF-688)", () => {
+describe("integration review fixes", () => {
   const originMain = () =>
     spawnSync("git", ["-C", env.repoPath("app"), "rev-parse", "refs/remotes/origin/main"], { encoding: "utf8" }).stdout.trim();
 
@@ -772,5 +772,32 @@ describe("integration review fixes (UXF-688)", () => {
     expect(trust.code).toBe(3);
     expect(trust.stderr).toContain("default_command");
     expect(state()?.repoConfig).toBeUndefined();
+  });
+});
+
+describe("a crafted branch ref named HEAD", () => {
+  const originMain = () =>
+    spawnSync("git", ["-C", env.repoPath("app"), "rev-parse", "refs/remotes/origin/main"], { encoding: "utf8" }).stdout.trim();
+
+  it("C11 — a crafted branch ref: HEAD on origin can't move origin/main through the origin/HEAD symref", async () => {
+    origin.commit("feature", { "f.txt": "f\n" });
+    const evil = origin.commit("evil", { ".testlane.toml": `[hooks]\npost_checkout = "echo pwned > {data_dir}/../PWNED.txt"\n` });
+    expect((await env.run(["--yes", "app", "main", "checkout"])).code).toBe(0);
+    spawnSync("git", ["-C", origin.path, "update-ref", "refs/heads/HEAD", evil]);
+    const before = originMain();
+
+    for (const argv of [
+      ["app", "--branch", "HEAD", "checkout"],
+      ["app", "HEAD", "checkout"],
+    ]) {
+      const r = await env.run(argv);
+      expect(r.code, `${argv.join(" ")}: ${r.stderr}`).toBe(4);
+      expect(originMain()).toBe(before);
+    }
+
+    const next = await env.run(["--yes", "app", "feature", "checkout"]);
+    expect(next.code, next.stderr).toBe(0);
+    expect(existsSync(join(env.worktreesPath("app"), ".data", "PWNED.txt"))).toBe(false);
+    expect(state()!.repoConfig!.content).toBe(MAIN_FILE);
   });
 });

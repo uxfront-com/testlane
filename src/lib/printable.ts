@@ -6,7 +6,7 @@
 // and the bidi controls that reorder text. A repo file can carry them through
 // TOML escapes (`\u001b`, `\r`) or raw (C1, bidi), so they could repaint or
 // reorder the very lines the user approves from.
-const BIDI = "؜‎‏‪-‮⁦-⁩";
+const BIDI = "\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069";
 const UNSAFE_IN_LINE = new RegExp(`[\u0000-\u001f\u007f-\u009f${BIDI}]`, "g");
 // In a block, tab, newline and a CR that ends a CRLF line stay as they are.
 const UNSAFE_IN_BLOCK = new RegExp(`[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f${BIDI}]|\r(?!\n)`, "g");

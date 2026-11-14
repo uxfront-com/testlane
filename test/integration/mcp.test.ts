@@ -706,7 +706,7 @@ describe("a repo's .testlane.toml", () => {
   });
 });
 
-describe("a repo's .testlane.toml, over MCP (UXF-688)", () => {
+describe("a repo's .testlane.toml, over MCP: effective config and branch names", () => {
   function repoState(env: Harness): { repoConfig?: { sha256: string; content: string } } | null {
     const file = join(env.stateHome, "testlane", "app.json");
     return existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : null;
@@ -765,6 +765,29 @@ describe("a repo's .testlane.toml, over MCP (UXF-688)", () => {
     expect(gone.isError, JSON.stringify(gone.value)).toBe(false);
     expect(existsSync(co.value.path)).toBe(false);
     expect(readFileSync(marker, "utf8").trim()).toBe("feature-x");
+    expect(await c.close()).toBe(0);
+  });
+});
+
+describe("a crafted branch ref named HEAD, over MCP", () => {
+  it("C11 — checkout of HEAD is refused and leaves origin/main where it was", async () => {
+    origin.commit("main", { ".testlane.toml": `[hooks]\npost_checkout = "echo main > {data_dir}/hook.txt"\n` });
+    const evil = origin.commit("evil", { ".testlane.toml": `[hooks]\npost_checkout = "echo pwned > {data_dir}/../PWNED.txt"\n` });
+    const env = makeMcpEnv({ app: "" });
+    expect((await env.run(["--yes", "config", "trust", "app"])).code).toBe(0);
+    spawnSync("git", ["-C", origin.path, "update-ref", "refs/heads/HEAD", evil]);
+    const originMain = () =>
+      spawnSync("git", ["-C", env.repoPath("app"), "rev-parse", "refs/remotes/origin/main"], { encoding: "utf8" }).stdout.trim();
+    const before = originMain();
+
+    const c = connect(env);
+    await c.initialize();
+    for (const args of [{ ref: "HEAD", kind: "branch" }, { ref: "HEAD" }]) {
+      const r = await c.call("checkout", { project: "app", ...args });
+      expect(r.isError, JSON.stringify(r.value)).toBe(true);
+      expect(r.value.error).toMatchObject({ errCode: "E_RESOLVE", exitCode: 4 });
+      expect(originMain()).toBe(before);
+    }
     expect(await c.close()).toBe(0);
   });
 });
