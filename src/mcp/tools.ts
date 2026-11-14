@@ -1,6 +1,7 @@
 // The tools `testlane mcp` offers (ADR-003). Each one calls its CLI verb's own
 // function in-process, with `--json` and `--yes` set, and returns what the verb
 // printed. No tool spawns the CLI, takes a raw argv or reaches `default_command`.
+// `--yes` never approves a repo's `.testlane.toml` here (`ctx.noTrustApproval`).
 
 import { existsSync } from "node:fs";
 import { z } from "zod";
@@ -435,6 +436,8 @@ export async function runTool(tool: Tool, rawArgs: unknown, opts: CallOptions): 
       gh: opts.gh?.() ?? new RealGhClient(),
       signal: opts.signal,
       isolated: true,
+      // `yes` above answers `rm`'s question, never the trust gate's (§5.7).
+      noTrustApproval: true,
     };
     return await tool.run(parsed.data, { ctx, err });
   } catch (e) {

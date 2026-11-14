@@ -132,7 +132,8 @@ export async function readRepoTip(repoPath: string, branch: string, project: str
  * Run the gate against the `state` the caller holds, under the project lock.
  * Writes an approval into `state.repoConfig` (or drops it); the caller saves.
  * Throws E_CONFIG when the tip doesn't validate (§5.7), or when it needs an
- * answer and can't ask: stdin is not a TTY and `--yes` is not set.
+ * answer and can't ask: stdin is not a TTY and `--yes` is not set, or the
+ * context is one where nobody can approve (`ctx.noTrustApproval`, `testlane mcp`).
  */
 export async function trustGate(
   ctx: Ctx,
@@ -179,8 +180,12 @@ export async function trustGate(
   const sha256 = sha256Hex(bytes);
 
   const first = approval === undefined;
-  const canAsk = io.isTTY();
-  if (!ctx.flags.yes && !canAsk) {
+  // Under `testlane mcp` no call can approve: not `--yes`, and not a terminal,
+  // since stdin there carries the protocol, not a person's answer.
+  const approvable = !ctx.noTrustApproval;
+  const yesFlag = approvable && ctx.flags.yes;
+  const canAsk = approvable && io.isTTY();
+  if (!yesFlag && !canAsk) {
     if (opts.explicit) await show(io, label, branch, approval, content, layer);
     throw configError(
       first ? `${label} is not trusted` : `${label} changed since you trusted it`,
@@ -190,7 +195,7 @@ export async function trustGate(
 
   await show(io, label, branch, approval, content, layer);
 
-  let yes = ctx.flags.yes;
+  let yes = yesFlag;
   if (!yes) {
     const answer = io.prompt(`Trust ${label}? [y/N]`);
     yes = answer !== null && /^y(es)?$/i.test(answer.trim());

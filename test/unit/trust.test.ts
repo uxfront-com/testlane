@@ -195,6 +195,36 @@ describe("trust gate", () => {
     expect(io.out).toContain("would run:"); // still shown, for the log
   });
 
+  it("where nobody can approve (testlane mcp), neither --yes nor a TTY counts", async () => {
+    ctx.flags.yes = true;
+    ctx.noTrustApproval = true;
+    const io = fakeIO({ tty: true, answer: "y" });
+    await expect(trustGate(ctx, project, state, { io })).rejects.toMatchObject({
+      errCode: "E_CONFIG",
+      message: "app:.testlane.toml is not trusted",
+      hint: "testlane config trust app",
+    });
+    expect(io.asked).toEqual([]);
+    expect(state.repoConfig).toBeUndefined();
+  });
+
+  it("where nobody can approve, a change fails and an unchanged tip is still trusted", async () => {
+    await trustGate(ctx, project, state, { io: fakeIO({ tty: true, answer: "y" }) });
+    ctx.flags.yes = true;
+    ctx.noTrustApproval = true;
+    expect((await trustGate(ctx, project, state, { io: fakeIO({ tty: true, answer: "y" }) })).outcome).toBe("trusted");
+
+    await pushAndFetch({ ".testlane.toml": V2 });
+    const io = fakeIO({ tty: true, answer: "y" });
+    await expect(trustGate(ctx, project, state, { io })).rejects.toMatchObject({
+      errCode: "E_CONFIG",
+      message: "app:.testlane.toml changed since you trusted it",
+      hint: "testlane config trust app",
+    });
+    expect(io.asked).toEqual([]);
+    expect(state.repoConfig?.sha256).toBe(sha256(V1));
+  });
+
   it("explicit mode shows the file even when it then fails on a non-TTY", async () => {
     const io = fakeIO({ tty: false });
     await expect(trustGate(ctx, project, state, { io, explicit: true })).rejects.toMatchObject({
