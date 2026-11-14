@@ -4,7 +4,7 @@ Materialize any git ref of a configured project into an isolated, runnable local
 
 AI coding agents produce branches and PRs faster than they can be reviewed. Testlane turns any ref — a PR number, a branch, a commit, a URL, or a local path — into a ready-to-run git worktree, so you can run the app, click through the UI, and poke at the change locally instead of reviewing blind.
 
-The documentation, with guides and a page for every command, is at [testlane.uxfront.com](https://testlane.uxfront.com).
+The documentation, with guides and a page for every command, is at [testlane.dev](https://testlane.dev).
 
 ```
 testlane my-project 42 code     # PR #42 → worktree → open in editor

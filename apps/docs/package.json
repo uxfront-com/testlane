@@ -3,6 +3,9 @@
 	"type": "module",
 	"private": true,
 	"version": "0.0.0",
+	"engines": {
+		"node": ">=22.13"
+	},
 	"scripts": {
 		"build": "nuxt build",
 		"dev": "nuxt dev",
@@ -10,44 +13,26 @@
 		"preview": "nuxt preview",
 		"typecheck": "nuxt typecheck",
 		"test": "vitest run",
+		"lighthouse": "pnpm dlx @lhci/cli autorun",
 		"postinstall": "nuxt prepare"
 	},
 	"dependencies": {
 		"@nuxt/content": "catalog:nuxt",
-		"@nuxt/fonts": "catalog:nuxt",
-		"@nuxt/image": "catalog:nuxt",
-		"@nuxt/scripts": "catalog:nuxt",
-		"@nuxt/ui": "catalog:nuxt",
-		"@nuxtjs/i18n": "catalog:nuxt",
-		"@nuxtjs/mdc": "catalog:nuxt",
-		"@nuxtjs/robots": "catalog:nuxt",
-		"@nuxtjs/sitemap": "catalog:nuxt",
-		"@resvg/resvg-js": "catalog:nuxt",
-		"@unhead/vue": "catalog:nuxt",
-		"@uxfront/layer-docs": "^0.4.1",
-		"@vueuse/core": "catalog:nuxt",
-		"defu": "catalog:",
-		"motion-v": "catalog:nuxt",
+		"@uxfront/layer-docs": "catalog:uxfront",
+		"@uxfront/layer-ui": "catalog:uxfront",
+		"@uxfront/scene": "catalog:uxfront",
+		"@uxfront/ui": "catalog:uxfront",
+		"docus": "catalog:nuxt",
 		"nuxt": "catalog:nuxt",
-		"nuxt-llms": "catalog:nuxt",
-		"nuxt-og-image": "catalog:nuxt",
-		"posthog-js": "catalog:nuxt",
-		"satori": "catalog:nuxt",
 		"scule": "catalog:",
-		"ufo": "catalog:nuxt",
 		"vue": "catalog:nuxt",
-		"vue-router": "catalog:nuxt",
-		"zod": "catalog:"
+		"vue-router": "catalog:nuxt"
 	},
 	"devDependencies": {
-		"@iconify-json/lucide": "catalog:nuxt",
-		"@iconify-json/simple-icons": "catalog:nuxt",
 		"@nuxt/kit": "catalog:nuxt",
-		"@nuxt/test-utils": "catalog:nuxt",
-		"better-sqlite3": "catalog:nuxt",
-		"tailwindcss": "catalog:nuxt",
+		"@types/node": "catalog:",
 		"typescript": "catalog:nuxt",
-		"vitest": "^4.1.8",
+		"vitest": "catalog:",
 		"vue-tsc": "catalog:nuxt"
 	}
 }
