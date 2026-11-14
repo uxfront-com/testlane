@@ -24,6 +24,8 @@ export function refFromDisambiguator(kind: "pr" | "branch" | "path", value: stri
     return { kind: "pr", number: Number(m[1]) };
   }
   if (kind === "path") return { kind: "path", path: value };
+  // git would read a leading `-` as an option (`--upload-pack=<cmd>` runs <cmd>).
+  if (value.startsWith("-")) throw resolveError(`--branch expects a branch name, got '${value}'`, "a branch name can't start with '-'");
   return { kind: "branch", name: value };
 }
 
@@ -63,6 +65,8 @@ export function parseRef(input: string): RefSpec {
  */
 export function isValidBranchName(name: string): boolean {
   if (name === "" || name === "@") return false;
+  // git refuses it too, and in argv it would read as an option.
+  if (name.startsWith("-")) return false;
   if (name.startsWith("/") || name.endsWith("/")) return false;
   if (name.startsWith(".") || name.endsWith(".")) return false;
   if (name.endsWith(".lock")) return false;

@@ -192,6 +192,7 @@ describe("parse — top-level verbs precede project lookup (UXF-265)", () => {
     "completions",
     "help",
     "version",
+    "mcp",
   ];
 
   it.each(PROMISED_VERBS)("'%s' parses as a top-level verb, not a project name", (verb) => {
@@ -270,5 +271,37 @@ describe("parse — error cases", () => {
 
   it("two disambiguators throw", () => {
     expect(() => p(["n8n", "--pr", "1", "--branch", "x", "code"])).toThrow(/only one ref disambiguator/);
+  });
+});
+
+describe("parse — mcp (ADR-003)", () => {
+  it("C2 — parse(['mcp']) is the top-level verb mcp", () => {
+    const r = p(["mcp"]);
+    expect(r.kind).toBe("top");
+    expect(r.kind === "top" && r.verb).toBe("mcp");
+    expect(r.kind === "top" && r.args).toEqual([]);
+  });
+
+  it("C2 — mcp with an argument exits 2", async () => {
+    const { main } = await import("../../src/main.ts");
+    const { mkdtempSync, rmSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const tmp = mkdtempSync(join(tmpdir(), "testlane-mcp-args-"));
+    let err = "";
+    const orig = process.stderr.write.bind(process.stderr);
+    process.stderr.write = ((chunk: string | Uint8Array) => {
+      err += typeof chunk === "string" ? chunk : Buffer.from(chunk).toString();
+      return true;
+    }) as typeof process.stderr.write;
+    try {
+      expect(await main(["--config-dir", join(tmp, "missing"), "mcp", "extra"])).toBe(2);
+      expect(await main(["--config-dir", join(tmp, "missing"), "mcp", "--port", "1"])).toBe(2);
+    } finally {
+      process.stderr.write = orig;
+      rmSync(tmp, { recursive: true, force: true });
+    }
+    expect(err).toContain("error(E_USAGE): mcp takes no arguments, got 'extra'");
+    expect(err).toContain("error(E_USAGE): unknown flag '--port'");
   });
 });

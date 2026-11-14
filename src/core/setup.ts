@@ -11,7 +11,7 @@ import { passthrough } from "../lib/proc.ts";
 import { shellJoin } from "../lib/shell.ts";
 import { interpolate } from "../lib/template.ts";
 import { composeEnv, templateVars, type WorkspaceContext } from "./env.ts";
-import { runHook } from "./hooks.ts";
+import { runHook, scriptIO } from "./hooks.ts";
 import type { Ctx, ProjectConfig } from "../config/schema.ts";
 import type { Workspace } from "./state.ts";
 
@@ -135,6 +135,6 @@ async function install(ctx: Ctx, project: ProjectConfig, ws: Workspace, wc: Work
   }
 
   ctx.log.step("running setup");
-  const code = await passthrough(["bash", "-c", script], { cwd: ws.path, env, stdoutToStderr: ctx.flags.json });
+  const code = await passthrough(["bash", "-c", script], { cwd: ws.path, env, ...scriptIO(ctx) });
   if (code !== 0) throw setupError(`setup command failed (exit ${code})`);
 }

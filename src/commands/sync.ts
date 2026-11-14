@@ -47,7 +47,7 @@ function pickMode(stash: boolean, discard: boolean, fresh: boolean): Mode {
 }
 
 function gitEnv(ctx: Ctx, project: ProjectConfig): GitEnv {
-  return { repoPath: project.repoPath, dryRun: ctx.flags.dryRun, log: ctx.log };
+  return { repoPath: project.repoPath, dryRun: ctx.flags.dryRun, log: ctx.log, signal: ctx.signal };
 }
 
 /** Locate an existing, on-disk workspace for `ref`, or throw E_RESOLVE. */
@@ -162,7 +162,7 @@ function dryRunSync(ctx: Ctx, project: ProjectConfig, ref: RefSpec, mode: Mode):
   const fetchArgv =
     ws.kind === "pr" && ws.number !== undefined
       ? ["git", "-C", ws.path, "fetch", "origin", `refs/pull/${ws.number}/head`, "--no-tags"]
-      : ["git", "-C", project.repoPath, "fetch", "origin", ws.branch ?? "HEAD", "--no-tags"];
+      : ["git", "-C", project.repoPath, "fetch", "--no-tags", "origin", "--end-of-options", ws.branch ?? "HEAD"];
   const target = ws.kind === "pr" && ws.number !== undefined ? "FETCH_HEAD" : "@{u}";
 
   process.stdout.write(`${fetchArgv.join(" ")}\n`);

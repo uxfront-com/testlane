@@ -16,7 +16,7 @@ function dataDirFor(project: ProjectConfig, slug: string): string {
 }
 
 function gitEnv(ctx: Ctx, project: ProjectConfig): GitEnv {
-  return { repoPath: project.repoPath, dryRun: ctx.flags.dryRun, log: ctx.log };
+  return { repoPath: project.repoPath, dryRun: ctx.flags.dryRun, log: ctx.log, signal: ctx.signal };
 }
 
 /** Best-effort disk size in bytes via `du -sk` (§9.9). Returns null when unknown. */

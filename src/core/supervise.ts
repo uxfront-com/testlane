@@ -4,8 +4,7 @@
 import { closeSync, existsSync, fstatSync, openSync, readFileSync, readSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { connect } from "node:net";
 import { join } from "node:path";
-import { TestlaneError } from "../lib/errors.ts";
-import { capture } from "../lib/proc.ts";
+import { capture, STOP_GRACE_MS, stopGroup } from "../lib/proc.ts";
 import { pidAlive } from "./state.ts";
 
 export interface ProcessEntry {
@@ -23,9 +22,8 @@ export const processFile = (dataDir: string) => join(dataDir, "process.json");
 export const logFile = (dataDir: string) => join(dataDir, "process.log");
 export const startLockFile = (dataDir: string) => join(dataDir, "start.lock");
 
-/** SIGTERM → SIGKILL grace period for `stop` (§9.15). */
-export const STOP_GRACE_MS = 10_000;
-const POLL_MS = 100;
+// The group helpers live beside the spawn code; `stop` and `start` reach them here.
+export { STOP_GRACE_MS, groupAlive, stopGroup } from "../lib/proc.ts";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -83,54 +81,6 @@ export async function isLive(entry: ProcessEntry): Promise<boolean> {
   return lstart !== null && lstart === entry.lstart;
 }
 
-/** True while any process is left in the group `pgid`. */
-export function groupAlive(pgid: number): boolean {
-  try {
-    process.kill(-pgid, 0);
-    return true;
-  } catch (e) {
-    return (e as NodeJS.ErrnoException).code === "EPERM";
-  }
-}
-
-function signalGroup(pgid: number, signal: NodeJS.Signals): void {
-  try {
-    process.kill(-pgid, signal);
-  } catch (e) {
-    const code = (e as NodeJS.ErrnoException).code;
-    if (code === "ESRCH") return; // already gone
-    if (code === "EPERM") {
-      throw new TestlaneError("E_SETUP", `not permitted to signal process group ${pgid}`, {
-        hint: "it belongs to another user; stop it as that user",
-      });
-    }
-    throw e;
-  }
-}
-
-/** Wait until the group is empty or `ms` passes. Returns true when it emptied. */
-async function waitGroupGone(pgid: number, ms: number): Promise<boolean> {
-  const deadline = Date.now() + ms;
-  while (groupAlive(pgid)) {
-    if (Date.now() >= deadline) return false;
-    await sleep(POLL_MS);
-  }
-  return true;
-}
-
-/**
- * SIGTERM the process group, wait up to `graceMs` for it to empty, then SIGKILL
- * it (§9.15). The group is the whole tree a `bash -c` started, so a dev server
- * under the shell dies with it.
- */
-export async function stopGroup(pgid: number, graceMs = STOP_GRACE_MS): Promise<"terminated" | "killed"> {
-  signalGroup(pgid, "SIGTERM");
-  if (await waitGroupGone(pgid, graceMs)) return "terminated";
-  signalGroup(pgid, "SIGKILL");
-  await waitGroupGone(pgid, 2_000);
-  return "killed";
-}
-
 export type StopOutcome =
   | { kind: "none" }
   | { kind: "exited"; entry: ProcessEntry }
@@ -172,15 +122,17 @@ export function portAccepts(port: number): Promise<boolean> {
 }
 
 /**
- * Poll 127.0.0.1:`port` until it accepts, the child exits (`hasExited`), or
- * `deadline` (epoch ms) passes.
+ * Poll 127.0.0.1:`port` until it accepts, the child exits (`hasExited`),
+ * `deadline` (epoch ms) passes, or `signal` fires.
  */
 export async function waitForPort(
   port: number,
   deadline: number,
   hasExited: () => boolean,
-): Promise<"ready" | "exited" | "timeout"> {
+  signal?: AbortSignal,
+): Promise<"ready" | "exited" | "timeout" | "aborted"> {
   for (;;) {
+    if (signal?.aborted) return "aborted";
     if (hasExited()) return "exited";
     if (await portAccepts(port)) return hasExited() ? "exited" : "ready";
     if (Date.now() >= deadline) return "timeout";
