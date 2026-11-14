@@ -425,7 +425,11 @@ testlane setup \
 # → next: testlane acme-web main
 ```
 
-**`config add <url>`** adds a project from its repository, so you don't write any TOML when the repository ships a [`.testlane.toml`](#repository-config-testlanetoml). It takes any URL `testlane` routes, like `git@github.com:my-org/my-project.git` or a `/pull/<n>` link, and names the project after the repository (`--name` changes that). It writes `<name>.toml` with one `repo` line, clones the repository, then shows its `.testlane.toml` and asks you to trust it. Without a repo file, it writes the starter template with the real `repo` line and opens your editor, as `config add <project>` does. On a new machine, `--root <dir>` creates the config dir and sets `defaults.root`, as `setup` does. `--dry-run` prints what it would write and clone, and touches nothing.
+**`config add <url>`** adds a project from its repository, so you don't write any TOML when the repository ships a [`.testlane.toml`](#repository-config-testlanetoml). It names the project after the repository (`--name` changes that), writes `<name>.toml` with one `repo` line, clones the repository, then shows its `.testlane.toml` and asks you to trust it. The URL is an ssh URL in the `git@host:owner/repo.git` form or an https URL, including a `/pull/<n>` or `/tree/<branch>` link. It also covers these cases:
+
+- Without a repo file, it writes the starter template with the real `repo` line and opens your editor, as `config add <project>` does.
+- On a new machine, `--root <dir>` creates the config dir and sets `defaults.root`, as `setup` does.
+- `--dry-run` prints what it would write and clone, and touches nothing.
 
 ```bash
 testlane config add https://github.com/my-org/my-project
@@ -433,11 +437,13 @@ testlane config add https://github.com/my-org/my-project
 # → cloning https://github.com/my-org/my-project.git (bare, partial)
 # my-project:.testlane.toml on origin/main would run: …   (then the whole file)
 # Trust my-project:.testlane.toml? [y/N] y
-# → trusted my-project:.testlane.toml (sha256 efdd92becf65)
+# → trusted my-project:.testlane.toml (sha256 b07a0b275b7f)
 # → next: testlane my-project main
 ```
 
-**`config show <project>`** prints the merged config, one `key = value  # source` line per key, where the source is `user`, `repo` or `default`. It reads no git and needs no network. `--json` prints one object with `project`, `approved`, `config` and `sources`. **`config trust <project>`** fetches the default branch, shows the repo file or the diff from the version you approved, and records your answer. It's how you approve a change from a script: pass `--yes`, or run it once on a terminal.
+**`config show <project>`** prints the merged config, one `key = value  # source` line per key, where the source is `user`, `repo` or `default`. It reads no git and needs no network. `--json` prints one object with `project`, `approved`, `config` and `sources`.
+
+**`config trust <project>`** fetches the default branch, shows the repo file or the diff from the version you approved, and records your approval. A no records nothing, so you're asked again next time. Off a terminal, pass `--yes` to approve.
 
 **`doctor`** checks `git` version, `gh` presence/auth, config-dir readability, state-dir writability, stale locks, and — per project — schema validity, the bare repo and its fetch refspec, editor binary on `PATH`, commands that shadow built-in verbs, worktree/state drift, and whether the repo's `.testlane.toml` is trusted or changed since you approved it. It also warns when `core.hooksPath` is set (see [Worktrees & hooks](#worktrees--hooks)). Exits non-zero if any check fails.
 
@@ -579,10 +585,10 @@ error(E_CONFIG): my-project:.testlane.toml: editor: user-only key; set it in my-
 
 **Where it's read.** Only from the tip of the default branch in the primary repo (`origin/<default>`), never from the branch, PR or commit you check out. So a pull request, even one from a fork, can't change what `setup`, `hooks` or `commands` run on your machine. Testlane adds no fetch for it: it sees an upstream change on the first run that fetches the default branch, like a checkout or `--fetch` of it, or `config trust`.
 
-**Trust.** The file's commands run only after you approve that exact content. The first time, Testlane prints what the file would run (`setup.run`, each command and each hook) and then the whole file. After a change, it prints a diff from the version you approved. Then it asks `Trust my-project:.testlane.toml? [y/N]` on stderr.
+**Trust.** The file's commands run only after you approve that exact content. The first time, Testlane prints what the file would run (`setup.run`, each command and each hook) and then the whole file. After a change, it prints a diff from the version you approved. Then it asks `Trust my-project:.testlane.toml? [y/N]` on stderr, and here's what happens next:
 
 - `--yes` approves without asking.
-- Off a terminal without `--yes`, the run stops with exit 3 and `my-project:.testlane.toml is not trusted` (or `changed since you trusted it`), with `hint: testlane config trust my-project`. Keep this in mind for scripts and CI: once a repository commits the file, every run there stops until someone approves it.
+- Off a terminal without `--yes`, the run stops with exit 3 and `my-project:.testlane.toml is not trusted` (or `changed since you trusted it`), with `hint: testlane config trust my-project`. Keep this in mind for scripts and CI: once a repository commits the file, `checkout`, `code`, `run`, `exec`, `shell`, `start` and `sync` stop there until you approve it. The approval is stored per machine, so a fresh CI runner needs `--yes`. `--dry-run` skips the check.
 - If you decline the first time, your project file works on its own. If you decline a change, Testlane keeps the version you approved before.
 - The approval is the sha256 of the file and its content, kept in the project's state file (`repoConfig`), never in the repository. `doctor` reports whether each project's repo file is trusted, untrusted or changed since you approved it.
 
