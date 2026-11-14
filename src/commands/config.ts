@@ -15,6 +15,7 @@ import {
 } from "../config/load.ts";
 import { defaultProjectTemplate } from "../lib/project-template.ts";
 import { resolveEditor } from "../core/editor.ts";
+import { stdoutOf } from "../config/schema.ts";
 import type { TopInput } from "./types.ts";
 
 export async function config(input: TopInput): Promise<number> {
@@ -108,7 +109,7 @@ function validate(input: TopInput, project?: string): number {
 
   const issues = validateAll(ctx.configDir);
   if (ctx.flags.json) {
-    process.stdout.write(JSON.stringify({ ok: issues.length === 0, issues }) + "\n");
+    stdoutOf(ctx).write(JSON.stringify({ ok: issues.length === 0, issues }) + "\n");
     return issues.length ? ExitCode.CONFIG : ExitCode.SUCCESS;
   }
   if (issues.length === 0) {

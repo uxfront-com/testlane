@@ -9,3 +9,4 @@ never edit an accepted ADR's substance.
 |---|---|---|---|---|
 | [001](001-hand-rolled-cli-parsing-and-frozen-dependency-budget.md) | Hand-rolled CLI parsing and a frozen three-package dependency budget | 2026-07-21 | Accepted (dependency budget amended by 002) | cli, dependencies, parsing |
 | [002](002-node-runtime-compiled-ts-to-js.md) | Run on stock Node via a compiled TS→JS bin; Bun runtime dropped | 2026-07-22 | Accepted | runtime, node, packaging, build |
+| [003](003-mcp-server.md) | A hand-written MCP server over stdio, with no new dependency | 2026-11-13 | Accepted | cli, mcp, agents, dependencies |

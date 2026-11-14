@@ -2,7 +2,7 @@
 
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, writeFileSync, writeSync } from "node:fs";
 import { join } from "node:path";
-import { TestlaneError, gitError } from "../lib/errors.ts";
+import { TestlaneError, abortedError, gitError } from "../lib/errors.ts";
 import { stateDir } from "../lib/paths.ts";
 import type { Logger } from "../lib/log.ts";
 
@@ -105,18 +105,30 @@ export function pidAlive(pid: number): boolean {
   }
 }
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+/** Wait `ms`, or less when `signal` fires first. */
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    const done = () => {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", done);
+      resolve();
+    };
+    const timer = setTimeout(done, ms);
+    signal?.addEventListener("abort", done, { once: true });
+  });
+}
 
 /**
  * Acquire an exclusive per-project lock. Steals a stale lock (dead holder) with
  * a warning; waits up to 30s on a live holder, then exits 5 (§7.6).
  */
-export async function acquireLock(project: string, log: Logger): Promise<Lock> {
+export async function acquireLock(project: string, log: Logger, signal?: AbortSignal): Promise<Lock> {
   ensureStateDir();
   return acquireFileLock(lockPath(project), {
     label: `'${project}'`,
     timeoutMs: LOCK_TIMEOUT_MS,
     log,
+    signal,
     onTimeout: (holder) =>
       gitError(
         `timed out waiting for lock on '${project}'`,
@@ -132,6 +144,8 @@ export interface FileLockOptions {
   log: Logger;
   /** The error thrown when a live holder outlasts `timeoutMs`. */
   onTimeout(holder: LockContents | null): TestlaneError;
+  /** Stop waiting, with `abortedError()`, when this fires. */
+  signal?: AbortSignal;
 }
 
 /**
@@ -143,6 +157,7 @@ export async function acquireFileLock(file: string, opts: FileLockOptions): Prom
   const deadline = Date.now() + opts.timeoutMs;
 
   for (;;) {
+    if (opts.signal?.aborted) throw abortedError();
     try {
       const fd = openSync(file, "wx"); // O_CREAT | O_EXCL | O_WRONLY
       const contents: LockContents = { pid: process.pid, startedAt: new Date().toISOString() };
@@ -159,7 +174,7 @@ export async function acquireFileLock(file: string, opts: FileLockOptions): Prom
         continue;
       }
       if (Date.now() >= deadline) throw opts.onTimeout(holder);
-      await sleep(LOCK_POLL_MS);
+      await sleep(LOCK_POLL_MS, opts.signal);
     }
   }
 }

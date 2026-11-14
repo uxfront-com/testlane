@@ -8,7 +8,7 @@
 // The whole suite runs against src/, so nothing was red. These tests exercise
 // the built entrypoint instead — the thing users actually install.
 
-import { beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
@@ -20,17 +20,9 @@ const builtCli = join(repoRoot, "dist", "bin", "testlane.js");
 
 // Spelled out, not imported from TOP_LEVEL_VERBS: a list derived from the table
 // cannot detect a verb missing from the table.
-const PROMISED_VERBS = ["setup", "projects", "doctor", "config", "completions", "help", "version"];
+const PROMISED_VERBS = ["setup", "projects", "doctor", "config", "completions", "help", "version", "mcp"];
 
-beforeAll(() => {
-  const build = spawnSync("npx", ["tsc", "-p", "tsconfig.build.json"], {
-    cwd: repoRoot,
-    encoding: "utf8",
-  });
-  if (build.status !== 0) {
-    throw new Error(`build failed:\n${build.stdout}${build.stderr}`);
-  }
-}, 120_000);
+// dist/ is built once for the whole run, in test/global-setup.ts.
 
 /** Run the built CLI against a config dir that does not exist yet. */
 function runBuilt(argv: string[]): { code: number; stdout: string; stderr: string } {

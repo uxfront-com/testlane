@@ -378,6 +378,7 @@ testlane config edit [project]               # edit defaults or a project file
 testlane config add [project]                # like `config edit`; seeds a starter template if the file is absent
 testlane config validate [project]           # validate all configs, or one
 testlane completions <bash|zsh|fish>         # print a completion script
+testlane mcp                                 # serve Testlane's tools to an MCP client over stdio
 testlane help                                # usage
 testlane version                             # version string
 ```

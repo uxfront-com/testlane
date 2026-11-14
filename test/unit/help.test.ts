@@ -32,4 +32,9 @@ describe("help — verb lists", () => {
     expect(section("PROJECT VERBS")).toMatch(/^  ps\b/m);
     expect(HELP).toContain("testlane <project> [list|clean|ps] [flags]");
   });
+
+  it("C2 — help lists mcp as a top-level verb", () => {
+    const section = HELP.split("TOP-LEVEL VERBS\n")[1]!.split("\n\n")[0]!;
+    expect(section).toMatch(/^  mcp\b/m);
+  });
 });
