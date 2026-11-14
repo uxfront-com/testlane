@@ -100,6 +100,7 @@ This page covers:
 ## <Sections>         (the first opens "Let's start with…", then "Now let's look at…", "Next, let's look at…" and "Finally, let's look at…")
 ## FAQ                (optional: an ::accordion, each label the question and each answer starting with the answer)
 ## Sources            (only when the page relies on outside material, like git's worktree docs)
+## Where to go next   (optional, last: links to the pages a reader wants after this one)
 ```
 
 A **guide** says in its opening what the reader will have at the end, and why they'd want it. Its walkthrough is a `::steps{level="3"}` block with one action per step, the command in a block of its own and a sentence on what the reader should see. Troubleshooting is the one guide that's a set of questions instead: it starts with `doctor`, then groups its `::accordion`s under `## Errors by code` and `## Common situations`, with the error or the symptom as each label.
@@ -129,18 +130,29 @@ A **reference page** opens with what its verbs or keys let the reader do, and wh
 ## FAQ                       (optional, as on a concept page)
 ```
 
-The **README** runs in this order: `# Testlane`, an opening paragraph with no heading above it and a link to `testlane.dev`, then `## Install`, `## Usage`, `## Commands` (`### Workspace verbs`, `### Project verbs` and `### Top-level verbs`, each a `Verb | What it does` table), `## Global flags`, `## Configuration`, `## Upgrading from uxd`, `## Exit codes` and `## Development`. Each section ends with a link to its page here. Keep it short enough to read in one sitting.
+The **README** runs in this order, with the depth left to this site so it stays at 450 lines or fewer:
+
+- `# Testlane`, then an opening paragraph with no heading above it and a link to `testlane.dev`.
+- `## Install`, with the requirements, the global install, the install from a clone and running it without installing.
+- `## Usage`, the smallest session that works, from `setup` to a running workspace.
+- `## Commands`, with `### Workspace verbs`, `### Project verbs` and `### Top-level verbs`, each a `Verb | What it does` table followed by the few examples that matter.
+- `## Global flags`, a table.
+- `## Configuration`, then `## Upgrading from uxd`.
+- `## Exit codes`, a table.
+- `## Development`.
+
+Each section ends with a link to its page here.
 
 #### Write in the docs' voice
 
-These follow the Open Components rules, apart from where a line says otherwise:
+These follow the Open Components rules. Testlane does three things its own way, and the lines marked **Testlane** say which:
 
 - **Talk to the reader.** Write "you" for the reader and "we" for the project, give the reason in the same sentence as the rule, and write "we recommend" for anything that isn't a hard rule. Use contractions, British spelling and no serial comma.
 - **Leave out hype and filler.** Words like `simply`, `just`, `easily`, `ensure`, `leverage`, `robust`, `powerful` and `seamless` make a claim sound bigger and say less. Leave out dashes, semicolons and exclamation marks in prose too, since a comma, a colon or a new sentence does the job. Write "like" or "for example" rather than `e.g.`, `i.e.` or `etc.`
-- **Keep the names from the code.** "Materialize" is the name of the pipeline's second step in `src/cli/help.ts` and `DESIGN.md`, so it keeps its spelling, as do `color` in `--no-color` and every other name a reader could type.
-- **Write notes as prose.** `::note` and `::tip` become a sentence that starts "Note that…" or "Keep in mind that…", as on the Open Components pages. Keep `::warning` and `::caution` for a command that deletes work, like `rm` and `clean`, or `sync` on a tree with changes.
+- **Keep the names from the code.** **Testlane:** "Materialize" is the name of the pipeline's second step in `src/cli/help.ts` and `DESIGN.md`, so it keeps its spelling, as do `color` in `--no-color` and every other name a reader could type.
+- **Write notes as prose.** **Testlane:** Open Components avoids Nuxt UI's callouts, since their text fails contrast there, while ours pass (see [Keeping it accessible](#keeping-it-accessible)), so we keep two. `::note` and `::tip` become a sentence that starts "Note that…" or "Keep in mind that…", as on the Open Components pages. Keep `::warning` and `::caution` for a command that deletes work, like `rm` and `clean`, or `sync` on a tree with changes.
 - **Keep headings plain.** Write them in sentence case, as plain text and inline code, with no links, emphasis or dashes. A heading that gives guidance is an imperative, and an FAQ label is the question itself.
-- **Link by absolute path.** Link within the docs by path, anchors included, like `/docs/cli/exit-codes`. Keep any heading another page links to, like `## Known caveats`, since renaming it breaks that link.
+- **Link by absolute path.** Link within the docs by path, anchors included, like `/docs/cli/exit-codes`. Keep any heading another page links to, like `## Known caveats`, since renaming it breaks that link. **Testlane:** link to a generated file, like `/llms.txt`, with `{external}`, where Open Components writes `{external=""}`.
 - **Check every fact.** Every verb, flag, exit code, config key, template variable, `TESTLANE_*` variable and `--json` field matches `src/` and `DESIGN.md`. Run every example that's safe to run, and show the output it really prints, with `/home/you` in place of your home directory.
 
 #### Check a page before you hand it over
