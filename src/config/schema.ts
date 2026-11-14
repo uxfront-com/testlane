@@ -172,6 +172,13 @@ export interface Ctx {
    * their own, and never on Testlane's stdout (`testlane mcp`, ADR-003).
    */
   isolated?: boolean;
+  /**
+   * Nobody here can approve a repo's `.testlane.toml`: the trust gate takes
+   * neither `--yes` nor a terminal as an answer, so an untrusted or changed
+   * file fails with E_CONFIG. A person approves it with `testlane config trust`
+   * (`testlane mcp`, §5.7).
+   */
+  noTrustApproval?: boolean;
 }
 
 /** The sink a verb prints its result to. */
