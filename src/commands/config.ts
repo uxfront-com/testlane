@@ -3,7 +3,7 @@
 // repo (§5.7); `detect` drafts a config from a repo's files.
 
 import { existsSync, mkdirSync, readFileSync, rmdirSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { ExitCode, configError, usage } from "../lib/errors.ts";
 import { parseFlags } from "../cli/flags.ts";
 import { passthrough } from "../lib/proc.ts";
@@ -467,7 +467,8 @@ async function detectCmd(ctx: Ctx, arg: string | undefined, repoFile: boolean): 
     if (!isDir) throw usage(`not a directory: ${target}`, "testlane config detect [path | project]");
     files = localFiles(dir);
     source = { kind: "path", path: dir };
-    label = dir;
+    // The directory's name, not its path: a draft may be committed as `.testlane.toml`.
+    label = `${basename(dir) || dir}/`;
   } else {
     if (!projectExists(ctx.configDir, target)) {
       throw usage(`unknown project '${target}'`, `pass ./${target} for a directory`);
