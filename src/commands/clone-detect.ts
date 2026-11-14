@@ -4,21 +4,21 @@
 // a config from the files at `origin/<default>`.
 
 import { rmSync } from "node:fs";
-import { TestlaneError } from "../lib/errors.ts";
+import { TestlaneError, configError } from "../lib/errors.ts";
 import type { Ctx, ProjectConfig } from "../config/schema.ts";
 import { detect } from "../config/detect.ts";
 import { renderDraft } from "../config/detect-emit.ts";
 import { acquireLock, loadState, saveState } from "../core/state.ts";
 import { gitFiles } from "../core/repo-files.ts";
 import { repoConfigBranch, trustGate, type TrustResult } from "../core/trust.ts";
-import { detectDefaultBranch, fetchBranch, initPrimaryRepo, isInitialized, type GitEnv } from "../git/repo.ts";
+import { detectDefaultBranch, fetchBranch, initPrimaryRepo, isInitialized, originUrl, type GitEnv } from "../git/repo.ts";
 
 export interface CloneDetectOptions {
   /** The clone URL, as the project file writes it. */
   repo: string;
   /** Drop a stored approval first: a new project must not inherit an old one's. */
   clearApproval: boolean;
-  /** Puts back what the caller wrote, when the clone fails. */
+  /** Puts back what the caller wrote, when the clone fails or an existing clone is of another repo. */
   rollback(): void;
   /** Hint for the off-a-terminal "not trusted" error. */
   untrustedHint: string;
@@ -52,7 +52,18 @@ export async function cloneTrustDetect(
         throw new TestlaneError("E_GIT", `cloning ${opts.repo} failed: ${(e as Error).message}`);
       }
     } else {
-      // An existing clone (a `setup --force` re-run): bring its default branch up to date.
+      // An existing clone (a `setup --force` re-run). It must be a clone of this
+      // repo: detecting from, or trusting, another repo's files under this
+      // `repo` line would be wrong.
+      const cloned = await originUrl(project.repoPath);
+      if (cloned !== opts.repo) {
+        opts.rollback();
+        throw configError(
+          `${project.repoPath} is a clone of ${cloned ?? "an unknown repo"}, not ${opts.repo}`,
+          `remove ${project.repoPath} and run the command again, or set repo_path in ${name}.toml`,
+        );
+      }
+      // Bring its default branch up to date.
       const branch = await repoConfigBranch(project, () => detectDefaultBranch(g));
       if (branch) await fetchBranch(g, branch);
     }

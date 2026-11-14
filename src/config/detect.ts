@@ -133,7 +133,7 @@ export async function detect(files: RepoFiles, opts: DetectOptions = {}): Promis
   if (fieldMatch) {
     pm = fieldMatch[1] as PackageManager;
     pmConfidence = "high";
-    pmReason = `packageManager is ${root.packageManager}`;
+    pmReason = `packageManager is ${fieldMatch[1]}@${fieldMatch[2]!.split("+")[0]}`;
   } else if (lockManagers.length === 1) {
     pm = lockManagers[0]!;
     pmConfidence = "high";
@@ -191,9 +191,10 @@ export async function detect(files: RepoFiles, opts: DetectOptions = {}): Promis
   const isWorkspace = pkgs.length > 0;
 
   // ── 2. Install and cache_key ───────────────────────────────────────────────
+  // An explicit `packageManager: yarn@<n>` decides; only without one does `.yarnrc.yml` mean Yarn 2+.
   const yarnBerry =
     pm === "yarn" &&
-    ((fieldMatch?.[1] === "yarn" && Number(fieldMatch[2]!.split(".")[0]) >= 2) || list.includes(".yarnrc.yml"));
+    (fieldMatch?.[1] === "yarn" ? Number(fieldMatch[2]!.split(".")[0]) >= 2 : list.includes(".yarnrc.yml"));
   const install = lockfile
     ? {
         pnpm: "pnpm install --frozen-lockfile",
@@ -220,6 +221,7 @@ export async function detect(files: RepoFiles, opts: DetectOptions = {}): Promis
   } else if (list.includes("turbo.json") && main && main.pkg.dir !== "" && main.pkg.name) {
     const exec = { pnpm: "pnpm turbo", npm: "npx turbo", yarn: "yarn turbo", bun: "bunx turbo" }[pm];
     setupRun += ` && ${exec} run build --filter=${shellQuote(main.pkg.name)}^...`;
+    // setup.run isn't templated (§5.5), so the name needs no `{{` here.
     setupReason += `; turbo.json builds ${main.pkg.name}'s dependencies`;
   }
   const postinstalls = [root, ...pkgs].filter((p) => p.scripts.postinstall !== undefined);
@@ -264,15 +266,15 @@ export async function detect(files: RepoFiles, opts: DetectOptions = {}): Promis
   apps.forEach((app, i) => {
     const name = i === 0 ? "dev" : commandName(app.pkg, names);
     names.add(name);
-    const port = i === 0 ? "{port}" : `{port+${i}}`;
+    const port = portVar(i);
     const prefix = `commands.${name}`;
     for (const arg of app.dropped) {
       note(`${where(app.pkg)} dev script also passes ${JSON.stringify(arg)}; the draft drops it`, `${prefix}.run`);
     }
     const why = i === 0 ? `${app.reason}; the main app (${where(app.pkg)})` : app.reason;
     if (app.framework) {
-      key(`${prefix}.run`, app.command.replace("{port}", port), app.confidence, why);
-      if (app.pkg.dir !== "" && pm === "bun") key(`${prefix}.cwd`, app.pkg.dir, app.confidence, `bun x runs in ${app.pkg.dir}`);
+      key(`${prefix}.run`, app.command, app.confidence, why);
+      if (app.pkg.dir !== "" && pm === "bun") key(`${prefix}.cwd`, literal(app.pkg.dir), app.confidence, `bun x runs in ${app.pkg.dir}`);
     } else {
       key(`${prefix}.run`, app.command, "low", why);
       key(`${prefix}.env.PORT`, port, "low", "unknown dev server; assumes it reads PORT");
@@ -280,8 +282,9 @@ export async function detect(files: RepoFiles, opts: DetectOptions = {}): Promis
   });
 
   // ── 9. Extra commands ──────────────────────────────────────────────────────
+  // Yarn 1 runs its own built-in (`yarn check`) over a script of the same name, so Yarn always says `run`.
   const script = (s: string): string =>
-    pm === "npm" ? (s === "test" ? "npm test" : `npm run ${s}`) : pm === "bun" ? `bun run ${s}` : `${pm} ${s}`;
+    pm === "npm" ? (s === "test" ? "npm test" : `npm run ${s}`) : pm === "pnpm" ? `pnpm ${s}` : `${pm} run ${s}`;
   if (root.scripts.test !== undefined) key("commands.test.run", script("test"), "high", "package.json has a test script");
   if (root.scripts.check !== undefined) {
     key("commands.check.run", script("check"), "high", "package.json has a check script");
@@ -386,7 +389,7 @@ function findApps(root: Pkg, pkgs: Pkg[], pm: PackageManager): { apps: App[]; le
   const all = [...(rootCounts ? [root] : []), ...candidates.filter((p) => p.name !== undefined)];
   const rank = (p: Pkg): number => (p.dir === "apps/web" ? 0 : p.dir === "apps/docs" ? 1 : p.dir === "" ? 2 : 3);
   const sorted = all.slice().sort((a, b) => rank(a) - rank(b) || (a.dir < b.dir ? -1 : a.dir > b.dir ? 1 : 0));
-  return { apps: sorted.slice(0, MAX_APPS).map((p) => app(p, pm)), left: sorted.slice(MAX_APPS), unnamed };
+  return { apps: sorted.slice(0, MAX_APPS).map((p, i) => app(p, pm, portVar(i))), left: sorted.slice(MAX_APPS), unnamed };
 }
 
 function framework(dev: string): { fw: Framework; args: string[] } | undefined {
@@ -405,12 +408,22 @@ function framework(dev: string): { fw: Framework; args: string[] } | undefined {
   return undefined;
 }
 
-const FORMS: Record<Framework, string> = {
-  nuxt: "nuxt dev --host 127.0.0.1 --port {port}",
-  next: "next dev -H 127.0.0.1 -p {port}",
-  vite: "vite --host 127.0.0.1 --port {port} --strictPort",
-  astro: "astro dev --host 127.0.0.1 --port {port}",
-  storybook: "storybook dev --host 127.0.0.1 -p {port} --ci",
+/** The template variable for the i-th app's port: `{port}`, `{port+1}`, … */
+function portVar(i: number): string {
+  return i === 0 ? "{port}" : `{port+${i}}`;
+}
+
+/** Repo text inside a templated value: `{{` keeps a `{` literal (§5.5), so a name can't name a variable. */
+function literal(text: string): string {
+  return text.replace(/\{/g, "{{");
+}
+
+const FORMS: Record<Framework, (port: string) => string> = {
+  nuxt: (port) => `nuxt dev --host 127.0.0.1 --port ${port}`,
+  next: (port) => `next dev -H 127.0.0.1 -p ${port}`,
+  vite: (port) => `vite --host 127.0.0.1 --port ${port} --strictPort`,
+  astro: (port) => `astro dev --host 127.0.0.1 --port ${port}`,
+  storybook: (port) => `storybook dev --host 127.0.0.1 -p ${port} --ci`,
 };
 
 /** Flags the draft sets itself; each takes a value unless listed in BARE_FLAGS. */
@@ -439,13 +452,13 @@ function dependsOn(pkg: Pkg, fw: Framework): boolean {
   return pkg.deps.has(fw);
 }
 
-function app(pkg: Pkg, pm: PackageManager): App {
+function app(pkg: Pkg, pm: PackageManager, port: string): App {
   const dev = pkg.scripts.dev!;
   const found = framework(dev);
   const isRoot = pkg.dir === "";
-  const name = pkg.name === undefined ? "" : shellQuote(pkg.name);
+  const name = pkg.name === undefined ? "" : literal(shellQuote(pkg.name));
   if (found) {
-    const cmd = FORMS[found.fw];
+    const cmd = FORMS[found.fw](port);
     const command = isRoot
       ? { pnpm: `pnpm exec ${cmd}`, npm: `npm exec -- ${cmd}`, yarn: `yarn ${cmd}`, bun: `bun x ${cmd}` }[pm]
       : {

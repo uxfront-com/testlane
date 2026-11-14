@@ -277,6 +277,16 @@ export async function wireForkPushBack(
   g.log.step(`fork push-back wired to ${remote}/${headRefName}`);
 }
 
+/** The clone's configured `remote.origin.url`, as written, or undefined when unset. */
+export async function originUrl(repoPath: string): Promise<string | undefined> {
+  const res = await capture(["git", "-C", repoPath, "config", "--get", "remote.origin.url"], {
+    allowFailure: true,
+    env: env(),
+  });
+  const url = res.stdout.trim();
+  return res.code === 0 && url !== "" ? url : undefined;
+}
+
 /** True when a named remote is already configured. */
 async function remoteExists(repoPath: string, remote: string): Promise<boolean> {
   const res = await capture(["git", "-C", repoPath, "remote", "get-url", remote], {

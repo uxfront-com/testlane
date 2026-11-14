@@ -10,7 +10,7 @@ import { parse as parseToml } from "smol-toml";
 import { makeEnv, makeFixtureOrigin, type FixtureOrigin, type Harness } from "../fixtures.ts";
 import { setProcRecorder } from "../../src/lib/proc.ts";
 import { setDraftTransform } from "../../src/config/detect-emit.ts";
-import { gitFiles } from "../../src/core/repo-files.ts";
+import { gitFiles, localFiles } from "../../src/core/repo-files.ts";
 import { defaultProjectTemplate } from "../../src/lib/project-template.ts";
 import { F1_PNPM_TURBO } from "../unit/detect-fixtures.ts";
 
@@ -176,6 +176,55 @@ describe("config detect <path>", () => {
     expect(r.code).toBe(1);
     expect(r.stdout).toBe("");
     expect(r.stderr).toContain("E_INTERNAL");
+  });
+
+  it("never reads a file the rules name through a symlink", async () => {
+    const outside = join(tmp, "outside");
+    writeTree(outside, {
+      "package.json": JSON.stringify({ name: "evil", packageManager: "pnpm@9.0.0", scripts: { dev: "next dev" } }),
+      "pnpm-workspace.yaml": "packages:\n  - evil/*\n",
+    });
+    const root = join(tmp, "linked");
+    writeTree(root, { "pnpm-lock.yaml": "" });
+    spawnSync("ln", ["-s", join(outside, "package.json"), join(root, "package.json")]);
+    const r = await env.run(["config", "detect", root]);
+    expect(r.code, r.stderr).toBe(0);
+    expect(r.stdout).toContain("# note: no package.json at the root; nothing else to detect");
+    expect(r.stdout).not.toContain("evil");
+
+    // A real package.json, with the workspace file linked out.
+    rmSync(join(root, "package.json"));
+    writeTree(root, { "package.json": JSON.stringify({ packageManager: "pnpm@9.0.0" }) });
+    spawnSync("ln", ["-s", join(outside, "pnpm-workspace.yaml"), join(root, "pnpm-workspace.yaml")]);
+    const w = await env.run(["config", "detect", root]);
+    expect(w.code, w.stderr).toBe(0);
+    expect(w.stdout).not.toContain("evil");
+    expect(w.stdout).not.toContain("pnpm-workspace.yaml");
+  });
+
+  it("the local adapter reads nothing through a symlinked directory or file", async () => {
+    const outside = join(tmp, "outside");
+    writeTree(outside, { "package.json": "{}" });
+    const root = join(tmp, "adapter");
+    writeTree(root, { "real/package.json": "{}" });
+    spawnSync("ln", ["-s", outside, join(root, "linked")]);
+    spawnSync("ln", ["-s", join(outside, "package.json"), join(root, "package.json")]);
+    const files = localFiles(root);
+    expect(await files.read("real/package.json")).toBe("{}");
+    expect(await files.read("linked/package.json")).toBeNull();
+    expect(await files.read("package.json")).toBeNull();
+    expect(await files.read("../outside/package.json")).toBeNull();
+    expect(await files.list()).toEqual(["real/package.json"]);
+  });
+
+  it("skips node_modules and .git", async () => {
+    writeTree(dir, {
+      "node_modules/pkg/.env.example": "",
+      "node_modules/pkg/package.json": JSON.stringify({ name: "pkg", scripts: { dev: "vite" } }),
+      ".git/hooks/.env.example": "",
+    });
+    const cfg = parseToml((await env.run(["config", "detect", dir])).stdout) as any;
+    expect(cfg.setup.seed_files).toEqual(["apps/web/.env"]);
   });
 
   it("never follows a symlink out of the directory", async () => {
@@ -365,6 +414,16 @@ describe("--detect", () => {
     expect(r.code, r.stderr).toBe(0);
     expect(recorded.some((a) => a.includes("clone"))).toBe(false);
     expect(projectFile()).toContain("[commands.dev]");
+  });
+
+  it("setup --detect --force with another --repo refuses the existing clone and puts the file back", async () => {
+    expect((await env.run(["setup", "--name", "app", "--repo", CLONE, "--default-branch", "main", "--detect"])).code).toBe(0);
+    const before = projectFile();
+    const r = await env.run(["--yes", "setup", "--name", "app", "--repo", TRUSTED, "--default-branch", "main", "--detect", "--force"]);
+    expect(r.code).toBe(3);
+    expect(r.stderr).toContain(`is a clone of ${CLONE}, not ${TRUSTED}`);
+    expect(projectFile()).toBe(before);
+    expect(stateOf("app")?.repoConfig).toBeUndefined();
   });
 
   it("setup --detect --dry-run prints the clone and detect steps and creates nothing", async () => {

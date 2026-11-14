@@ -188,9 +188,16 @@ describe("rule 1: package manager", () => {
     expect(find(fs, "setup.cache_key")!.value).toEqual([lock, "package.json"]);
   });
 
-  it("Yarn berry by .yarnrc.yml", async () => {
+  it("Yarn berry by .yarnrc.yml, unless packageManager says Yarn 1", async () => {
     const fs = await findings(repo({}, { "yarn.lock": "", ".yarnrc.yml": "nodeLinker: node-modules\n" }));
     expect(find(fs, "setup.run")!.value).toBe("yarn install --immutable");
+    const classic = await findings(repo({ packageManager: "yarn@1.22.22" }, { "yarn.lock": "", ".yarnrc.yml": "" }));
+    expect(find(classic, "setup.run")!.value).toBe("yarn install --frozen-lockfile");
+  });
+
+  it("the reason names packageManager without its hash", async () => {
+    const fs = await findings(repo({ packageManager: "pnpm@10.20.0+sha512.abcdef" }, { "pnpm-lock.yaml": "" }));
+    expect(find(fs, "setup.run")!.reason).toBe("packageManager is pnpm@10.20.0; frozen install of pnpm-lock.yaml");
   });
 
   it("two lockfiles with packageManager: follow it, note the other", async () => {
@@ -232,6 +239,7 @@ describe("rule 3: pnpm-workspace.yaml and workspaces", () => {
       "tools/*",
     ]);
     expect(parseWorkspaceYaml("packages: [apps/*, 'libs/*']\n").packages).toEqual(["apps/*", "libs/*"]);
+    expect(parseWorkspaceYaml("packages: ['a,b/*', c]\n").packages).toEqual(["a,b/*", "c"]);
     expect(parseWorkspaceYaml("packages:\n- apps/*\n- '!apps/old'\n").packages).toEqual(["apps/*", "!apps/old"]);
   });
 
@@ -240,6 +248,12 @@ describe("rule 3: pnpm-workspace.yaml and workspaces", () => {
     expect(ws.packages).toEqual(["apps/*"]);
     expect(ws.skippedKeys).toEqual(["catalog", "onlyBuiltDependencies"]);
     expect(ws.skippedLines).toEqual(["- &anchor libs/*", "- { a: b }", "%TAG x"]);
+  });
+
+  it("a brace or bracket glob is skipped, not read literally", () => {
+    const ws = parseWorkspaceYaml("packages:\n  - 'apps/{web,docs}'\n  - libs/[ab]\n  - tools/*\n");
+    expect(ws.packages).toEqual(["tools/*"]);
+    expect(ws.skippedLines).toEqual(["- 'apps/{web,docs}'", "- libs/[ab]"]);
   });
 
   it("a skipped line becomes a finding", async () => {
@@ -289,6 +303,14 @@ describe("rules 4–6: apps", () => {
     );
     expect(Object.keys(cfg.commands)).toEqual(["dev"]);
     expect(cfg.commands.dev.run).toBe("pnpm --filter site exec astro dev --host 127.0.0.1 --port {port}");
+  });
+
+  it("a dev script that runs a task runner is never an app", async () => {
+    for (const dev of ["turbo run dev", "nx run-many -t dev", "vp run website#dev", "lerna run dev"]) {
+      const fs = await findings(repo({ ...PNPM, scripts: { dev } }));
+      expect(find(fs, "commands.dev.run"), dev).toBeUndefined();
+      expect(notes(fs)).toContain("no package with a dev script; add [commands.dev] by hand");
+    }
   });
 
   it("the root counts only when no workspace package does, or when it runs a known framework", async () => {
@@ -397,6 +419,18 @@ describe("rules 4–6: apps", () => {
     expect(notes(fs)).toContain("more than 10 apps; skipped apps/a20, apps/a21");
   });
 
+  it("a { in a package name stays literal, so it can't name a template variable", async () => {
+    const cfg = await config(
+      repo(PNPM, {
+        "pnpm-workspace.yaml": ws("apps/*"),
+        "apps/web/package.json": pkg("{port}", "nuxt dev", { nuxt: "4" }),
+        "apps/x/package.json": pkg("{nope}", "node s.js"),
+      }),
+    );
+    expect(cfg.commands.dev.run).toBe("pnpm --filter '{{port}' exec nuxt dev --host 127.0.0.1 --port {port}");
+    expect(Object.values(cfg.commands).map((c: any) => c.run)).toContain("pnpm --filter '{{nope}' run dev");
+  });
+
   it("a package name with shell syntax is quoted", async () => {
     const cfg = await config(
       repo(PNPM, { "pnpm-workspace.yaml": ws("apps/*"), "apps/web/package.json": pkg("x;rm -rf $(pwd)", "node s.js") }),
@@ -419,7 +453,7 @@ describe("rule 7: build before dev", () => {
   });
 
   it("no build step when the main app is the root", async () => {
-    const fs = await findings(repo({ ...PNPM, scripts: { dev: "nuxt dev" } }, { "turbo.json": "{}" }));
+    const fs = await findings(repo({ ...PNPM, name: "site", scripts: { dev: "nuxt dev" } }, { "turbo.json": "{}" }));
     expect(find(fs, "setup.run")!.value).toBe("pnpm install");
   });
 
@@ -453,7 +487,7 @@ describe("rule 9: test and check", () => {
   it.each([
     ["pnpm", "pnpm test", "pnpm lint && pnpm format:check && pnpm typecheck"],
     ["npm", "npm test", "npm run lint && npm run format:check && npm run typecheck"],
-    ["yarn", "yarn test", "yarn lint && yarn format:check && yarn typecheck"],
+    ["yarn", "yarn run test", "yarn run lint && yarn run format:check && yarn run typecheck"],
     ["bun", "bun run test", "bun run lint && bun run format:check && bun run typecheck"],
   ])("%s", async (pm, test, check) => {
     const scripts = { test: "x", lint: "x", "format:check": "x", typecheck: "x", "check-types": "x" };
@@ -465,6 +499,11 @@ describe("rule 9: test and check", () => {
   it("a check script wins", async () => {
     const cfg = await config(repo({ ...PNPM, scripts: { check: "x", lint: "x" } }));
     expect(cfg.commands.check.run).toBe("pnpm check");
+  });
+
+  it("Yarn runs scripts with run, since Yarn 1's built-in check beats a check script", async () => {
+    const cfg = await config(repo({ packageManager: "yarn@1.22.22", scripts: { check: "x" } }, { "yarn.lock": "" }));
+    expect(cfg.commands.check.run).toBe("yarn run check");
   });
 
   it("check-types when there's no typecheck; nothing when no script exists", async () => {

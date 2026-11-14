@@ -30,8 +30,37 @@ function stripComment(text: string): string {
   return text;
 }
 
-/** One scalar: `apps/*`, `"apps/*"` or `'apps/*'`. `null` when it isn't one. */
+/** A flow list's items, split on commas outside quotes. */
+function splitFlow(text: string): string[] {
+  const parts: string[] = [];
+  let quote: string | null = null;
+  let cur = "";
+  for (const c of text) {
+    if (quote) {
+      if (c === quote) quote = null;
+    } else if (c === '"' || c === "'") {
+      quote = c;
+    } else if (c === ",") {
+      parts.push(cur);
+      cur = "";
+      continue;
+    }
+    cur += c;
+  }
+  parts.push(cur);
+  return parts;
+}
+
+/**
+ * One workspace pattern: `apps/*`, `"apps/*"` or `'apps/*'`. `null` when it
+ * isn't a scalar, or holds a brace or bracket glob, which the matcher doesn't read.
+ */
 function scalar(text: string): string | null {
+  const value = rawScalar(text);
+  return value === null || /[{}[\]]/.test(value) ? null : value;
+}
+
+function rawScalar(text: string): string | null {
   const t = text.trim();
   if (t === "") return null;
   const dq = t.match(/^"((?:[^"\\]|\\.)*)"$/);
@@ -97,7 +126,7 @@ export function parseWorkspaceYaml(text: string): WorkspaceYaml {
       continue;
     }
     out.packages ??= [];
-    for (const part of flow[1]!.split(",")) {
+    for (const part of splitFlow(flow[1]!)) {
       if (part.trim() === "") continue;
       const value = scalar(part);
       if (value === null) out.skippedLines.push(part.trim());

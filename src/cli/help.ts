@@ -74,7 +74,7 @@ GLOBAL FLAGS
   --config-dir <dir>  override the config directory
   --pr|--branch|--path <v>  force ref interpretation
   --dry-run           print what would run; change nothing
-  --json              machine-readable stdout (checkout, list, info, start, ps, projects, doctor)
+  --json              machine-readable stdout (checkout, list, info, start, ps, projects, doctor, config detect)
   -q, --quiet         suppress step logs
   -v, --verbose       print external commands
   -y, --yes           assume yes for prompts
