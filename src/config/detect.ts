@@ -9,7 +9,7 @@ import { matchWorkspaces, parseWorkspaceYaml } from "./detect-parse.ts";
 
 /** A read-only view of a repo's files: a checkout, a commit, or a map in a test. */
 export interface RepoFiles {
-  /** Every regular file, repo-relative with `/`, without `node_modules/` and `.git/`. Symlinks are left out. */
+  /** Every regular file, repo-relative with `/`, outside the `node_modules` and `.git` directories. Symlinks are left out. */
   list(): Promise<string[]>;
   /** UTF-8 text, or null when the file is absent. Throws E_CONFIG for a file over 1 MiB. */
   read(path: string): Promise<string | null>;
