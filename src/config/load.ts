@@ -6,6 +6,7 @@ import { isAbsolute, join, relative, sep } from "node:path";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { TestlaneError } from "../lib/errors.ts";
 import { resolvePath } from "../lib/paths.ts";
+import { printableLine } from "../lib/printable.ts";
 import { fnv1a32 } from "../lib/hash.ts";
 import {
   RawDefaultsSchema,
@@ -30,9 +31,9 @@ export interface ConfigIssue {
 
 export class ConfigValidationError extends TestlaneError {
   readonly issues: ConfigIssue[];
-  constructor(issues: ConfigIssue[]) {
+  constructor(issues: ConfigIssue[], opts: { hint?: string } = {}) {
     const body = issues.map((i) => `${i.file}: ${i.path}: ${i.message}`).join("\n");
-    super("E_CONFIG", body);
+    super("E_CONFIG", body, { hint: opts.hint });
     this.issues = issues;
     this.name = "ConfigValidationError";
   }
@@ -121,8 +122,23 @@ export function deriveBasePort(project: string): number {
  * `repo` is an already-validated `.testlane.toml` layer, merged under the
  * user file (§5.7); without it the user file is loaded on its own.
  */
-export function loadProject(configDir: string, name: string, defaults: Defaults, repo?: RawRepo): ProjectConfig {
-  return loadProjectWithSources(configDir, name, defaults, repo).project;
+export interface LoadOptions {
+  /**
+   * Leave `default_command` unchecked. Only `config trust` uses it: the command
+   * it names may come from the repo file being approved, and the gate checks
+   * the user file merged with that file before it records anything (§5.7).
+   */
+  deferDefaultCommand?: boolean;
+}
+
+export function loadProject(
+  configDir: string,
+  name: string,
+  defaults: Defaults,
+  repo?: RawRepo,
+  opts: LoadOptions = {},
+): ProjectConfig {
+  return loadProjectWithSources(configDir, name, defaults, repo, opts).project;
 }
 
 export interface LoadedProject {
@@ -137,6 +153,7 @@ export function loadProjectWithSources(
   name: string,
   defaults: Defaults,
   repo?: RawRepo,
+  opts: LoadOptions = {},
 ): LoadedProject {
   const label = `${name}.toml`;
   const file = projectFilePath(configDir, name);
@@ -196,7 +213,7 @@ export function loadProjectWithSources(
       issues.push({
         file: fileOf("setup.seed_files"),
         path: `setup.seed_files.${i}`,
-        message: `must be a relative path with no '..' segments (got '${rel}')`,
+        message: printableLine(`must be a relative path with no '..' segments (got '${rel}')`),
       });
     }
   });
@@ -205,11 +222,11 @@ export function loadProjectWithSources(
   const commandNames = Object.keys(p.commands ?? {});
   const defaultCommand = p.default_command ?? defaults.defaultCommand ?? "code";
   const validTargets = new Set<string>([...DEFAULT_COMMAND_VERBS, ...commandNames]);
-  if (!validTargets.has(defaultCommand)) {
+  if (!opts.deferDefaultCommand && !validTargets.has(defaultCommand)) {
     issues.push({
       file: fileOf("default_command"),
       path: "default_command",
-      message: `unknown command '${defaultCommand}'; expected a verb or one of [${commandNames.join(", ")}]`,
+      message: printableLine(`unknown command '${defaultCommand}'; expected a verb or one of [${commandNames.join(", ")}]`),
     });
   }
 
@@ -308,8 +325,25 @@ export function loadEffectiveProjectWithSources(
 ): LoadedProject & { approval?: RepoApproval; snapshotError?: ConfigValidationError } {
   // An invalid name never reaches the state dir; loadProject reports it.
   const snap = readSnapshot(name, PROJECT_NAME_RE.test(name) ? readRepoApproval(name) : undefined);
+  let loaded: LoadedProject;
+  try {
+    loaded = loadProjectWithSources(configDir, name, defaults, snap.layer);
+  } catch (e) {
+    // With no approved repo file, a user `default_command` may name one of its
+    // commands that isn't approved yet (§5.7): point at the way to approve it.
+    const label = `${name}.toml`;
+    if (
+      !snap.layer &&
+      e instanceof ConfigValidationError &&
+      !e.hint &&
+      e.issues.some((i) => i.file === label && i.path === "default_command")
+    ) {
+      throw new ConfigValidationError(e.issues, { hint: `testlane config trust ${name}` });
+    }
+    throw e;
+  }
   return {
-    ...loadProjectWithSources(configDir, name, defaults, snap.layer),
+    ...loaded,
     approval: snap.layer ? snap.approval : undefined,
     snapshotError: snap.error,
   };

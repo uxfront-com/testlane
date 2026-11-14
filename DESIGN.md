@@ -192,7 +192,7 @@ Ref disambiguators (workspace commands only): `--pr <n>`, `--branch <name>`, `--
 
 ### 5.1 Discovery
 
-Config directory resolution order: `--config-dir` flag → `TESTLANE_CONFIG_DIR` env → `~/.testlane` (default). Testlane 2.x also falls back to the 1.x variable and directory, with a warning (§5.6). If the directory does not exist, every command except `help`/`version`/`doctor`/`completions`/`setup`/`config path` and `config add <url>` fails with exit 3 and a hint to create it.
+Config directory resolution order: `--config-dir` flag → `TESTLANE_CONFIG_DIR` env → `~/.testlane` (default). Testlane 2.x also falls back to the 1.x variable and directory, with a warning (§5.6). If the directory does not exist, every command except `help`/`version`/`doctor`/`completions`/`setup`/`mcp`/bare `config`/`config path` and `config add <url>` fails with exit 3 and a hint to create it.
 
 ### 5.2 Layout
 
@@ -344,9 +344,9 @@ Validation is aggregate, as in §5.4, and every issue names the file as `<projec
 - `--yes` approves without asking. With stdin not a TTY and no `--yes`, the run fails with `E_CONFIG`: `<project>:.testlane.toml is not trusted` (first use) or `<project>:.testlane.toml changed since you trusted it`, both with `hint: testlane config trust <project>`.
 - Declining on first use runs the user file on its own. Declining a change keeps the version approved before.
 - A stored approval that no longer matches its sha256 or no longer validates (a hand-edited state file, or a schema change) counts as none: commands that only read config use the user file alone, the gate asks again as on first use, and `config validate` and `doctor` report it.
-- Every value, file and diff the gate shows has its control characters (C0, C1, DEL) and bidi controls escaped, like `\r` or `\u001b`, so the file can't repaint or reorder the lines you approve from.
+- Every value, file and diff the gate shows has its control characters (C0, C1, DEL) and bidi controls escaped, like `\r` or `\u001b`, so the file can't repaint or reorder the lines you approve from. The same goes for each issue the repo file's validation reports, TOML parse errors included, since they quote the file before anything is approved.
 - A file removed upstream drops the stored approval, with one `→` line.
-- Repo commands are known at parse time only once approved, so `testlane app 12 dev` reads `dev` as a ref until then. Run `config add <url>` or `config trust <project>` first. `run`/`start` check the command again after the gate, and an approved change that drops it is `E_USAGE`.
+- Repo commands are known at parse time only once approved. Until then, `testlane app dev` reads `dev` as a ref, and `testlane app 12 dev` fails with `E_USAGE` (unknown command). Run `config add <url>` or `config trust <project>` first. `run`/`start` check the command again after the gate, and an approved change that drops it is `E_USAGE`.
 
 **Merge.** The user file wins.
 
@@ -358,7 +358,9 @@ Validation is aggregate, as in §5.4, and every issue names the file as `<projec
 | `[commands]` | Merged by name; a user command replaces the whole repo command, `cwd` and `env` included. |
 | `[hooks]` | Merged per hook name. |
 
-Precedence for a key is: the user file, then the repo file, then `defaults.toml`, then the built-in default. Only `default_command` exists in both the repo file and `defaults.toml`, so a repo `default_command` beats the user's `defaults.toml` one. A user `default_command` may name a repo command. A project without a repo file behaves exactly as before.
+Precedence for a key is: the user file, then the repo file, then `defaults.toml`, then the built-in default. Only `default_command` exists in both the repo file and `defaults.toml`, so a repo `default_command` beats the user's `defaults.toml` one. A project without a repo file behaves exactly as before.
+
+A user `default_command` may name a repo command. Until that file is approved, the project fails to load with `E_CONFIG` and `hint: testlane config trust <project>`. `config trust` leaves that check to the file it approves: it records the file only if the user file merged with it validates, and otherwise fails with `E_CONFIG` and every issue.
 
 ---
 
@@ -366,7 +368,7 @@ Precedence for a key is: the user file, then the repo file, then `defaults.toml`
 
 ### 6.1 Input → RefSpec
 
-Parsed in this order (first match wins). Disambiguator flags (`--pr`, `--branch`, `--path`) bypass parsing entirely.
+Parsed in this order (first match wins). Disambiguator flags (`--pr`, `--branch`, `--path`) bypass the table. `--branch` still refuses a name that row 6 would refuse with `E_RESOLVE`, so git can never read it as an option or a refspec.
 
 | # | Pattern | RefSpec | Example |
 |---|---|---|---|
@@ -375,7 +377,7 @@ Parsed in this order (first match wins). Disambiguator flags (`--pr`, `--branch`
 | 3 | `^#?\\d+$` | `{ kind: "pr", number }` | `19234`, `#19234` |
 | 4 | `^pr/(\\d+)$` (case-insensitive) | `{ kind: "pr", number }` | `pr/19234` |
 | 5 | `^[0-9a-f]{40}$` | `{ kind: "commit", sha }` (M2) | full SHA |
-| 6 | anything else valid per `git check-ref-format --branch` | `{ kind: "branch", name }` | `ai/fix-canvas-drag` |
+| 6 | anything else valid per `git check-ref-format --branch`, not starting with `-` or `+`, and not `head` in any case | `{ kind: "branch", name }` | `ai/fix-canvas-drag` |
 | 7 | otherwise | exit 4, `E_RESOLVE` with the failed pattern | — |
 
 Notes: short SHAs are deliberately *not* auto-detected (ambiguous with hex-ish branch names) — commit refs require the full 40 chars or a future `--commit` flag. URL-form refs are extracted during classification (§4.3) and produce `pr` or `branch` RefSpecs.
@@ -432,9 +434,11 @@ Default branch detection: `git ls-remote --symref origin HEAD` → cache in stat
 Branch ref:
 
 ```bash
-git -C <repo_path> fetch origin <name> --no-tags
+git -C <repo_path> fetch --no-tags origin --end-of-options +refs/heads/<name>:refs/remotes/origin/<name>
 git -C <repo_path> worktree add <worktrees_path>/<slug> -B <name> --track origin/<name>
 ```
+
+On a filesystem that ignores case (git sets `core.ignorecase` there), `refs/remotes/origin/Main` is the same file as `refs/remotes/origin/main`. So a name that differs from an existing `origin/*` ref only in case or Unicode normalization is refused with `E_RESOLVE` before the fetch.
 
 If the branch is already checked out in another Testlane worktree, git refuses; catch that error and re-point the user at the existing workspace path (this is the dedupe path — normally the slug lookup in state short-circuits earlier).
 
@@ -500,7 +504,8 @@ ensureWorkspace(project, refSpec, opts { setup: boolean }):
   3. state = loadState(project)
   4. if state.workspaces[slug] exists and its path exists on disk:
        ws = it                                     # fast path — no network
-       (--fetch) re-fetch; trust gate (§5.7)
+       (--fetch) re-fetch
+       trust gate (§5.7)                           # on every call, with or without --fetch
      else:
        ensure primary repo initialized (§7.1)
        fetch the ref (§7.2)

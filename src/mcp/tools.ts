@@ -7,7 +7,7 @@ import { existsSync } from "node:fs";
 import { z } from "zod";
 import { TestlaneError, configError, usage } from "../lib/errors.ts";
 import { Logger, type LogLevel, type Sink } from "../lib/log.ts";
-import { loadDefaults, loadProject } from "../config/load.ts";
+import { loadDefaults, loadEffectiveProject } from "../config/load.ts";
 import { parseRef, refFromDisambiguator, type RefSpec } from "../core/resolve.ts";
 import { RealGhClient, type GhClient } from "../git/gh.ts";
 import type { Ctx, GlobalFlags } from "../config/schema.ts";
@@ -177,7 +177,7 @@ const ADDITIVE = { readOnlyHint: false, destructiveHint: false };
 const DESTRUCTIVE = { readOnlyHint: false, destructiveHint: true };
 
 function project(env: CallEnv, args: Record<string, unknown>) {
-  return loadProject(env.ctx.configDir, args.project as string, env.ctx.defaults);
+  return loadEffectiveProject(env.ctx.configDir, args.project as string, env.ctx.defaults);
 }
 
 function refOf(args: Record<string, unknown>): RefSpec {

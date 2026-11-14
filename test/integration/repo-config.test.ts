@@ -687,3 +687,155 @@ describe("config add: names, leftovers and rollback", () => {
     expect(readFileSync(join(env.configDir, "defaults.toml"), "utf8")).toBe(`editor = "zed"\n`);
   });
 });
+
+describe("integration review fixes", () => {
+  const originMain = () =>
+    spawnSync("git", ["-C", env.repoPath("app"), "rev-parse", "refs/remotes/origin/main"], { encoding: "utf8" }).stdout.trim();
+
+  it("C11 — a crafted branch ref exits 4 and can't move origin/main to a PR's head", async () => {
+    origin.commit("feature", { "f.txt": "f\n" });
+    origin.commit("evil", { ".testlane.toml": `[hooks]\npost_checkout = "echo pwned > {data_dir}/../PWNED.txt"\n` });
+    origin.makePr(7, "evil");
+    expect((await env.run(["--yes", "app", "main", "checkout"])).code).toBe(0);
+    const before = originMain();
+    expect(before).toMatch(/^[0-9a-f]{40}$/);
+
+    const r = await env.run(["app", "--branch", "+refs/pull/7/head:refs/remotes/origin/main", "checkout"]);
+    expect(r.code, r.stderr).toBe(4);
+    expect(r.stderr).toContain("error(E_RESOLVE)");
+    expect(originMain()).toBe(before);
+
+    const next = await env.run(["--yes", "app", "feature", "checkout"]);
+    expect(next.code, next.stderr).toBe(0);
+    expect(existsSync(join(env.worktreesPath("app"), ".data", "PWNED.txt"))).toBe(false);
+    expect(state()!.repoConfig!.content).toBe(MAIN_FILE);
+  });
+
+  it("C11 — --dry-run prints the explicit refspec the real fetch runs", async () => {
+    const r = await env.run(["--dry-run", "app", "--branch", "feature/x", "checkout"]);
+    expect(r.code, r.stderr).toBe(0);
+    expect(r.stdout).toContain("fetch --no-tags origin --end-of-options +refs/heads/feature/x:refs/remotes/origin/feature/x");
+  });
+
+  it("C13 — control characters in repo file errors are escaped", async () => {
+    // A key the schema refuses, so its path is quoted in the issue.
+    origin.commit("main", { ".testlane.toml": `[env]\n"\\u001b]0;HIJACK\\u0007\\u001b[2K" = 1\n` });
+    const keyed = await env.run(["app", "main", "checkout"]);
+    // A raw ESC on a line the parser quotes.
+    origin.commit("main", { ".testlane.toml": `[env\n\u001b[2K = "x"\n` });
+    const parsed = await env.run(["app", "main", "checkout"]);
+
+    for (const r of [keyed, parsed]) {
+      expect(r.code, r.stderr).toBe(3);
+      expect(r.stderr).toContain("app:.testlane.toml");
+      expect(r.stderr).not.toContain("\u001b");
+      expect(r.stderr).not.toContain("\u0007");
+      expect(r.stderr).toContain("\\u001b");
+    }
+    expect(parsed.stderr).toContain("TOML parse error");
+    expect(state()?.repoConfig).toBeUndefined();
+  });
+
+  it("C14 — default_command names a repo command: trust approves it", async () => {
+    const withSrv = `[commands.srv]\nrun = "echo srv"\n` + MAIN_FILE;
+    origin.commit("main", { ".testlane.toml": withSrv });
+    env = makeEnv(tmp, { app: { repo: origin.url, defaultBranch: "main", extraToml: `default_command = "srv"` } });
+
+    const before = await env.run(["app", "main", "checkout"]);
+    expect(before.code, before.stderr).toBe(3);
+    expect(before.stderr).toContain("default_command");
+    expect(before.stderr).toContain("hint: testlane config trust app");
+
+    const trust = await env.run(["--yes", "config", "trust", "app"]);
+    expect(trust.code, trust.stderr).toBe(0);
+    expect(state()!.repoConfig!.content).toBe(withSrv);
+
+    const after = await env.run(["app", "main", "checkout"]);
+    expect(after.code, after.stderr).toBe(0);
+  });
+
+  it("C14 — default_command names a command the tip lacks: trust records nothing", async () => {
+    env = makeEnv(tmp, { app: { repo: origin.url, defaultBranch: "main", extraToml: `default_command = "srv"` } });
+
+    const trust = await env.run(["--yes", "config", "trust", "app"]);
+    expect(trust.code).toBe(3);
+    expect(trust.stderr).toContain("error(E_CONFIG)");
+    expect(trust.stderr).toContain("default_command");
+    expect(state()?.repoConfig).toBeUndefined();
+  });
+
+  it("C14 — with no repo file, trust still reports the user's unknown default_command", async () => {
+    origin.remove("main", [".testlane.toml"]);
+    env = makeEnv(tmp, { app: { repo: origin.url, defaultBranch: "main", extraToml: `default_command = "srv"` } });
+
+    const trust = await env.run(["--yes", "config", "trust", "app"]);
+    expect(trust.code).toBe(3);
+    expect(trust.stderr).toContain("default_command");
+    expect(state()?.repoConfig).toBeUndefined();
+  });
+});
+
+describe("a crafted branch ref named HEAD", () => {
+  const originMain = () =>
+    spawnSync("git", ["-C", env.repoPath("app"), "rev-parse", "refs/remotes/origin/main"], { encoding: "utf8" }).stdout.trim();
+
+  it("C11 — a crafted branch ref: HEAD on origin can't move origin/main through the origin/HEAD symref", async () => {
+    origin.commit("feature", { "f.txt": "f\n" });
+    const evil = origin.commit("evil", { ".testlane.toml": `[hooks]\npost_checkout = "echo pwned > {data_dir}/../PWNED.txt"\n` });
+    expect((await env.run(["--yes", "app", "main", "checkout"])).code).toBe(0);
+    spawnSync("git", ["-C", origin.path, "update-ref", "refs/heads/HEAD", evil]);
+    const before = originMain();
+
+    for (const argv of [
+      ["app", "--branch", "HEAD", "checkout"],
+      ["app", "HEAD", "checkout"],
+    ]) {
+      const r = await env.run(argv);
+      expect(r.code, `${argv.join(" ")}: ${r.stderr}`).toBe(4);
+      expect(originMain()).toBe(before);
+    }
+
+    const next = await env.run(["--yes", "app", "feature", "checkout"]);
+    expect(next.code, next.stderr).toBe(0);
+    expect(existsSync(join(env.worktreesPath("app"), ".data", "PWNED.txt"))).toBe(false);
+    expect(state()!.repoConfig!.content).toBe(MAIN_FILE);
+  });
+});
+
+describe("a crafted branch ref that differs from origin/main only in case", () => {
+  const originMain = () =>
+    spawnSync("git", ["-C", env.repoPath("app"), "rev-parse", "refs/remotes/origin/main"], { encoding: "utf8" }).stdout.trim();
+  const ignoresCase = () =>
+    spawnSync("git", ["-C", env.repoPath("app"), "config", "--bool", "core.ignorecase"], { encoding: "utf8" }).stdout.trim() ===
+    "true";
+
+  it("C11 — a crafted branch ref like Main or head can't move origin/main on a case-insensitive filesystem", async () => {
+    origin.commit("feature", { "f.txt": "f\n" });
+    const evil = origin.commit("evil", { ".testlane.toml": `[hooks]\npost_checkout = "echo pwned > {data_dir}/../PWNED.txt"\n` });
+    // Approve without a `main` workspace, whose slug a case variant would reuse.
+    expect((await env.run(["--yes", "config", "trust", "app"])).code).toBe(0);
+    // A case-sensitive origin, like GitHub's, even on this disk: reftable keeps refs in
+    // one file. Where git can't migrate, the disk is case-sensitive in practice (Linux).
+    spawnSync("git", ["-C", origin.path, "refs", "migrate", "--ref-format=reftable"]);
+    for (const name of ["Main", "MAIN", "head", "Head"]) {
+      expect(spawnSync("git", ["-C", origin.path, "update-ref", `refs/heads/${name}`, evil]).status).toBe(0);
+    }
+    const before = originMain();
+
+    for (const name of ["Main", "MAIN", "head", "Head"]) {
+      const r = await env.run(["app", "--branch", name, "checkout"]);
+      expect(originMain(), name).toBe(before);
+      // `head` is refused everywhere. A case variant of an existing branch is refused
+      // where the filesystem would make it the same ref.
+      if (/^head$/i.test(name) || ignoresCase()) {
+        expect(r.code, `${name}: ${r.stderr}`).toBe(4);
+        expect(r.stderr).toContain("error(E_RESOLVE)");
+      }
+    }
+
+    const next = await env.run(["--yes", "app", "feature", "checkout"]);
+    expect(next.code, next.stderr).toBe(0);
+    expect(existsSync(join(env.worktreesPath("app"), ".data", "PWNED.txt"))).toBe(false);
+    expect(state()!.repoConfig!.content).toBe(MAIN_FILE);
+  });
+});

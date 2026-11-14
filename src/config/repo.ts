@@ -4,6 +4,7 @@
 import { parse as parseToml } from "smol-toml";
 import { RawRepoSchema, USER_ONLY_MESSAGE, type RawProject, type RawRepo } from "./schema.ts";
 import { ConfigValidationError } from "./load.ts";
+import { printableLine, printableLines } from "../lib/printable.ts";
 
 /** The file a repo commits at its root. */
 export const REPO_FILE = ".testlane.toml";
@@ -23,15 +24,20 @@ export function parseRepoConfig(project: string, text: string): RawRepo {
   try {
     raw = parseToml(text);
   } catch (e) {
-    throw new ConfigValidationError([{ file, path: "(root)", message: `TOML parse error: ${(e as Error).message}` }]);
+    // The parser quotes the file's lines, and nothing in it is approved yet (§5.7).
+    const message = printableLines(`TOML parse error: ${(e as Error).message}`);
+    throw new ConfigValidationError([{ file, path: "(root)", message }]);
   }
   const parsed = RawRepoSchema.safeParse(raw);
   if (!parsed.success) {
     throw new ConfigValidationError(
       parsed.error.issues.map((issue) => ({
         file,
-        path: issue.path.length ? issue.path.join(".") : "(root)",
-        message: issue.message === USER_ONLY_MESSAGE ? issue.message.replace("<project>", project) : issue.message,
+        // Keys and messages can quote the file, so escape what a terminal would act on.
+        path: printableLine(issue.path.length ? issue.path.join(".") : "(root)"),
+        message: printableLine(
+          issue.message === USER_ONLY_MESSAGE ? issue.message.replace("<project>", project) : issue.message,
+        ),
       })),
     );
   }

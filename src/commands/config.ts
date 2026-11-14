@@ -17,6 +17,7 @@ import {
   PROJECT_NAME_RULE,
   projectExists,
   projectFilePath,
+  readSnapshot,
   validateAll,
 } from "../config/load.ts";
 import { REPO_FILE } from "../config/repo.ts";
@@ -25,7 +26,7 @@ import { defaultProjectTemplate, tomlString } from "../lib/project-template.ts";
 import { resolveEditor } from "../core/editor.ts";
 import { parseUrlInput } from "../core/resolve.ts";
 import { acquireLock, loadState, saveState } from "../core/state.ts";
-import { repoConfigBranch, trustGate } from "../core/trust.ts";
+import { repoConfigBranch, trustGate, validApproval } from "../core/trust.ts";
 import {
   bareCloneArgv,
   detectDefaultBranch,
@@ -253,8 +254,9 @@ function tomlView(p: ProjectConfig): Record<string, unknown> {
  */
 async function trust(ctx: Ctx, name: string): Promise<number> {
   // The user file alone: the snapshot is what this command replaces, so a stale
-  // or broken one must not stop it.
-  const project = loadProject(ctx.configDir, name, ctx.defaults);
+  // or broken one must not stop it. Its `default_command` may name a command
+  // from the file this approves, so the check waits for that file (§5.7).
+  const project = loadProject(ctx.configDir, name, ctx.defaults, undefined, { deferDefaultCommand: true });
   if (ctx.flags.dryRun) {
     throw usage("config trust does not support --dry-run", `inspect the file with \`git show origin/<branch>:${REPO_FILE}\``);
   }
@@ -270,6 +272,11 @@ async function trust(ctx: Ctx, name: string): Promise<number> {
     const state = loadState(name);
     const result = await trustGate(ctx, project, state, { explicit: true });
     if (result.stateChanged) saveState(name, state);
+    // The deferred check. The gate checked a file it approves before recording
+    // it; with nothing new approved, the user file must load with what is.
+    if (result.outcome !== "approved" && result.outcome !== "declined") {
+      loadProject(ctx.configDir, name, ctx.defaults, readSnapshot(name, validApproval(state.repoConfig)).layer);
+    }
     return ExitCode.SUCCESS;
   } finally {
     lock.release();
