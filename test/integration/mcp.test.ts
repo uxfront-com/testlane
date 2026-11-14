@@ -791,3 +791,32 @@ describe("a crafted branch ref named HEAD, over MCP", () => {
     expect(await c.close()).toBe(0);
   });
 });
+
+describe("a crafted branch ref that differs from origin/main only in case, over MCP", () => {
+  it("C11 — checkout of Main or head leaves origin/main where it was", async () => {
+    origin.commit("main", { ".testlane.toml": `[hooks]\npost_checkout = "echo main > {data_dir}/hook.txt"\n` });
+    const evil = origin.commit("evil", { ".testlane.toml": `[hooks]\npost_checkout = "echo pwned > {data_dir}/../PWNED.txt"\n` });
+    const env = makeMcpEnv({ app: "" });
+    expect((await env.run(["--yes", "config", "trust", "app"])).code).toBe(0);
+    // A case-sensitive origin even on a case-insensitive disk (see repo-config.test.ts).
+    spawnSync("git", ["-C", origin.path, "refs", "migrate", "--ref-format=reftable"]);
+    for (const name of ["Main", "head"]) {
+      expect(spawnSync("git", ["-C", origin.path, "update-ref", `refs/heads/${name}`, evil]).status).toBe(0);
+    }
+    const git = (...args: string[]) => spawnSync("git", ["-C", env.repoPath("app"), ...args], { encoding: "utf8" }).stdout.trim();
+    const before = git("rev-parse", "refs/remotes/origin/main");
+    const ignoresCase = git("config", "--bool", "core.ignorecase") === "true";
+
+    const c = connect(env);
+    await c.initialize();
+    for (const args of [{ ref: "Main", kind: "branch" }, { ref: "Main" }, { ref: "head", kind: "branch" }, { ref: "head" }]) {
+      const r = await c.call("checkout", { project: "app", ...args });
+      expect(git("rev-parse", "refs/remotes/origin/main"), JSON.stringify(args)).toBe(before);
+      if (args.ref === "head" || ignoresCase) {
+        expect(r.isError, JSON.stringify(r.value)).toBe(true);
+        expect(r.value.error).toMatchObject({ errCode: "E_RESOLVE", exitCode: 4 });
+      }
+    }
+    expect(await c.close()).toBe(0);
+  });
+});

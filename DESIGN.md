@@ -377,7 +377,7 @@ Parsed in this order (first match wins). Disambiguator flags (`--pr`, `--branch`
 | 3 | `^#?\\d+$` | `{ kind: "pr", number }` | `19234`, `#19234` |
 | 4 | `^pr/(\\d+)$` (case-insensitive) | `{ kind: "pr", number }` | `pr/19234` |
 | 5 | `^[0-9a-f]{40}$` | `{ kind: "commit", sha }` (M2) | full SHA |
-| 6 | anything else valid per `git check-ref-format --branch`, not starting with `-` or `+` | `{ kind: "branch", name }` | `ai/fix-canvas-drag` |
+| 6 | anything else valid per `git check-ref-format --branch`, not starting with `-` or `+`, and not `head` in any case | `{ kind: "branch", name }` | `ai/fix-canvas-drag` |
 | 7 | otherwise | exit 4, `E_RESOLVE` with the failed pattern | — |
 
 Notes: short SHAs are deliberately *not* auto-detected (ambiguous with hex-ish branch names) — commit refs require the full 40 chars or a future `--commit` flag. URL-form refs are extracted during classification (§4.3) and produce `pr` or `branch` RefSpecs.
@@ -437,6 +437,8 @@ Branch ref:
 git -C <repo_path> fetch --no-tags origin --end-of-options +refs/heads/<name>:refs/remotes/origin/<name>
 git -C <repo_path> worktree add <worktrees_path>/<slug> -B <name> --track origin/<name>
 ```
+
+On a filesystem that ignores case (git sets `core.ignorecase` there), `refs/remotes/origin/Main` is the same file as `refs/remotes/origin/main`. So a name that differs from an existing `origin/*` ref only in case or Unicode normalization is refused with `E_RESOLVE` before the fetch.
 
 If the branch is already checked out in another Testlane worktree, git refuses; catch that error and re-point the user at the existing workspace path (this is the dedupe path — normally the slug lookup in state short-circuits earlier).
 

@@ -107,9 +107,43 @@ export async function detectDefaultBranch(g: GitEnv): Promise<string | undefined
 /** Fetch a branch's remote-tracking ref (§7.2). */
 export async function fetchBranch(g: GitEnv, name: string): Promise<void> {
   const argv = fetchBranchArgv(g.repoPath, name);
+  await refuseCaseCollision(g, name);
   g.log.step(`fetching origin/${name}`);
   const res = await runGit(g, argv, { allowFailure: true });
   if (res.code !== 0) throw classifyFetchError(res.stderr, `branch '${name}'`);
+}
+
+/** How a case- and normalization-insensitive filesystem (APFS, NTFS) compares names. */
+function foldName(name: string): string {
+  return name.normalize("NFD").toLowerCase();
+}
+
+/**
+ * On a filesystem that ignores case (git sets `core.ignorecase` when it creates
+ * the repo), `refs/remotes/origin/Main` is the same file as `.../main`, so a
+ * forced fetch of `Main` would move `origin/main`. Refuse a name that differs
+ * from an existing remote-tracking ref only in case or Unicode normalization.
+ */
+async function refuseCaseCollision(g: GitEnv, name: string): Promise<void> {
+  if (g.dryRun || !isInitialized(g.repoPath)) return;
+  const ignoreCase = await runGit(g, ["git", "-C", g.repoPath, "config", "--bool", "core.ignorecase"], {
+    read: true,
+    allowFailure: true,
+  });
+  if (ignoreCase.stdout.trim() !== "true") return;
+  const prefix = "refs/remotes/origin/";
+  const refs = await runGit(g, ["git", "-C", g.repoPath, "for-each-ref", "--format=%(refname)", prefix], { read: true });
+  const want = foldName(name);
+  const clash = refs.stdout
+    .split("\n")
+    .map((ref) => ref.slice(prefix.length))
+    .find((other) => other !== "" && other !== name && foldName(other) === want);
+  if (clash !== undefined) {
+    throw resolveError(
+      `branch '${name}' differs only in case from origin/${clash}`,
+      "this filesystem ignores case in ref names, so fetching it would overwrite that ref",
+    );
+  }
 }
 
 /** Force-fetch a PR head into a local `pr/<n>` branch (§7.2). */

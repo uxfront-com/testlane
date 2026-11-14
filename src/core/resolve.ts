@@ -72,9 +72,10 @@ export function isValidBranchName(name: string): boolean {
   if (name.startsWith("-")) return false;
   // In `git fetch`, a leading `+` makes a forced refspec.
   if (name.startsWith("+")) return false;
-  // git refuses it as a branch name, and `refs/remotes/origin/HEAD` is a symref
-  // to origin's default branch: a forced fetch into it would move that branch.
-  if (name === "HEAD") return false;
+  // `refs/remotes/origin/HEAD` is a symref to origin's default branch, so a
+  // forced fetch into it moves that branch. git refuses `HEAD` itself, and on a
+  // case-insensitive filesystem `head` or `Head` is the same file.
+  if (/^head$/i.test(name)) return false;
   if (name.startsWith("/") || name.endsWith("/")) return false;
   if (name.startsWith(".") || name.endsWith(".")) return false;
   if (name.endsWith(".lock")) return false;

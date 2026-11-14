@@ -168,6 +168,11 @@ describe("branch disambiguator: HEAD is not a branch name", () => {
     expect(() => fetchBranchArgv("/r", "HEAD")).toThrow(/not a valid branch name/);
     expect(parseUrlInput("https://github.com/acme/app/tree/HEAD")?.ref).toBeUndefined();
     // Only the exact name: these stay ordinary branches.
-    for (const ok of ["head", "HEADS", "feature/HEAD", "HEAD-x"]) expect(isValidBranchName(ok), ok).toBe(true);
+    // Any case: on a case-insensitive filesystem `head` is the same file as `HEAD`.
+    for (const bad of ["head", "Head", "hEaD"]) {
+      expect(isValidBranchName(bad), bad).toBe(false);
+      expect(() => refFromDisambiguator("branch", bad), bad).toThrow(/--branch expects a branch name/);
+    }
+    for (const ok of ["HEADS", "heads", "feature/HEAD", "HEAD-x"]) expect(isValidBranchName(ok), ok).toBe(true);
   });
 });
