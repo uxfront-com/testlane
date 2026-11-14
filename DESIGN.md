@@ -358,7 +358,9 @@ Validation is aggregate, as in §5.4, and every issue names the file as `<projec
 | `[commands]` | Merged by name; a user command replaces the whole repo command, `cwd` and `env` included. |
 | `[hooks]` | Merged per hook name. |
 
-Precedence for a key is: the user file, then the repo file, then `defaults.toml`, then the built-in default. Only `default_command` exists in both the repo file and `defaults.toml`, so a repo `default_command` beats the user's `defaults.toml` one. A user `default_command` may name a repo command. Until that file is approved, the project fails to load with `E_CONFIG` and `hint: testlane config trust <project>`. `config trust` leaves that check to the file it approves: it records the file only if the user file merged with it validates, and otherwise fails with `E_CONFIG` and every issue. A project without a repo file behaves exactly as before.
+Precedence for a key is: the user file, then the repo file, then `defaults.toml`, then the built-in default. Only `default_command` exists in both the repo file and `defaults.toml`, so a repo `default_command` beats the user's `defaults.toml` one. A project without a repo file behaves exactly as before.
+
+A user `default_command` may name a repo command. Until that file is approved, the project fails to load with `E_CONFIG` and `hint: testlane config trust <project>`. `config trust` leaves that check to the file it approves: it records the file only if the user file merged with it validates, and otherwise fails with `E_CONFIG` and every issue.
 
 ---
 
