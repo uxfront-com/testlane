@@ -43,6 +43,9 @@ export const REDIRECTS: Record<string, string> = {
 	),
 	"/docs/guides/script-with-uxd": SCRIPTING_GUIDE,
 	[`${OLD_PREFIX}/guides/script-with-uxd`]: SCRIPTING_GUIDE,
+	// The upgrade guide moved to the README, which the Installation page links
+	// to. The old prefix forwards here too, through the splat above.
+	"/docs/getting-started/upgrading-from-uxd": "/docs/getting-started/installation",
 };
 
 /**
