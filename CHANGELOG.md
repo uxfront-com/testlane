@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.1.0
+
+### Minor Changes
+
+- 87a665c: Add a docs guide, "Use Testlane from an Agent", for AI coding agents that drive Testlane. It lists the commands to call to check out a ref, start a command, read its logs, stop it and remove the workspace, the `--json` fields to read, how to handle each exit code and which interactive commands to avoid. It ends with a block to paste into `AGENTS.md` or `CLAUDE.md`. The CLI itself is unchanged.
+- 9cf6e40: Add `testlane mcp`, an MCP server over stdio with no new dependency, so an AI agent can check out a ref, start a command, read its logs, stop it and remove the workspace through typed tools instead of parsing the CLI's output. Its twelve tools (`projects`, `doctor`, `config_validate`, `list`, `ps`, `info`, `diff`, `logs`, `checkout`, `start`, `stop` and `rm`) call the same code as their commands and return the same JSON as `--json`, and `checkout` and `start` send progress and take a `timeout`. Connect it with `claude mcp add testlane -- testlane mcp`. A project named `mcp` can now only be reached by its repository URL, and a branch ref can no longer start with `-`, which git would read as an option.
+
+### Patch Changes
+
+- 0e9966f: Rewrite the README so it reads in one sitting, with the depth left to [testlane.dev](https://testlane.dev). Each of the three verb groups is now a table, the project file's keys are in a table too, and every section links to its page on the site. It still lists every exit code, global flag and template variable, and keeps the steps for upgrading from uxd. The CLI itself is unchanged.
+- 3b7fa9f: Point the README's documentation link at [testlane.dev](https://testlane.dev), since the old address no longer resolves.
+
 ## 2.0.0
 
 ### Major Changes
