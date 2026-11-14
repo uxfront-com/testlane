@@ -88,14 +88,14 @@ Workers Builds reads these settings from the Cloudflare dashboard, under the Wor
 | Root directory               | `/`                                                                               |
 | Build command                | `NODE_OPTIONS=--max-old-space-size=4096 pnpm --filter @uxfront/docs run generate` |
 | Deploy command               | `npx wrangler deploy`                                                             |
-| Non-production branch builds | on, with the default deploy command (`npx wrangler versions upload`)              |
+| Non-production branch builds | on, with the deploy command `npx wrangler preview`                                |
 | Build variables              | none                                                                              |
 | Custom domain                | `testlane.dev`                                                                    |
 
 Here's how the pieces fit:
 
 - **The build is static.** Workers Builds sets `WORKERS_CI`, and `nuxt.config.ts` then defaults `NITRO_PRESET` to `cloudflare_pages_static`. `nuxt generate` prerenders every page into `apps/docs/dist`, with `_headers`, `_redirects`, `404.html` and the content database dumps that the pages query in the browser. Set `NITRO_PRESET` yourself to build another preset there.
-- **`wrangler.jsonc` sits at the repository root**, because the deploy command runs from the root. It serves `apps/docs/dist` as static assets, with no Worker script, and answers unknown paths with the 404 page. Wrangler's `versions upload` stops without its `previews` block, so the block stays, even though it's empty.
+- **`wrangler.jsonc` sits at the repository root**, because the deploy command runs from the root. It serves `apps/docs/dist` as static assets, with no Worker script, and answers unknown paths with the 404 page. `wrangler preview` stops without its `previews` block, so the block stays, even though it's empty.
 - **`modules/workers-redirects.ts` rewrites `_redirects` after the build**, because Nitro writes two rules that Workers handle wrongly. It removes the `/* /404.html 404` rule, which Workers reject, failing the whole upload. It also turns a target like `/docs/uxd/cli/**` into `/docs/uxd/cli/:splat`, since Workers read `**` as part of the path and forward the matched part only through `:splat`. Its test is `test/workers-redirects.test.ts`.
 
 A static site has no server, so one feature of the server build doesn't run on Cloudflare: the layer's redirect from `/` to `/llms.txt` for `curl` and for requests that accept `text/markdown`.
@@ -107,7 +107,7 @@ WORKERS_CI=1 NODE_OPTIONS=--max-old-space-size=4096 pnpm --filter @uxfront/docs 
 npx wrangler dev
 ```
 
-Keep in mind that `wrangler dev` only serves your machine. Never run `wrangler deploy` or `wrangler versions upload` by hand, since each one changes the live Worker.
+Keep in mind that `wrangler dev` only serves your machine. Never run `wrangler deploy` or `wrangler preview` by hand, since each one uploads to the live Worker.
 
 ### Other hosts
 
