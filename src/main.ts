@@ -35,6 +35,7 @@ import { sync } from "./commands/sync.ts";
 import { start, stop, logs, ps } from "./commands/lifecycle.ts";
 import { diff } from "./commands/diff.ts";
 import { completions } from "./commands/completions.ts";
+import { mcp } from "./commands/mcp.ts";
 
 export interface MainOptions {
   /** Injectable GitHub client; tests pass `unavailableGh` so gh is never spawned. */
@@ -165,6 +166,8 @@ function isExemptFromConfigDir(result: ParseResult): boolean {
   if (result.kind !== "top") return false;
   if (result.verb === "help" || result.verb === "version" || result.verb === "doctor") return true;
   if (result.verb === "completions") return true;
+  // `mcp` starts without a config dir. Each tool but `doctor` checks it per call (ADR-003).
+  if (result.verb === "mcp") return true;
   // `setup` creates the config dir, so it must run when the dir is still absent.
   if (result.verb === "setup") return true;
   // `config path` is exempt; `config edit/validate` are not. `config add <url>`
@@ -212,6 +215,8 @@ async function dispatch(result: ParseResult, ctx: Ctx, defaults: Defaults): Prom
         return setup({ ctx, args: result.args });
       case "completions":
         return completions({ ctx, args: result.args });
+      case "mcp":
+        return mcp({ ctx, args: result.args });
     }
   }
 

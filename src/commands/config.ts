@@ -20,7 +20,7 @@ import {
   validateAll,
 } from "../config/load.ts";
 import { REPO_FILE } from "../config/repo.ts";
-import type { Ctx, ProjectConfig } from "../config/schema.ts";
+import { stdoutOf, type Ctx, type ProjectConfig } from "../config/schema.ts";
 import { defaultProjectTemplate, tomlString } from "../lib/project-template.ts";
 import { resolveEditor } from "../core/editor.ts";
 import { parseUrlInput } from "../core/resolve.ts";
@@ -155,7 +155,7 @@ function validate(input: TopInput, project?: string): number {
 
   const issues = validateAll(ctx.configDir, { snapshots: true });
   if (ctx.flags.json) {
-    process.stdout.write(JSON.stringify({ ok: issues.length === 0, issues }) + "\n");
+    stdoutOf(ctx).write(JSON.stringify({ ok: issues.length === 0, issues }) + "\n");
     return issues.length ? ExitCode.CONFIG : ExitCode.SUCCESS;
   }
   if (issues.length === 0) {

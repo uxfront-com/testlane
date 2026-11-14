@@ -16,7 +16,7 @@ async function runGit(
     return { code: 0, stdout: "", stderr: "" };
   }
   g.log.debug(argv.join(" "));
-  return capture(argv, { env: env(), errCode: "E_GIT", allowFailure: opts.allowFailure });
+  return capture(argv, { env: env(), errCode: "E_GIT", allowFailure: opts.allowFailure, signal: g.signal });
 }
 
 // ── Argv builders ────────────────────────────────────────────────────────────

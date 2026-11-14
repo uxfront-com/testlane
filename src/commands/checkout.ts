@@ -3,6 +3,7 @@
 import { ExitCode } from "../lib/errors.ts";
 import { parseFlags } from "../cli/flags.ts";
 import { ensureWorkspace } from "../core/workspace.ts";
+import { stdoutOf } from "../config/schema.ts";
 import type { WorkspaceInput } from "./types.ts";
 
 export async function checkout(input: WorkspaceInput): Promise<number> {
@@ -15,7 +16,7 @@ export async function checkout(input: WorkspaceInput): Promise<number> {
   });
 
   if (ctx.flags.json) {
-    process.stdout.write(
+    stdoutOf(ctx).write(
       JSON.stringify({
         project: project.name,
         slug: ws.slug,
@@ -29,7 +30,7 @@ export async function checkout(input: WorkspaceInput): Promise<number> {
     );
   } else {
     // Stable stdout contract: the absolute worktree path, one line, nothing else.
-    process.stdout.write(`${ws.path}\n`);
+    stdoutOf(ctx).write(`${ws.path}\n`);
   }
   return ExitCode.SUCCESS;
 }

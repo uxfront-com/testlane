@@ -96,6 +96,7 @@ testlane [global flags] <top-verb> [args...]                                 # g
 | `doctor` | Diagnose environment & configs | §9.11 |
 | `config` | `edit\\|path\\|validate [project]` | §9.12 |
 | `completions <shell>` | Print shell completion script (M2) | §9.13 |
+| `mcp` | Serve Testlane's tools to an MCP client over stdio | §9.18 |
 | `help`, `--help`, `-h` | Usage | — |
 | `version`, `--version`, `-V` | Version string to stdout | — |
 
@@ -759,6 +760,22 @@ testlane <project> ps [--json]
 ```
 
 One row per `process.json` found in the project's workspaces (the state's slugs plus every directory under `<worktrees_path>/.data`): `SLUG  COMMAND  PID  PORT  STATUS  STARTED  LOG`, sorted by slug, where `STATUS` is `running` for a live entry (§9.14) and `exited` otherwise. `--json`: an array of `{ slug, command, pid, port, status, startedAt, log }`.
+
+### 9.18 `mcp`
+
+```
+testlane [--config-dir <dir>] mcp
+```
+
+`testlane mcp` serves Testlane to an MCP client over stdio, so an agent gets typed tools instead of parsing the CLI's output. [ADR-003](docs/adrs/003-mcp-server.md) is the decision and the full contract. In short:
+
+- **Protocol.** A hand-written JSON-RPC 2.0 server, one message per line: `initialize`, `ping`, `tools/list` and `tools/call`, plus the `initialized`, `progress` and `cancelled` notifications. It speaks protocol versions `2025-11-25`, `2025-06-18`, `2025-03-26` and `2024-11-05`, and declares only the `tools` capability. It takes no arguments (exit 2 with any).
+- **Tools.** `projects`, `doctor`, `config_validate`, `list`, `ps`, `info`, `diff`, `logs`, `checkout`, `start`, `stop` and `rm`. Each calls its verb's function in-process with `--json` and `--yes` set, and returns the verb's `--json` line as one text block. `stop`, `logs`, `diff` and `rm` have no `--json`, so they return `{exitCode, stdout, stderr}`. `logs` returns the last `lines` lines (default 100, at most 1000) and never follows. `diff` keeps 1 MiB and adds `truncated: true` past that. `rm` adds `removed`, and a kept workspace is `isError: true`. A thrown error is `{error: {errCode, exitCode, message, hint}, stderr}` with `isError: true`.
+- **stdout carries only protocol messages.** Each call prints into a buffer of its own, setup and hook output goes to stderr, children get a closed stdin and their own process group, and any other write to stdout is sent to stderr.
+- **Progress and timeouts.** `checkout` and `start` send `notifications/progress` for each step and a heartbeat at least every 5 seconds when the call carries a `progressToken`. They take `timeout` in seconds (default 600). When it runs out, or a `notifications/cancelled` arrives, the server stops what the call started (2 seconds' grace, then SIGKILL) and answers `timedOut: true`, or nothing for a cancel.
+- **Config.** The config dir is fixed when the server starts, and each call reads its files afresh. The server starts without a config dir, and each tool but `doctor` then fails with `E_CONFIG`. It never records trust in a repo config.
+
+A project named `mcp` can only be reached by its URL form, since the verb shadows it.
 
 ---
 

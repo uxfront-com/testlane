@@ -20,6 +20,8 @@ import { readRepoTip, repoConfigBranch } from "../core/trust.ts";
 import { presetBinary, isPreset } from "../core/editor.ts";
 import { isWorkspaceVerb } from "../cli/verbs.ts";
 import { which } from "../lib/which.ts";
+import type { Sink } from "../lib/log.ts";
+import { stdoutOf } from "../config/schema.ts";
 import type { TopInput } from "./types.ts";
 
 type Status = "ok" | "warn" | "fail";
@@ -133,7 +135,7 @@ export async function doctor(input: TopInput): Promise<number> {
     await checkProject(ctx.configDir, name, defaults, checks);
   }
 
-  return report(ctx.flags.json, checks);
+  return report(stdoutOf(ctx), ctx.flags.json, checks);
 }
 
 async function checkProject(
@@ -350,15 +352,15 @@ function pidAlive(pid: number): boolean {
   }
 }
 
-function report(json: boolean, checks: Check[]): number {
+function report(out: Sink, json: boolean, checks: Check[]): number {
   const failed = checks.some((c) => c.status === "fail");
   if (json) {
-    process.stdout.write(JSON.stringify({ ok: !failed, checks }) + "\n");
+    out.write(JSON.stringify({ ok: !failed, checks }) + "\n");
     return failed ? ExitCode.INTERNAL : ExitCode.SUCCESS;
   }
   for (const c of checks) {
     const tag = c.status.toUpperCase().padEnd(4);
-    process.stdout.write(`${tag} ${c.name}: ${c.detail}\n`);
+    out.write(`${tag} ${c.name}: ${c.detail}\n`);
   }
   return failed ? ExitCode.INTERNAL : ExitCode.SUCCESS;
 }

@@ -1,6 +1,6 @@
 // GitHub CLI client — graceful absence (§7.3, §15.2). Never invoked in tests.
 
-import { capture, passthrough } from "../lib/proc.ts";
+import { capture, passthrough, type PassthroughOptions } from "../lib/proc.ts";
 
 export interface PrMeta {
   headRefName: string;
@@ -17,8 +17,11 @@ export interface PrMeta {
 export interface GhClient {
   available(): Promise<boolean>;
   prView(repo: string, n: number): Promise<PrMeta | null>; // null on any failure
-  /** Delegate to `gh pr diff`, inheriting stdio so gh pages normally (§9.7). */
-  prDiff(repo: string, n: number, args: string[]): Promise<number>; // passthrough exit code
+  /**
+   * Delegate to `gh pr diff`, inheriting stdio so gh pages normally (§9.7).
+   * `io` overrides that, as `testlane mcp` does to capture the diff.
+   */
+  prDiff(repo: string, n: number, args: string[], io?: PassthroughOptions): Promise<number>; // passthrough exit code
 }
 
 const PR_FIELDS = "headRefName,isCrossRepository,headRepositoryOwner,state,title,author,url,statusCheckRollup";
@@ -96,8 +99,8 @@ export class RealGhClient implements GhClient {
     }
   }
 
-  async prDiff(repo: string, n: number, args: string[]): Promise<number> {
-    return passthrough(["gh", "pr", "diff", String(n), "--repo", repo, ...args]);
+  async prDiff(repo: string, n: number, args: string[], io: PassthroughOptions = {}): Promise<number> {
+    return passthrough(["gh", "pr", "diff", String(n), "--repo", repo, ...args], io);
   }
 }
 

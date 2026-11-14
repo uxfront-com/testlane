@@ -12,7 +12,7 @@ import { ghRepoSlug } from "../core/workspace.ts";
 import { slug as slugFor } from "../core/resolve.ts";
 import { promptLine } from "../lib/prompt.ts";
 import type { ProjectInput, WorkspaceInput } from "./types.ts";
-import type { Ctx, ProjectConfig } from "../config/schema.ts";
+import { stdoutOf, type Ctx, type ProjectConfig } from "../config/schema.ts";
 
 interface PlanEntry {
   ws: Workspace;
@@ -84,7 +84,7 @@ async function execute(
 
   if (!ctx.flags.dryRun) saveState(project.name, state);
 
-  for (const slug of removed) process.stdout.write(`${slug}\n`);
+  for (const slug of removed) stdoutOf(ctx).write(`${slug}\n`);
   if (removed.length > 0) ctx.log.step(`freed ${fmtBytes(freed)}`);
   return ExitCode.SUCCESS;
 }
@@ -126,7 +126,7 @@ export async function clean(input: ProjectInput): Promise<number> {
   if (ctx.flags.dryRun) {
     return runClean(ctx, project, explicit, filters, includeAdopted, flags.bool("--force"), true);
   }
-  const lock = await acquireLock(project.name, ctx.log);
+  const lock = await acquireLock(project.name, ctx.log, ctx.signal);
   try {
     return await runClean(ctx, project, explicit, filters, includeAdopted, flags.bool("--force"), false);
   } finally {
@@ -178,7 +178,7 @@ async function runClean(
   ctx.log.step("plan:");
   for (const e of plan) {
     const bits = [e.reason, e.dirty ? "dirty" : "clean", fmtBytes(e.bytes)].filter(Boolean).join(", ");
-    process.stderr.write(`  ${e.ws.slug} (${bits})\n`);
+    ctx.log.write(`  ${e.ws.slug} (${bits})\n`);
   }
 
   if (!dryRun && !confirm(ctx, plan.length)) {
@@ -277,7 +277,7 @@ async function closedSlugs(ctx: Ctx, project: ProjectConfig, all: Workspace[]): 
 /** Slugs whose branch is merged into origin/<default> (git-only, no gh). */
 async function mergedSlugs(ctx: Ctx, project: ProjectConfig, all: Workspace[]): Promise<Set<string>> {
   const base = project.defaultBranch ?? "main";
-  const g: GitEnv = { repoPath: project.repoPath, dryRun: false, log: ctx.log };
+  const g: GitEnv = { repoPath: project.repoPath, dryRun: false, log: ctx.log, signal: ctx.signal };
   // Best-effort refresh so the merge check sees the latest default branch.
   try {
     await fetchBranch(g, base);
@@ -310,7 +310,7 @@ export async function rm(input: WorkspaceInput): Promise<number> {
   if (ctx.flags.dryRun) {
     return runClean(ctx, project, [slug], noFilters, true, flags.bool("--force"), true);
   }
-  const lock = await acquireLock(project.name, ctx.log);
+  const lock = await acquireLock(project.name, ctx.log, ctx.signal);
   try {
     return await runClean(ctx, project, [slug], noFilters, true, flags.bool("--force"), false);
   } finally {

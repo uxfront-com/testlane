@@ -5,6 +5,7 @@ import { ExitCode } from "../lib/errors.ts";
 import { pad } from "../lib/table.ts";
 import { listProjectNames, loadDefaults, loadEffectiveProject } from "../config/load.ts";
 import { loadState } from "../core/state.ts";
+import { stdoutOf } from "../config/schema.ts";
 import type { TopInput } from "./types.ts";
 
 export async function projects(input: TopInput): Promise<number> {
@@ -32,7 +33,7 @@ export async function projects(input: TopInput): Promise<number> {
   });
 
   if (ctx.flags.json) {
-    process.stdout.write(JSON.stringify(rows) + "\n");
+    stdoutOf(ctx).write(JSON.stringify(rows) + "\n");
     return ExitCode.SUCCESS;
   }
 
@@ -44,9 +45,9 @@ export async function projects(input: TopInput): Promise<number> {
   const header = ["NAME", "REPO", "WORKSPACES", "PATH-EXISTS"];
   const body = rows.map((r) => [r.name, r.repo, String(r.workspaces), r.pathExists ? "yes" : "no"]);
   const widths = header.map((h, i) => Math.max(h.length, ...body.map((row) => row[i]!.length)));
-  process.stdout.write(header.map((h, i) => pad(h, widths[i]!)).join("  ").trimEnd() + "\n");
+  stdoutOf(ctx).write(header.map((h, i) => pad(h, widths[i]!)).join("  ").trimEnd() + "\n");
   for (const row of body) {
-    process.stdout.write(row.map((c, i) => pad(c, widths[i]!)).join("  ").trimEnd() + "\n");
+    stdoutOf(ctx).write(row.map((c, i) => pad(c, widths[i]!)).join("  ").trimEnd() + "\n");
   }
   return ExitCode.SUCCESS;
 }

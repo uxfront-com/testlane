@@ -2,9 +2,10 @@
 
 import { closeSync, existsSync, fstatSync, mkdirSync, openSync, readdirSync, readSync, rmdirSync } from "node:fs";
 import { join } from "node:path";
-import { ExitCode, gitError, setupError, usage } from "../lib/errors.ts";
+import { ExitCode, abortedError, gitError, setupError, usage } from "../lib/errors.ts";
 import { parseFlags } from "../cli/flags.ts";
-import { detach } from "../lib/proc.ts";
+import { ABORT_GRACE_MS, detach } from "../lib/proc.ts";
+import type { Sink } from "../lib/log.ts";
 import { pad } from "../lib/table.ts";
 import { shellJoin } from "../lib/shell.ts";
 import { composeEnv } from "../core/env.ts";
@@ -28,7 +29,7 @@ import {
   type ProcessEntry,
 } from "../core/supervise.ts";
 import { buildCommand, commandName, parseEnvFlags, printDryRun } from "./process.ts";
-import type { Ctx, ProjectConfig } from "../config/schema.ts";
+import { stdoutOf, type Ctx, type ProjectConfig } from "../config/schema.ts";
 import type { ProjectInput, WorkspaceInput } from "./types.ts";
 
 /** Default readiness wait for `start`, in seconds (§9.14). */
@@ -80,6 +81,7 @@ export async function start(input: WorkspaceInput): Promise<number> {
     label: `start of ${project.name}/${slug}`,
     timeoutMs,
     log: ctx.log,
+    signal: ctx.signal,
     onTimeout: (holder) =>
       gitError(
         `timed out waiting for another start of ${project.name}/${slug}`,
@@ -139,17 +141,19 @@ export async function start(input: WorkspaceInput): Promise<number> {
     writeEntry(dataDir, entry);
     ctx.log.step(`started ${name} (pid ${child.pid}), waiting for 127.0.0.1:${port}`);
 
-    const outcome = await waitForPort(port, Date.now() + timeoutMs, () => exited);
+    const outcome = await waitForPort(port, Date.now() + timeoutMs, () => exited, ctx.signal);
     if (outcome === "ready" && entry.lstart !== "") {
       printStarted(ctx, project, slug, entry, false);
       return ExitCode.SUCCESS;
     }
 
-    // Not ready: leave no process and no live entry behind.
-    await stopGroup(child.pid, STOP_GRACE_MS);
+    // Not ready: leave no process and no live entry behind. A stopped call
+    // (`testlane mcp`) waits only the short grace, so it can answer in time.
+    await stopGroup(child.pid, outcome === "aborted" ? ABORT_GRACE_MS : STOP_GRACE_MS);
     removeEntry(dataDir, child.pid);
+    if (outcome === "aborted") throw abortedError();
     if (outcome === "exited") {
-      writeTail(log);
+      writeTail(ctx, log);
       throw setupError(`'${name}' exited before 127.0.0.1:${port} accepted connections`, `full log: ${log}`);
     }
     if (outcome === "timeout") {
@@ -200,18 +204,18 @@ function printStarted(ctx: Ctx, project: ProjectConfig, slug: string, e: Process
       startedAt: e.startedAt,
       reused,
     };
-    process.stdout.write(JSON.stringify(out) + "\n");
+    stdoutOf(ctx).write(JSON.stringify(out) + "\n");
     return;
   }
   ctx.log.step(`${e.command} ready on ${url} (pid ${e.pid}, log ${e.log})`);
-  process.stdout.write(`${url}\n`);
+  stdoutOf(ctx).write(`${url}\n`);
 }
 
-function writeTail(log: string): void {
+function writeTail(ctx: Ctx, log: string): void {
   const lines = tailLines(log, LOG_TAIL_LINES);
   if (lines.length === 0) return;
-  process.stderr.write(`last ${lines.length} log line(s):\n`);
-  for (const line of lines) process.stderr.write(`  ${line}\n`);
+  ctx.log.write(`last ${lines.length} log line(s):\n`);
+  for (const line of lines) ctx.log.write(`  ${line}\n`);
 }
 
 /** The ref to type for a slug's workspace: as originally typed, else the slug. */
@@ -231,8 +235,8 @@ export async function stop(input: WorkspaceInput): Promise<number> {
   if (ctx.flags.dryRun) {
     const entry = readEntry(dataDir);
     if (entry && (await isLive(entry))) {
-      process.stdout.write(`kill -TERM -- -${entry.pid}\n`);
-      process.stdout.write(`rm ${join(dataDir, "process.json")}\n`);
+      stdoutOf(ctx).write(`kill -TERM -- -${entry.pid}\n`);
+      stdoutOf(ctx).write(`rm ${join(dataDir, "process.json")}\n`);
     }
     return ExitCode.SUCCESS;
   }
@@ -252,7 +256,8 @@ export async function stop(input: WorkspaceInput): Promise<number> {
 // ── logs [-f] ────────────────────────────────────────────────────────────────
 
 export async function logs(input: WorkspaceInput): Promise<number> {
-  const { project } = input;
+  const { ctx, project } = input;
+  const out = stdoutOf(ctx);
   const flags = parseFlags(input.args, { bools: ["-f", "--follow"] });
   const slug = slugFor(resolveLast(project, input.ref));
   const file = logFile(dataDirFor(project, slug));
@@ -260,7 +265,7 @@ export async function logs(input: WorkspaceInput): Promise<number> {
     throw usage(`no log for ${project.name}/${slug}`, `start a command first: testlane ${project.name} <ref> start <name>`);
   }
 
-  let offset = await copyFrom(file, 0);
+  let offset = await copyFrom(file, 0, out);
   if (!(flags.bool("-f") || flags.bool("--follow"))) return ExitCode.SUCCESS;
 
   // Follow until interrupted, like `tail -f`. A truncated file is read again from the top.
@@ -274,7 +279,7 @@ export async function logs(input: WorkspaceInput): Promise<number> {
     while (!interrupted) {
       await new Promise((r) => setTimeout(r, 200));
       if (!existsSync(file)) continue;
-      offset = await copyFrom(file, offset);
+      offset = await copyFrom(file, offset, out);
     }
   } finally {
     process.off("SIGINT", onSignal);
@@ -283,8 +288,8 @@ export async function logs(input: WorkspaceInput): Promise<number> {
   return ExitCode.SUCCESS;
 }
 
-/** Copy `file` from `offset` to stdout in chunks. Returns the new offset. */
-async function copyFrom(file: string, offset: number): Promise<number> {
+/** Copy `file` from `offset` to `out` in chunks. Returns the new offset. */
+async function copyFrom(file: string, offset: number, out: Sink): Promise<number> {
   const fd = openSync(file, "r");
   try {
     let pos = fstatSync(fd).size < offset ? 0 : offset;
@@ -293,8 +298,8 @@ async function copyFrom(file: string, offset: number): Promise<number> {
       const n = readSync(fd, buf, 0, buf.length, pos);
       if (n === 0) return pos;
       pos += n;
-      if (!process.stdout.write(Buffer.from(buf.subarray(0, n)))) {
-        await new Promise((r) => process.stdout.once("drain", r));
+      if (!out.write(Buffer.from(buf.subarray(0, n)))) {
+        await new Promise<void>((r) => out.once("drain", () => r()));
       }
     }
   } finally {
@@ -341,7 +346,7 @@ export async function ps(input: ProjectInput): Promise<number> {
   }
 
   if (ctx.flags.json) {
-    process.stdout.write(JSON.stringify(rows) + "\n");
+    stdoutOf(ctx).write(JSON.stringify(rows) + "\n");
     return ExitCode.SUCCESS;
   }
   if (rows.length === 0) {
@@ -352,7 +357,7 @@ export async function ps(input: ProjectInput): Promise<number> {
   const body = rows.map((r) => [r.slug, r.command, String(r.pid), String(r.port), r.status, r.startedAt, r.log]);
   const widths = header.map((h, i) => Math.max(h.length, ...body.map((row) => row[i]!.length)));
   for (const row of [header, ...body]) {
-    process.stdout.write(row.map((c, i) => pad(c, widths[i]!)).join("  ").trimEnd() + "\n");
+    stdoutOf(ctx).write(row.map((c, i) => pad(c, widths[i]!)).join("  ").trimEnd() + "\n");
   }
   return ExitCode.SUCCESS;
 }

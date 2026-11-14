@@ -1,7 +1,7 @@
 // Zod schemas for raw config files + resolved runtime types (§5.4, §15.2).
 
 import { z } from "zod";
-import type { Logger } from "../lib/log.ts";
+import type { Logger, Sink } from "../lib/log.ts";
 import type { GhClient } from "../git/gh.ts";
 
 // ── Raw file schemas (what smol-toml hands us) ──────────────────────────────
@@ -163,4 +163,18 @@ export interface Ctx {
   flags: GlobalFlags;
   log: Logger;
   gh: GhClient;
+  /** Where the verb prints its result. Defaults to `process.stdout`. */
+  out?: Sink;
+  /** Stops the verb's waits and child processes (`testlane mcp`'s timeout and cancel). */
+  signal?: AbortSignal;
+  /**
+   * Run setup, hook and `diff` children with stdin closed, in a process group of
+   * their own, and never on Testlane's stdout (`testlane mcp`, ADR-003).
+   */
+  isolated?: boolean;
+}
+
+/** The sink a verb prints its result to. */
+export function stdoutOf(ctx: Ctx): Sink {
+  return ctx.out ?? process.stdout;
 }
