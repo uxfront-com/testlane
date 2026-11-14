@@ -116,7 +116,7 @@ testlane my-project list
 testlane my-project clean --all --yes
 ```
 
-A ref can also be a PR number like `42` or `#42`, a full 40-character commit SHA, a path to a working tree you already have, a repository URL in place of the project, or `-` for the last ref you used. [Quick start](https://testlane.dev/docs/getting-started/quick-start) runs this session step by step, and [Refs](https://testlane.dev/docs/getting-started/refs) lists every kind of ref in the order Testlane tries them.
+A ref can also be a PR number like `42` or `#42`, a full 40-character commit SHA, a path to a working tree you already have, a repository URL in place of the project or `-` for the last ref you used. [Quick start](https://testlane.dev/docs/getting-started/quick-start) runs this session step by step, and [Refs](https://testlane.dev/docs/getting-started/refs) lists every kind of ref in the order Testlane tries them.
 
 ## Commands
 
@@ -157,7 +157,7 @@ testlane my-project 42 run test -- --watch        # --watch goes to the test com
 testlane my-project 42 exec -- git log --oneline -2
 ```
 
-`sync` won't reset a workspace with changes in it unless you say what to do with them, with `--stash`, `--discard` or `--fresh`, which removes the workspace and opens it again:
+`sync` won't reset a workspace with changes in it unless you say what to do with them: `--stash` keeps them in a stash and `--discard` throws them away. `--fresh` removes the workspace and opens it again, and it refuses to run while the workspace has changes:
 
 ```bash
 testlane my-project 42 sync --stash
@@ -211,10 +211,21 @@ These take no project:
 | `help`        | Prints the usage                                                                     |
 | `version`     | Prints the version                                                                   |
 
-`config` takes `path`, `edit [project]`, `add [project]` or `validate [project]`, and `add` writes a starter file when the project has none. To turn on completions, add the line for your shell to its startup file:
+`config` takes `path`, `edit [project]`, `add [project]` or `validate [project]`, and `add` and `edit` both write a starter file when the project has none. To turn on completions in bash or fish, add the line for your shell to its startup file:
 
 ```bash
-eval "$(testlane completions zsh)"   # or bash. For fish: testlane completions fish | source
+eval "$(testlane completions bash)"   # ~/.bashrc
+testlane completions fish | source    # ~/.config/fish/config.fish
+```
+
+zsh loads completion functions from the directories on its `fpath`, so write the script to a file once, then add that directory in `~/.zshrc` before `compinit` runs:
+
+```bash
+mkdir -p ~/.zsh/completions
+testlane completions zsh > ~/.zsh/completions/_testlane
+# then in ~/.zshrc:
+fpath=(~/.zsh/completions $fpath)
+autoload -Uz compinit && compinit
 ```
 
 [Top-level verbs](https://testlane.dev/docs/cli/top-level-verbs) has each prompt and flag of `setup`, and every check `doctor` runs.
@@ -310,7 +321,7 @@ Here's how to move over:
    ```
 
 2. Call `testlane` wherever you called `uxd`, like scripts, shell aliases and agent instructions. There's no `uxd` alias, since it would clash with an installed `@uxfront/uxd`.
-3. Regenerate your shell completions, because the old script completes `uxd`. Replace `eval "$(uxd completions zsh)"` in your shell's startup file with `eval "$(testlane completions zsh)"`, and the same for bash or fish.
+3. Regenerate your shell completions, because the old script completes `uxd`. Remove the `uxd completions` line or file, then set up Testlane's as [Install Shell Completions](https://testlane.dev/docs/guides/shell-completions) shows: a line in your startup file for bash or fish, and a `_testlane` file on your `fpath` for zsh.
 4. Move the config directory and the state directory while no `uxd` or `testlane` command is running. Your clones and workspaces stay where they are, because each project file names their paths:
 
    ```bash
@@ -333,6 +344,8 @@ This is what Testlane 2.x does with each old name:
 
 When the old and the new name are both there, the new one wins and nothing warns. The project's `[env]`, a command's `env` and `--env` still win over both sets of exported variables.
 
+If you're coming from an early 1.x, two more things changed along the way. 1.0.0 has no `setup` command and reports its version as `0.0.0`. 1.1.0 removed the `extends` key, and project files are validated strictly, so a file that still has an `extends` line fails every command that loads it until you delete that line. [`CHANGELOG.md`](CHANGELOG.md) lists what changed in each release.
+
 ## Exit codes
 
 Every error prints one line on stderr, like `error(E_CONFIG): unknown project 'nope'`, with a `hint:` line after it when there's a fix to suggest. The exit code tells you which kind of error it was, so a script can branch on it rather than on the message:
@@ -345,7 +358,7 @@ Every error prints one line on stderr, like `error(E_CONFIG): unknown project 'n
 | `3`  | `E_CONFIG`   | The config is invalid, or the project doesn't exist                            |
 | `4`  | `E_RESOLVE`  | The ref couldn't be resolved                                                   |
 | `5`  | `E_GIT`      | A git or `gh` command failed. Some of these print as `E_EXTERNAL`              |
-| `6`  | `E_SETUP`    | `[setup]`, a hook or `start` failed                                            |
+| `6`  | `E_SETUP`    | `[setup]`, a hook that can block or `start` failed                             |
 
 [Exit codes](https://testlane.dev/docs/cli/exit-codes) has examples of each error.
 
