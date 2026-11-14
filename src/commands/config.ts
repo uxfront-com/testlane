@@ -1,9 +1,10 @@
-// `config path | edit | add | validate | show | trust` (§9.12). `add <project>` is
-// an alias of `edit`; `add <url>` adds a project from its repo (§5.7).
+// `config path | edit | add | validate | show | trust | detect` (§9.12).
+// `add <project>` is an alias of `edit`; `add <url>` adds a project from its
+// repo (§5.7); `detect` drafts a config from a repo's files.
 
-import { existsSync, mkdirSync, readFileSync, rmdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { ExitCode, TestlaneError, configError, usage } from "../lib/errors.ts";
+import { ExitCode, configError, usage } from "../lib/errors.ts";
 import { parseFlags } from "../cli/flags.ts";
 import { passthrough } from "../lib/proc.ts";
 import { resolvePath } from "../lib/paths.ts";
@@ -21,12 +22,16 @@ import {
   validateAll,
 } from "../config/load.ts";
 import { REPO_FILE } from "../config/repo.ts";
+import { detect, isPathArgument } from "../config/detect.ts";
+import { renderDraft } from "../config/detect-emit.ts";
+import { localFiles, gitFiles } from "../core/repo-files.ts";
+import { cloneTrustDetect } from "./clone-detect.ts";
 import { stdoutOf, type Ctx, type ProjectConfig } from "../config/schema.ts";
 import { defaultProjectTemplate, tomlString } from "../lib/project-template.ts";
 import { resolveEditor } from "../core/editor.ts";
 import { parseUrlInput } from "../core/resolve.ts";
 import { acquireLock, loadState, saveState } from "../core/state.ts";
-import { repoConfigBranch, trustGate, validApproval } from "../core/trust.ts";
+import { readRepoTip, repoConfigBranch, trustGate, validApproval } from "../core/trust.ts";
 import {
   bareCloneArgv,
   detectDefaultBranch,
@@ -35,23 +40,35 @@ import {
   initFetchArgv,
   initPrimaryRepo,
   isInitialized,
+  refExists,
   type GitEnv,
 } from "../git/repo.ts";
 import { appendDefaultsRoot, indent } from "./setup.ts";
 import type { TopInput } from "./types.ts";
 
-const SUBCOMMANDS = "expected: path | edit | add | validate | show | trust";
+const SUBCOMMANDS = "expected: path | edit | add | validate | show | trust | detect";
 
 export async function config(input: TopInput): Promise<number> {
   const { ctx } = input;
-  // `--name`/`--root` belong to `config add <url>` only; checked below.
-  const flags = parseFlags(input.args, { values: ["--name", "--root"] });
+  // `--name`/`--root`/`--detect` belong to `config add <url>` only, and
+  // `--repo-file` to `config detect`; checked below.
+  const flags = parseFlags(input.args, { bools: ["--detect", "--repo-file"], values: ["--name", "--root"] });
   const [sub, ...rest] = flags.positionals;
-  const addFlags = { name: flags.value("--name"), root: flags.value("--root") };
+  const addFlags = { name: flags.value("--name"), root: flags.value("--root"), detect: flags.bool("--detect") };
   const isUrlAdd = sub === "add" && rest[0] !== undefined && parseUrlInput(rest[0]) !== null;
   if (!isUrlAdd) {
-    const stray = addFlags.name !== undefined ? "--name" : addFlags.root !== undefined ? "--root" : undefined;
+    const stray =
+      addFlags.name !== undefined
+        ? "--name"
+        : addFlags.root !== undefined
+          ? "--root"
+          : addFlags.detect
+            ? "--detect"
+            : undefined;
     if (stray) throw usage(`unknown flag '${stray}'`, `${stray} applies only to \`config add <url>\``);
+  }
+  if (sub !== "detect" && flags.bool("--repo-file")) {
+    throw usage("unknown flag '--repo-file'", "--repo-file applies only to `config detect`");
   }
 
   switch (sub) {
@@ -68,6 +85,9 @@ export async function config(input: TopInput): Promise<number> {
       return show(ctx, requireProject(ctx, rest[0], "show"));
     case "trust":
       return trust(ctx, requireProject(ctx, rest[0], "trust"));
+    case "detect":
+      if (rest.length > 1) throw usage(`unexpected argument '${rest[1]}'`, "testlane config detect [path | project]");
+      return detectCmd(ctx, rest[0], flags.bool("--repo-file"));
     default:
       throw usage(`unknown config subcommand '${sub}'`, SUBCOMMANDS);
   }
@@ -305,7 +325,7 @@ export function repoNameOf(cloneUrl: string): string {
  * then trust its `.testlane.toml` — or, without one, seed today's template and
  * open the editor (§9.12). Every check runs before anything is written.
  */
-async function addUrl(ctx: Ctx, url: string, flags: { name?: string; root?: string }): Promise<number> {
+async function addUrl(ctx: Ctx, url: string, flags: { name?: string; root?: string; detect?: boolean }): Promise<number> {
   const repo = cloneUrlFor(url);
   if (!repo) throw usage(`cannot derive a clone URL from '${url}'`, "pass an ssh or https repository URL");
   const name = flags.name ?? repoNameOf(repo);
@@ -353,6 +373,7 @@ async function addUrl(ctx: Ctx, url: string, flags: { name?: string; root?: stri
     process.stdout.write(`${shellJoin(bareCloneArgv(repo, repoPath))}\n`);
     for (const argv of initConfigArgvs(repoPath)) process.stdout.write(`${shellJoin(argv)}\n`);
     process.stdout.write(`${shellJoin(initFetchArgv(repoPath))}\n`);
+    if (flags.detect) process.stdout.write(`detect origin/<default> → ${projectFile}\n`);
     return ExitCode.SUCCESS;
   }
 
@@ -396,41 +417,90 @@ async function addUrl(ctx: Ctx, url: string, flags: { name?: string; root?: stri
 
   const fresh = { ...ctx, defaults: loadDefaults(configDir) };
   const project = loadProject(configDir, name, fresh.defaults);
-  const lock = await acquireLock(name, ctx.log);
-  try {
-    const g: GitEnv = { repoPath: project.repoPath, dryRun: false, log: ctx.log };
-    try {
-      await initPrimaryRepo(g, repo);
-    } catch (e) {
-      // repo_path didn't exist before this run (checked above).
-      rmSync(project.repoPath, { recursive: true, force: true });
-      rollback();
-      if (e instanceof TestlaneError && e.errCode === "E_GIT") throw e;
-      throw new TestlaneError("E_GIT", `cloning ${repo} failed: ${(e as Error).message}`);
-    }
-
-    const state = loadState(name);
-    // A state file left by an earlier project of this name must not lend its
-    // approval to this repo.
-    // Saved before the gate, which throws off a terminal without --yes.
-    if (state.repoConfig !== undefined) {
-      delete state.repoConfig;
-      saveState(name, state);
-    }
-    const result = await trustGate(fresh, project, state, {
-      explicit: true,
-      untrustedHint: `testlane config trust ${name}`,
-    });
-    if (result.stateChanged) saveState(name, state);
-    if (result.outcome !== "no-file" && result.outcome !== "no-ref") {
-      ctx.log.step(`next: testlane ${name} ${result.branch ?? "<branch|pr|path>"}`);
-      return ExitCode.SUCCESS;
-    }
-  } finally {
-    lock.release();
+  const { trust: result, draft } = await cloneTrustDetect(fresh, project, {
+    repo,
+    clearApproval: true,
+    rollback,
+    untrustedHint: `testlane config trust ${name}`,
+    ...(flags.detect ? { detect: { repoReason: `config add ${repo}` } } : {}),
+  });
+  if (result.outcome !== "no-file" && result.outcome !== "no-ref") {
+    ctx.log.step(`next: testlane ${name} ${result.branch ?? "<branch|pr|path>"}`);
+    return ExitCode.SUCCESS;
   }
 
-  // No repo file: today's template, with the real repo line, opened for editing.
-  writeFileSync(projectFile, defaultProjectTemplate(name, repo), "utf8");
+  if (draft !== undefined) {
+    // No repo file: the draft, with the real repo line, opened for review.
+    writeFileSync(projectFile, draft, "utf8");
+    ctx.log.step(`wrote a detected config to ${projectFile}; check each # guess: and # note: line`);
+  } else {
+    if (flags.detect) ctx.log.step(`origin has no default branch yet; nothing to detect`);
+    // No repo file: today's template, with the real repo line, opened for editing.
+    writeFileSync(projectFile, defaultProjectTemplate(name, repo), "utf8");
+  }
   return openEditor(ctx, process.env.VISUAL || process.env.EDITOR || "", projectFile);
+}
+
+// ── config detect [path | project] ───────────────────────────────────────────
+
+/**
+ * Print a draft config from a repo's files (§9.12). A path reads a directory
+ * with `node:fs`; a project reads `origin/<default>` of its primary bare repo.
+ * Writes nothing, runs nothing from the repo.
+ */
+async function detectCmd(ctx: Ctx, arg: string | undefined, repoFile: boolean): Promise<number> {
+  const target = arg ?? ".";
+  let files;
+  let source: Record<string, string>;
+  let label: string;
+  let repo: { value: string; reason: string } | undefined;
+  let project: string | undefined;
+
+  if (isPathArgument(target)) {
+    const dir = resolvePath(target);
+    let isDir = false;
+    try {
+      isDir = statSync(dir).isDirectory();
+    } catch {
+      // missing: reported below
+    }
+    if (!isDir) throw usage(`not a directory: ${target}`, "testlane config detect [path | project]");
+    files = localFiles(dir);
+    source = { kind: "path", path: dir };
+    label = dir;
+  } else {
+    if (!projectExists(ctx.configDir, target)) {
+      throw usage(`unknown project '${target}'`, `pass ./${target} for a directory`);
+    }
+    const p = loadProject(ctx.configDir, target, ctx.defaults, undefined, { deferDefaultCommand: true });
+    if (!isInitialized(p.repoPath)) {
+      throw configError(`${target} is not cloned yet (${p.repoPath})`, `clone it with \`testlane config trust ${target}\``);
+    }
+    const g: GitEnv = { repoPath: p.repoPath, dryRun: false, log: ctx.log };
+    const branch = await repoConfigBranch(p, () => detectDefaultBranch(g));
+    if (!branch) throw configError(`cannot tell the default branch of ${target}`, `set default_branch in ${target}.toml`);
+    const ref = `refs/remotes/origin/${branch}`;
+    if (!(await refExists(p.repoPath, ref))) {
+      throw configError(`origin/${branch} is not fetched in ${p.repoPath}`, `fetch it with \`testlane config trust ${target}\``);
+    }
+    if ((await readRepoTip(p.repoPath, branch, target)).kind === "file") {
+      ctx.log.warn(`origin/${branch} has a ${REPO_FILE}, which this draft doesn't read`);
+    }
+    files = gitFiles(p.repoPath, ref);
+    source = { kind: "project", project: target, ref: `origin/${branch}` };
+    label = `origin/${branch} of ${target}`;
+    repo = { value: p.repo, reason: `${target}.toml` };
+    project = target;
+  }
+
+  const findings = await detect(files, { ...(repo ? { repo } : {}), ...(project ? { project } : {}) });
+  const draft = renderDraft(findings, { source: label, repoFile });
+  const out = stdoutOf(ctx);
+  if (ctx.flags.json) {
+    const shown = draft.findings.map(({ key, value, kind, confidence, reason }) => ({ key, value, kind, confidence, reason }));
+    out.write(JSON.stringify({ source, repoFile, config: draft.config, findings: shown }) + "\n");
+  } else {
+    out.write(draft.text);
+  }
+  return ExitCode.SUCCESS;
 }
