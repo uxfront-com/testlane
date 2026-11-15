@@ -192,7 +192,7 @@ Ref disambiguators (workspace commands only): `--pr <n>`, `--branch <name>`, `--
 
 ### 5.1 Discovery
 
-Config directory resolution order: `--config-dir` flag → `TESTLANE_CONFIG_DIR` env → `~/.testlane` (default). Testlane 2.x also falls back to the 1.x variable and directory, with a warning (§5.6). If the directory does not exist, every command except `help`/`version`/`doctor`/`completions`/`setup`/`mcp`/bare `config`/`config path`, `config add <url>` and `config detect <path>` fails with exit 3 and a hint to create it.
+Config directory resolution order: `--config-dir` flag → `TESTLANE_CONFIG_DIR` env → `~/.testlane` (default). If the directory does not exist, every command except `help`/`version`/`doctor`/`completions`/`setup`/`mcp`/bare `config`/`config path`, `config add <url>` and `config detect <path>` fails with exit 3 and a hint to create it.
 
 ### 5.2 Layout
 
@@ -306,23 +306,6 @@ Interpolated (single pass, `{name}` syntax, unknown name ⇒ error `E_CONFIG` at
 | `{port+N}` | `port + N`, valid for `N < ports` (literal digits, e.g. `{port+1}`) |
 
 The same values are always exported to child processes as `TESTLANE_PATH`, `TESTLANE_REPO_PATH`, `TESTLANE_DATA_DIR`, `TESTLANE_PROJECT`, `TESTLANE_REF`, `TESTLANE_BRANCH`, `TESTLANE_SLUG`, `TESTLANE_PORT`, `TESTLANE_PORT_1`…`TESTLANE_PORT_{ports-1}` (§11.2), whether or not the config references them.
-
-### 5.6 Compatibility with uxd
-
-Testlane was called uxd until 2.0. For the 2.x line it still reads what uxd wrote, so a user can upgrade the package first and move their files later. All of it lives in `src/lib/compat.ts`, the only module that names uxd, so 3.0 removes the fallbacks by deleting that file and its tests.
-
-| What | Resolution order |
-|---|---|
-| Config dir | `--config-dir` → `$TESTLANE_CONFIG_DIR` → `$UXD_CONFIG_DIR` (warns) → `~/.testlane` if it exists → `~/.uxd` if it exists (warns) → `~/.testlane` |
-| State dir | `<state>/testlane` if it exists → `<state>/uxd` if it exists (warns) → `<state>/testlane`, where `<state>` is `${XDG_STATE_HOME:-~/.local/state}` |
-| Debug | `TESTLANE_DEBUG=1` → `UXD_DEBUG=1` (warns), read only when `TESTLANE_DEBUG` is unset or empty |
-| Exported | every `TESTLANE_*` variable (§5.5), then its `UXD_*` twin with the same value, in layer 2 of §11.2 |
-
-- **Warnings.** Each fallback prints one line on stderr, `warning: using <old>, the <what> of uxd. Testlane 3.0 reads only <new>.` and the fix, like `mv ~/.uxd ~/.testlane`. A run prints each warning at most once (`main()` resets them), however often it resolves the path. They never reach stdout, so the stdout contracts and `--json` hold.
-- **Both present.** The new name wins and nothing warns. A set `TESTLANE_DEBUG`, even `0`, wins over `UXD_DEBUG`.
-- **No migration.** Testlane never moves the user's files. `setup` on a machine with neither config dir creates `~/.testlane`.
-- **No `uxd` binary.** The package ships only `testlane`, because a second bin named `uxd` would clash with an installed `@uxfront/uxd`.
-- **Exported twins don't warn.** Testlane can't see which process reads `$UXD_PORT`, so the aliases are silent. Layers 3–5 of §11.2 override either name.
 
 ### 5.7 Repository config (`.testlane.toml`)
 
@@ -833,7 +816,7 @@ Config-supplied *strings* (`setup.run`, `commands.*.run`, `hooks.*`, custom edit
 ### 11.2 Environment composition (later wins)
 
 1. `process.env` (Testlane inherits the caller's PATH — nvm/fnm shims included);
-2. computed `TESTLANE_*` vars (§5.5), then their 1.x twins (§5.6);
+2. computed `TESTLANE_*` vars (§5.5);
 3. project `[env]` (templated);
 4. `commands.<name>.env` (templated);
 5. `--env K=V` flags.
@@ -929,7 +912,6 @@ testlane/
       log.ts              # stderr steps, levels, color gating
       template.ts         # {var} interpolation (§5.5)
       paths.ts            # ~ expansion, XDG dirs
-      compat.ts           # 1.x fallbacks and warnings (§5.6)
       errors.ts           # TestlaneError, exit codes (§14)
   test/
     unit/                 # parse, resolve, slug, template, ports, schema

@@ -150,8 +150,7 @@ export function makeEnv(
     const prevDebug = process.env.TESTLANE_DEBUG;
     process.env.TESTLANE_CONFIG_DIR = configDir;
     process.env.XDG_STATE_HOME = stateHome;
-    // Pinned off rather than unset, so a 1.x debug variable in the caller's shell
-    // can't turn debug on (§5.6).
+    // Off, so TESTLANE_DEBUG=1 in the caller's shell can't turn debug on.
     process.env.TESTLANE_DEBUG = "0";
 
     let out = "";

@@ -345,6 +345,22 @@ describe("start", () => {
     expect(lines(join(tmp, "pre_run.count"))).toHaveLength(0);
   });
 
+  it("§5.5 — exports only the TESTLANE_* variables when the project and command set none", async () => {
+    const r = await env.run([PROJECT, "--dry-run", "main", "start", "web"]);
+    expect(r.code, r.stderr).toBe(0);
+    const names = [...r.stdout.matchAll(/^export ([^=]+)=/gm)].map((m) => m[1]);
+    expect(names).toEqual([
+      "TESTLANE_PATH",
+      "TESTLANE_REPO_PATH",
+      "TESTLANE_DATA_DIR",
+      "TESTLANE_PROJECT",
+      "TESTLANE_REF",
+      "TESTLANE_BRANCH",
+      "TESTLANE_SLUG",
+      "TESTLANE_PORT",
+    ]);
+  });
+
   it("P1-C3 — a start whose ref doesn't resolve leaves no data dir behind", async () => {
     const r = await env.run([PROJECT, "no-such-branch", "start", "web"]);
     expect(r.code).not.toBe(0);

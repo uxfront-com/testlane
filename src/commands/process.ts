@@ -7,7 +7,7 @@ import { passthrough } from "../lib/proc.ts";
 import { shellJoin, shellQuote } from "../lib/shell.ts";
 import { interpolate } from "../lib/template.ts";
 import { ensureWorkspace } from "../core/workspace.ts";
-import { composeEnv, exportedEnv, templateVars, wsContext, type WorkspaceContext } from "../core/env.ts";
+import { composeEnv, templateVars, testlaneEnv, wsContext, type WorkspaceContext } from "../core/env.ts";
 import type { ProjectConfig } from "../config/schema.ts";
 import type { Workspace } from "../core/state.ts";
 import type { WorkspaceInput } from "./types.ts";
@@ -197,7 +197,7 @@ export function printDryRun(
   argv: string[],
 ): void {
   const vars = templateVars(wc);
-  const layered: Record<string, string> = { ...exportedEnv(wc) };
+  const layered: Record<string, string> = { ...testlaneEnv(wc) };
   for (const [k, v] of Object.entries(project.env)) layered[k] = interpolate(v, vars, `env.${k}`);
   if (extra.commandEnv) {
     for (const [k, v] of Object.entries(extra.commandEnv)) layered[k] = interpolate(v, vars, `command.env.${k}`);
