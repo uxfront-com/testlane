@@ -4,7 +4,6 @@ import { existsSync } from "node:fs";
 import { ExitCode, TestlaneError, isTestlaneError } from "./lib/errors.ts";
 import { Logger, colorEnabled } from "./lib/log.ts";
 import { defaultConfigDir } from "./lib/paths.ts";
-import { legacyConfigDirFromEnv, legacyDebugFromEnv, resetCompatWarnings } from "./lib/compat.ts";
 import { parse, type ParseDeps, type ParseResult } from "./cli/parse.ts";
 import {
   listProjectNames,
@@ -44,8 +43,6 @@ export interface MainOptions {
 }
 
 export async function main(argv: string[], opts: MainOptions = {}): Promise<number> {
-  // Each run warns about each 1.x fallback once (§5.6, `compat.ts`).
-  resetCompatWarnings();
   const debug = wantsDebug(argv);
   try {
     const configDir = resolveConfigDir(argv);
@@ -73,16 +70,13 @@ export async function main(argv: string[], opts: MainOptions = {}): Promise<numb
 
 // ── Config-dir resolution (§5.1) ────────────────────────────────────────────
 
-/**
- * --config-dir flag → $TESTLANE_CONFIG_DIR → the 1.x variable → ~/.testlane if it
- * exists → the 1.x dir if it exists → ~/.testlane. The 1.x fallbacks warn (§5.6).
- */
+/** --config-dir flag → $TESTLANE_CONFIG_DIR → ~/.testlane. */
 function resolveConfigDir(argv: string[]): string {
   const fromFlag = preScanConfigDir(argv);
   if (fromFlag) return fromFlag;
   const fromEnv = process.env.TESTLANE_CONFIG_DIR;
   if (fromEnv && fromEnv.trim() !== "") return fromEnv;
-  return legacyConfigDirFromEnv() ?? defaultConfigDir();
+  return defaultConfigDir();
 }
 
 /** Lightweight pre-scan for --config-dir before parse (deps need it first). */
@@ -97,10 +91,7 @@ function preScanConfigDir(argv: string[]): string | undefined {
 }
 
 function wantsDebug(argv: string[]): boolean {
-  const fromEnv = process.env.TESTLANE_DEBUG;
-  if (fromEnv === "1") return true;
-  // A set TESTLANE_DEBUG wins over the 1.x variable, even when it turns debug off.
-  if ((fromEnv === undefined || fromEnv === "") && legacyDebugFromEnv()) return true;
+  if (process.env.TESTLANE_DEBUG === "1") return true;
   const cut = argv.indexOf("--");
   const pre = cut === -1 ? argv : argv.slice(0, cut);
   return pre.includes("--verbose") || pre.includes("-v");
