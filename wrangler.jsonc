@@ -15,7 +15,7 @@
 		// Answers unknown paths with dist/404.html and a 404 status.
 		"not_found_handling": "404-page",
 	},
-	// `wrangler versions upload`, the command for non-production branches, stops
+	// `wrangler preview`, the deploy command for non-production branches, stops
 	// without this block. Previews use the settings above, so it stays empty.
 	"previews": {},
 }
