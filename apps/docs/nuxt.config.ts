@@ -98,7 +98,7 @@ export default defineNuxtConfig({
 	},
 
 	routeRules: {
-		// The old docs URLs (redirects.ts), each a permanent redirect.
+		// `/docs` and the group roots (redirects.ts), each a permanent redirect.
 		...redirectRules(),
 		// Hashed build assets never change, so cache them forever.
 		"/_nuxt/**": {
