@@ -8,9 +8,9 @@ import { lanes } from "~/lib/formations/lanes";
 import { dimmed, spotlight } from "~/lib/formations/spotlight";
 
 useUxHead({
-	title: "Testlane - Run any pull request or branch locally, in one command",
+	title: "Testlane: run any pull request locally in its own worktree",
 	description:
-		"Point Testlane at a pull request, a branch, a commit or a link. You get the code checked out, dependencies installed and a port of your own, while everything you already had open stays untouched.",
+		"Point Testlane at a pull request, branch, commit or link to get it checked out in a git worktree, with dependencies installed and ports of its own.",
 	siteName: "Testlane",
 	image: {
 		path: "/og.jpg",
