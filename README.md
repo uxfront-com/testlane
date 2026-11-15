@@ -103,7 +103,7 @@ testlane my-project feat/login checkout
 cd "$(testlane my-project feat/login checkout)"
 ```
 
-Keep in mind that a git worktree has a few quirks, like a `.git` file where tools expect a directory, and hooks that husky sets up can point the wrong way. [Known caveats](https://testlane.dev/docs/getting-started/workspaces#known-caveats) lists each one and what to do about it.
+Keep in mind that a git worktree has a few quirks, like a `.git` file where tools expect a directory, and hooks that husky sets up can point the wrong way. [Known caveats](https://testlane.dev/docs/concepts/workspaces#known-caveats) lists each one and what to do about it.
 
 `run` opens the same workspace, runs the `[setup]` install, then runs a command from your project file inside it. The next `run` skips the install while the files in `cache_key` stay the same:
 
@@ -118,7 +118,7 @@ testlane my-project list
 testlane my-project clean --all --yes
 ```
 
-A ref can also be a PR number like `42` or `#42`, a full 40-character commit SHA, a path to a working tree you already have, a repository URL in place of the project or `-` for the last ref you used. [Quick start](https://testlane.dev/docs/getting-started/quick-start) runs this session step by step, and [Refs](https://testlane.dev/docs/getting-started/refs) lists every kind of ref in the order Testlane tries them.
+A ref can also be a PR number like `42` or `#42`, a full 40-character commit SHA, a path to a working tree you already have, a repository URL in place of the project or `-` for the last ref you used. [Quick start](https://testlane.dev/docs/getting-started/quick-start) runs this session step by step, and [Refs](https://testlane.dev/docs/concepts/refs) lists every kind of ref in the order Testlane tries them.
 
 ## Commands
 

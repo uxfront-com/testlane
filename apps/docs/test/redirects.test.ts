@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
 	DOCS_ENTRY,
 	GROUP_ENTRY_PAGES,
+	MOVED_PAGES,
 	REDIRECTS,
 	redirectRules,
 } from "../redirects";
@@ -50,6 +51,15 @@ describe("docs redirects", () => {
 			const first = REDIRECTS[`/docs/${group}`];
 			expect(first).toMatch(new RegExp(`^/docs/${group}/`));
 		}
+	});
+
+	it("sends the concept pages' old paths to their pages under Concepts", () => {
+		for (const page of ["how-it-works", "refs", "workspaces"]) {
+			const to = `/docs/concepts/${page}`;
+			expect(REDIRECTS[`/docs/getting-started/${page}`]).toBe(to);
+			expect(pages).toContain(to);
+		}
+		expect(Object.keys(MOVED_PAGES)).toHaveLength(3);
 	});
 
 	it("redirects no page to itself or onto another redirect, so none loops", () => {
