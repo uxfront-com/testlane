@@ -178,6 +178,8 @@ Every page passes axe's contrast rule in light and dark mode, and the homepage a
 
 `/docs` and the root of each sidebar group, like `/docs/cli`, have no page of their own. `redirects.ts` sends each one to its first page with a permanent 301, and `nuxt.config.ts` turns it into route rules. `test/redirects.test.ts` checks that every target is a page in `content/docs/`, so moving or renaming a page fails the test until its redirects follow.
 
+A page that moves to another group keeps its old URL working through `MOVED_PAGES` in `redirects.ts`, which answers that URL with a 301 to the new one. How it works, Refs and Workspaces moved from Getting Started to Concepts this way, so `/docs/getting-started/refs` opens `/docs/concepts/refs`.
+
 ## Deploying
 
 The site deploys to Cloudflare Workers through Workers Builds, on the Worker `testlane`. A merge to `main` deploys `testlane.dev`, and every other branch gets a preview of its own.
