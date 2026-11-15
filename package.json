@@ -2,6 +2,17 @@
   "name": "@uxfront/testlane",
   "version": "2.0.0",
   "description": "Materialize any git ref of a configured project into an isolated, runnable local workspace.",
+  "keywords": [
+    "git",
+    "worktree",
+    "pull-request",
+    "branch",
+    "cli",
+    "dev-server",
+    "code-review",
+    "agents"
+  ],
+  "homepage": "https://testlane.dev",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/uxfront-com/testlane.git"
