@@ -1,6 +1,5 @@
 // TESTLANE_* export vars + env composition (§5.5, §11.2).
 
-import { legacyEnvAliases } from "../lib/compat.ts";
 import { interpolate, workspaceVars, type TemplateVars } from "../lib/template.ts";
 import type { ProjectConfig } from "../config/schema.ts";
 import type { Workspace } from "./state.ts";
@@ -53,17 +52,8 @@ export function testlaneEnv(wc: WorkspaceContext): Record<string, string> {
 }
 
 /**
- * Every exported variable: the TESTLANE_* set, then its 1.x twins for
- * scripts written before the rename (§5.6, `compat.ts`). Later layers override both.
- */
-export function exportedEnv(wc: WorkspaceContext): Record<string, string> {
-  const current = testlaneEnv(wc);
-  return { ...current, ...legacyEnvAliases(current) };
-}
-
-/**
  * Compose the environment for run/exec/shell/hooks (later wins, §11.2):
- * process.env → TESTLANE_* (and 1.x twins) → project [env] → command env → --env flags.
+ * process.env → TESTLANE_* → project [env] → command env → --env flags.
  */
 export function composeEnv(
   wc: WorkspaceContext,
@@ -72,7 +62,7 @@ export function composeEnv(
 ): Record<string, string> {
   const vars = templateVars(wc);
   const out: Record<string, string> = { ...(process.env as Record<string, string>) };
-  Object.assign(out, exportedEnv(wc));
+  Object.assign(out, testlaneEnv(wc));
   for (const [k, v] of Object.entries(project.env)) {
     out[k] = interpolate(v, vars, `env.${k}`);
   }

@@ -194,8 +194,8 @@ describe("isValidProjectName — §5.1 guard", () => {
 
 describe("defaultConfigDir — §5.1", () => {
   it("defaults to ~/.testlane (no XDG fallback)", () => {
-    // A throwaway home, so a config dir on the machine running the tests can't
-    // change the answer (§5.6).
+    // A throwaway home, so the config dir of the machine running the tests can't
+    // change the answer.
     const prevHome = process.env.HOME;
     process.env.HOME = dir;
     try {

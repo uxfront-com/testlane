@@ -137,7 +137,7 @@ The **README** runs in this order, with the depth left to this site so it stays 
 - `## Usage`, the smallest session that works, from `setup` to a running workspace.
 - `## Commands`, with `### Workspace verbs`, `### Project verbs` and `### Top-level verbs`, each a `Verb | What it does` table followed by the few examples that matter.
 - `## Global flags`, a table.
-- `## Configuration`, then `## Upgrading from uxd`.
+- `## Configuration`.
 - `## Exit codes`, a table.
 - `## Development`.
 
@@ -197,7 +197,7 @@ Here's how the pieces fit:
 
 - **The build is static.** Workers Builds sets `WORKERS_CI`, and `nuxt.config.ts` then defaults `NITRO_PRESET` to `cloudflare_pages_static`. `nuxt generate` prerenders every page into `apps/docs/dist`, with `_headers`, `_redirects`, `404.html` and the content database dumps that the pages query in the browser. Set `NITRO_PRESET` yourself to build another preset there.
 - **`wrangler.jsonc` sits at the repository root**, because the deploy command runs from the root. It serves `apps/docs/dist` as static assets, with no Worker script, and answers unknown paths with the 404 page. `wrangler preview` stops without its `previews` block, so the block stays, even though it's empty.
-- **`modules/workers-redirects.ts` rewrites `_redirects` after the build**, because Nitro writes two rules that Workers handle wrongly. It removes the `/* /404.html 404` rule, which Workers reject, failing the whole upload. It also turns a target like `/docs/uxd/cli/**` into `/docs/uxd/cli/:splat`, since Workers read `**` as part of the path and forward the matched part only through `:splat`. Its test is `test/workers-redirects.test.ts`.
+- **`modules/workers-redirects.ts` rewrites `_redirects` after the build**, because Nitro writes two rules that Workers handle wrongly. It removes the `/* /404.html 404` rule, which Workers reject, failing the whole upload. It also turns a target like `/docs/old/cli/**` into `/docs/old/cli/:splat`, since Workers read `**` as part of the path and forward the matched part only through `:splat`. Its test is `test/workers-redirects.test.ts`.
 
 A static site has no server, so one feature of the server build doesn't run on Cloudflare: the layer's redirect from `/` to `/llms.txt` for `curl` and for requests that accept `text/markdown`.
 

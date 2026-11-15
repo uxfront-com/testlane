@@ -17,7 +17,7 @@ UXF-39 reversed the premise: the tool is meant to be **universally available**
 without the user having Bun installed. That is a direct contradiction of the
 §16 non-goal, so the runtime decision had to be re-made, not worked around.
 
-signal audited every Bun-specific surface (verified, `uxd@0.0.0`) and mapped
+signal audited every Bun-specific surface (verified, `@uxfront/testlane@0.0.0`) and mapped
 each to a Node equivalent — `Bun.spawn` → `node:child_process`, `Bun.listen`
 TCP probe → `node:net`, `Bun.Glob`/`Bun.file` → `tinyglobby` + `fs/promises`,
 `Bun.which` → PATH scan, `import.meta.dir` → `import.meta.dirname` /

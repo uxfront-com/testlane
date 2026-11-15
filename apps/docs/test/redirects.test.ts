@@ -36,39 +36,19 @@ describe("docs redirects", () => {
 		expect(pages).toContain(DOCS_ENTRY);
 	});
 
-	it("sends every exact path to a page that exists", () => {
+	it("sends every path to a page that exists", () => {
 		for (const [from, to] of Object.entries(REDIRECTS)) {
-			if (from.endsWith("/**")) continue;
 			expect(pages, `${from} → ${to}`).toContain(to);
 		}
 	});
 
-	it("forwards the old prefix onto the pages, so each old page URL lands on its page", () => {
-		expect(REDIRECTS["/docs/uxd/**"]).toBe("/docs/**");
-		for (const page of pages) {
-			const old = page.replace(/^\/docs\//, "/docs/uxd/");
-			const to = REDIRECTS[old] ?? page;
-			expect(pages, `${old} → ${to}`).toContain(to);
-		}
-	});
-
-	it("gives every group root, under both prefixes, its first page", () => {
+	it("gives every group root its first page", () => {
 		expect(Object.keys(GROUP_ENTRY_PAGES)).toEqual(
 			groups.map((group) => strip(group)),
 		);
 		for (const group of Object.keys(GROUP_ENTRY_PAGES)) {
 			const first = REDIRECTS[`/docs/${group}`];
 			expect(first).toMatch(new RegExp(`^/docs/${group}/`));
-			expect(REDIRECTS[`/docs/uxd/${group}`]).toBe(first);
-		}
-	});
-
-	it("sends the old scripting guide to its new slug, under both prefixes", () => {
-		for (const from of [
-			"/docs/guides/script-with-uxd",
-			"/docs/uxd/guides/script-with-uxd",
-		]) {
-			expect(REDIRECTS[from]).toBe("/docs/guides/script-with-testlane");
 		}
 	});
 
