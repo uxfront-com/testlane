@@ -3,9 +3,10 @@ import { basename, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { WORKSPACE_VERBS } from "../../../src/cli/verbs";
 import { parseRef, slug } from "../../../src/core/resolve";
-import { PIPELINE_REFS, PIPELINE_VERBS } from "../app/data/pipeline";
+import { PIPELINE_REFS, PIPELINE_SUBSTEPS, PIPELINE_VERBS, noteParts } from "../app/data/pipeline";
 
 const CONTENT = join(import.meta.dirname, "../content/docs");
+const COMMANDS = join(import.meta.dirname, "../../../src/commands");
 
 /** Every docs page, as [path relative to content/docs, source]. */
 function pages(dir = CONTENT): [string, string][] {
@@ -43,6 +44,28 @@ describe("the pipeline diagram", () => {
 	it("names only verbs the CLI has", () => {
 		for (const verb of PIPELINE_VERBS) {
 			expect(WORKSPACE_VERBS, verb).toContain(verb);
+		}
+	});
+
+	it("says which verbs skip the seed files and setup, the ones that need --setup", () => {
+		// A command whose setup is off unless you pass --setup, like checkout.
+		const optIn = readdirSync(COMMANDS)
+			.filter((file) => readFileSync(join(COMMANDS, file), "utf8").includes('setup: flags.bool("--setup")'))
+			.map((file) => file.replace(/\.ts$/, ""))
+			.sort();
+		expect(optIn.length).toBeGreaterThan(0);
+		for (const name of ["Seed files", "Setup"]) {
+			const substep = PIPELINE_SUBSTEPS.find((s) => s.name === name);
+			const code = noteParts(substep?.when ?? "").filter((_, i) => i % 2);
+			expect(code.filter((c) => !c.startsWith("--")).sort(), name).toEqual(optIn);
+			expect(code, name).toContain("--setup");
+		}
+	});
+
+	it("says when each sub-step runs, since none runs every time", () => {
+		for (const { name, when } of PIPELINE_SUBSTEPS) {
+			expect(when.trim(), name).not.toBe("");
+			expect(noteParts(when).length % 2, `${name}: unclosed backtick`).toBe(1);
 		}
 	});
 

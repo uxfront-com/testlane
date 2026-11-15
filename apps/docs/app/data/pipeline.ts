@@ -26,8 +26,8 @@ export interface PipelineRef {
 
 export interface PipelineSubstep {
 	name: string;
-	/** When the sub-step doesn't run every time, the reason. */
-	when?: string;
+	/** When it runs, since none runs every time. Backticks mark code. */
+	when: string;
 }
 
 export interface PipelineStep {
@@ -71,12 +71,20 @@ export const PIPELINE_REFS: PipelineRef[] = [
 
 /** Materialize, in detail, in the order the CLI runs them (DESIGN §8.1). */
 export const PIPELINE_SUBSTEPS: PipelineSubstep[] = [
-	{ name: "Bare clone", when: "First use only" },
-	{ name: "Worktree" },
-	{ name: "Ports" },
-	{ name: "Seed files" },
-	{ name: "Setup", when: "Skipped on a cache hit" },
+	{ name: "Bare clone", when: "First use of a project only" },
+	{ name: "Worktree", when: "New workspaces only" },
+	{ name: "Ports", when: "New workspaces only" },
+	{ name: "Seed files", when: "`checkout` and `code` skip them, unless `--setup`" },
+	{
+		name: "Setup",
+		when: "Skipped on a cache hit. `checkout` and `code` skip it, unless `--setup`",
+	},
 ];
+
+/** Splits a note into text and code, at its backticks: odd parts are code. */
+export function noteParts(note: string): string[] {
+	return note.split("`");
+}
 
 /** Act, in detail: the verbs that open a workspace and then do something in it. */
 export const PIPELINE_VERBS = ["checkout", "code", "run", "exec", "shell", "start"] as const;

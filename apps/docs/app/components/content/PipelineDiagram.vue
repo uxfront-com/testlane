@@ -15,6 +15,7 @@ import {
 	PIPELINE_STEPS,
 	PIPELINE_SUBSTEPS,
 	PIPELINE_VERBS,
+	noteParts,
 	type PipelineVariant,
 } from "~/data/pipeline";
 
@@ -52,13 +53,14 @@ const steps = [PIPELINE_STEPS.resolve, PIPELINE_STEPS.materialize, PIPELINE_STEP
 						</ul>
 
 						<ol v-else-if="index === 1" class="pipeline-substeps" role="list">
-							<li
-								v-for="substep in PIPELINE_SUBSTEPS"
-								:key="substep.name"
-								:class="{ 'is-conditional': substep.when }"
-							>
+							<li v-for="substep in PIPELINE_SUBSTEPS" :key="substep.name">
 								<span class="pipeline-label">{{ substep.name }}</span>
-								<span v-if="substep.when" class="pipeline-when">{{ substep.when }}</span>
+								<span class="pipeline-when">
+									<template v-for="(part, i) in noteParts(substep.when)" :key="i">
+										<code v-if="i % 2">{{ part }}</code>
+										<template v-else>{{ part }}</template>
+									</template>
+								</span>
 							</li>
 						</ol>
 
@@ -80,7 +82,7 @@ const steps = [PIPELINE_STEPS.resolve, PIPELINE_STEPS.materialize, PIPELINE_STEP
 
 		<figcaption class="pipeline-figcaption">
 			<template v-if="detail">
-				The three steps in detail. A dashed sub-step doesn't run every time.
+				The three steps in detail, with when each sub-step runs.
 			</template>
 			<template v-else>
 				Every command that opens a workspace runs these three steps, in order.
@@ -198,8 +200,8 @@ const steps = [PIPELINE_STEPS.resolve, PIPELINE_STEPS.materialize, PIPELINE_STEP
 	color: var(--ui-text-toned);
 }
 
-/* Materialize's sub-steps, joined by a line, in the order they run. A sub-step
-   that doesn't always run has a dashed marker and says when it runs. */
+/* Materialize's sub-steps, joined by a line, in the order they run, each with
+   a note on when it runs. */
 .pipeline-substeps {
 	display: grid;
 	gap: 0.5rem;
@@ -223,10 +225,6 @@ const steps = [PIPELINE_STEPS.resolve, PIPELINE_STEPS.materialize, PIPELINE_STEP
 	background: var(--ui-bg);
 }
 
-.pipeline-substeps li.is-conditional::before {
-	border-style: dashed;
-}
-
 .pipeline-substeps li:not(:last-child)::after {
 	content: "";
 	position: absolute;
@@ -238,6 +236,11 @@ const steps = [PIPELINE_STEPS.resolve, PIPELINE_STEPS.materialize, PIPELINE_STEP
 
 .pipeline-when {
 	font-size: 0.8125rem;
+}
+
+/* A verb or flag in a note stays whole, so `--setup` never breaks after "--". */
+.pipeline-when code {
+	white-space: nowrap;
 }
 
 .pipeline-verbs {
