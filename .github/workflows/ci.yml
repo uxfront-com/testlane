@@ -150,6 +150,29 @@ jobs:
           NUXT_TELEMETRY_DISABLED: '1'
         run: pnpm --filter @uxfront/docs run build
 
+      # The production build: what Workers Builds deploys to testlane.dev, and
+      # what Lighthouse audits below, since the server build above is noindex.
+      # The server build's .output goes first: Nitro's prerenderer serves files
+      # it finds in .output/public, so `/` would come out as the server build's
+      # page, noindex and pointing at its own chunks.
+      - name: Build the static site
+        if: steps.filter.outputs.changed == 'true'
+        env:
+          WORKERS_CI: '1'
+          NODE_OPTIONS: --max-old-space-size=4096
+          NUXT_TELEMETRY_DISABLED: '1'
+        run: |
+          rm -rf apps/docs/.output
+          pnpm --filter @uxfront/docs run generate
+
+      # Six pages of the static build, served by `wrangler dev` the way
+      # Cloudflare serves them (apps/docs/lighthouserc.json). Accessibility and
+      # best practices below 0.95, or SEO below 1, fail the job. Performance only
+      # warns, since it varies with the runner.
+      - name: Lighthouse
+        if: steps.filter.outputs.changed == 'true'
+        run: pnpm --filter @uxfront/docs lighthouse
+
       # `nuxt typecheck` is deliberately NOT in this gate. On 5925b6e it reports
       # 3 errors, all 3 inside node_modules/@uxfront/layer-docs and none in
       # apps/docs — so it is red today and cannot be fixed from this repository.

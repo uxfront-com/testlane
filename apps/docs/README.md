@@ -11,7 +11,7 @@ pnpm install --filter @uxfront/docs
 pnpm --filter @uxfront/docs dev         # dev server on http://localhost:3000
 pnpm --filter @uxfront/docs test        # the redirects, the homepage's samples and the lanes formation
 pnpm --filter @uxfront/docs build       # nuxt build → .output, every page prerendered into .output/public
-pnpm --filter @uxfront/docs lighthouse  # Lighthouse CI against .output/public, fails below 0.95 in any category
+pnpm --filter @uxfront/docs lighthouse  # Lighthouse CI on six pages of the static build in dist (see Deploying)
 ```
 
 The build prerenders by crawling links from `/` and the introduction, and fails on any page that doesn't render, so a broken link or a renamed page fails it too.
@@ -210,9 +210,40 @@ npx wrangler dev
 
 Keep in mind that `wrangler dev` only serves your machine. Never run `wrangler deploy` or `wrangler preview` by hand, since each one uploads to the live Worker.
 
+Remove `apps/docs/.output` before you build the static site after a server build. Nitro's prerenderer serves the files it finds in `.output/public`, so the homepage would come out as the server build's page, with its `noindex` and links to chunks the static build doesn't have.
+
+### Hosts and indexing
+
+Only `testlane.dev` is indexed, so search engines send people to one copy of each page:
+
+- **`testlane.dev`** serves the static build, indexable, with `robots.txt` and `sitemap.xml`.
+- **The Worker's own `workers.dev` host** doesn't serve the production deploy, since `wrangler.jsonc` sets `workers_dev` to `false`. Its `preview_urls` keeps each branch's preview at `<branch>-testlane.<subdomain>.workers.dev`, which Cloudflare serves with `X-Robots-Tag: noindex`. Previews are static builds too, so that header is what keeps them out of search.
+- **`http://` and `www.testlane.dev`** need Cloudflare settings on the zone rather than code: "Always Use HTTPS", and a 301 from `www` to the apex.
+- **The server build** sends `noindex` wherever it runs (see [Other hosts](#other-hosts)).
+
+The static build also writes these headers into `dist/_headers`, from `routeRules` in `nuxt.config.ts`:
+
+| Path      | What `nuxt.config.ts` adds                                                                                                                       |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `/*`      | `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Strict-Transport-Security: max-age=31536000` |
+| `/200`    | `X-Robots-Tag: noindex`, since Nitro's SPA fallback page has no content of its own                                            |
+| `/_nuxt/*` | `cache-control: public, max-age=31536000, immutable`, since hashed build files never change                                    |
+
+There's no `Content-Security-Policy`, since the scene and Nuxt's inline payload would need a nonce or hash for each script. Browsers remember `Strict-Transport-Security` for a year, so keep it without `includeSubDomains` or `preload` unless every subdomain serves HTTPS.
+
+`robots.txt` lets every crawler in. Beside Docus's `User-agent: *` group, `robots.groups` in `nuxt.config.ts` names the AI crawlers we allow, so the policy is stated rather than implied: the answer engines (`OAI-SearchBot`, `ChatGPT-User`, `PerplexityBot`, `Claude-SearchBot` and `Claude-User`) and the crawlers that gather training data (`GPTBot`, `ClaudeBot`, `Google-Extended` and `CCBot`). Testlane is open-source documentation, so being in answers and in training data helps people find it. To keep one out, give its group `disallow: "/"` instead.
+
+### Lighthouse
+
+CI's `docs build` job builds the static site and runs `pnpm --filter @uxfront/docs lighthouse` on every pull request that touches the docs. `lighthouserc.json` serves `dist` with `wrangler dev`, the way Cloudflare does, and audits six pages three times each: the homepage, Introduction, Quick Start, Review a Pull Request, Workspace Verbs and Project File. Accessibility or best practices below 0.95, or SEO below 1, fails the job. Performance only warns, since it varies with the runner.
+
+To run it locally, build the static site as above first. It needs Google Chrome.
+
 ### Other hosts
 
-Every build without `WORKERS_CI` keeps Nitro's server output, `.output/server/index.mjs`, so these still work:
+Every build without `WORKERS_CI` is a copy of the site on another host, so it's never indexed: the `/**` route rule in `nuxt.config.ts` gives every page a `noindex, nofollow` robots meta tag and `X-Robots-Tag` header. Its `robots.txt` still lets crawlers in, since a crawler that's kept out never reads the `noindex`.
+
+These builds keep Nitro's server output, `.output/server/index.mjs`, so these hosts still work:
 
 - **Vercel** builds with `vercel.json`.
 - **Docker** builds with `Dockerfile`, from the repository root.
