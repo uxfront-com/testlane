@@ -6,21 +6,29 @@
 // command runs non-interactively in CI:
 //
 //   testlane setup [--name <name>] [--repo <url>] [--root <dir>]
-//             [--default-branch <branch>] [--force]
+//             [--default-branch <branch>] [--force] [--detect]
+//
+// --detect also clones the repo and runs its trust gate, as `config add <url>`
+// does. Without a `.testlane.toml` it writes a config drafted from the repo's
+// files (§9.12) under the `repo` line, and opens no editor.
 //
 // Failure modes: an invalid/reserved name or empty repo → E_USAGE (nothing
 // written); an existing project file → E_CONFIG unless --force; a missing value
 // on a non-TTY with no flag → E_USAGE naming the flag to pass. --dry-run prints
 // the planned writes and changes nothing.
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { ExitCode, configError, usage } from "../lib/errors.ts";
 import { parseFlags } from "../cli/flags.ts";
 import { promptLine } from "../lib/prompt.ts";
+import { resolvePath } from "../lib/paths.ts";
+import { shellJoin } from "../lib/shell.ts";
 import { isValidProjectName, loadDefaults, loadProject, projectFilePath } from "../config/load.ts";
 import { tomlString } from "../lib/project-template.ts";
 import type { Ctx } from "../config/schema.ts";
+import { bareCloneArgv, fetchBranchArgv, initConfigArgvs, initFetchArgv, isInitialized } from "../git/repo.ts";
+import { cloneTrustDetect } from "./clone-detect.ts";
 import type { TopInput } from "./types.ts";
 
 const DEFAULT_ROOT = "~/dev/testlane";
@@ -28,7 +36,7 @@ const DEFAULT_ROOT = "~/dev/testlane";
 export async function setup(input: TopInput): Promise<number> {
   const { ctx } = input;
   const flags = parseFlags(input.args, {
-    bools: ["--force"],
+    bools: ["--force", "--detect"],
     values: ["--name", "--repo", "--root", "--default-branch"],
   });
   if (flags.positionals.length) {
@@ -79,14 +87,46 @@ export async function setup(input: TopInput): Promise<number> {
     [`repo = ${tomlString(repo)}`, ...(branch ? [`default_branch = ${tomlString(branch)}`] : [])].join("\n") + "\n";
   const defaultsFile = join(configDir, "defaults.toml");
   const willWriteDefaults = !rootAlreadySet;
+  const detect = flags.bool("--detect");
+  // Where the new file's repo_path resolves: it sets only repo and default_branch.
+  const repoPath = resolvePath(join(root, name, "repo"));
 
   // ── --dry-run: print the plan, touch nothing. ───────────────────────────────
   if (ctx.flags.dryRun) {
     if (!dirExisted) process.stdout.write(`mkdir -p ${configDir}\n`);
     if (willWriteDefaults) process.stdout.write(`write ${defaultsFile}\n  root = ${tomlString(root)}\n`);
     process.stdout.write(`write ${projectFile}\n${indent(projectToml)}`);
+    if (detect) {
+      if (!isInitialized(repoPath)) {
+        process.stdout.write(`${shellJoin(bareCloneArgv(repo, repoPath))}\n`);
+        for (const argv of initConfigArgvs(repoPath)) process.stdout.write(`${shellJoin(argv)}\n`);
+        process.stdout.write(`${shellJoin(initFetchArgv(repoPath))}\n`);
+      } else if (branch) {
+        process.stdout.write(`${shellJoin(fetchBranchArgv(repoPath, branch))}\n`);
+      }
+      process.stdout.write(`detect origin/${branch ?? "<default>"} → ${projectFile}\n`);
+    }
     return ExitCode.SUCCESS;
   }
+
+  // What a failed clone puts back, so a retry starts from where this run did.
+  const projectBefore = existsSync(projectFile) ? readFileSync(projectFile, "utf8") : undefined;
+  const defaultsBefore = existsSync(defaultsFile) ? readFileSync(defaultsFile, "utf8") : undefined;
+  const rollback = (): void => {
+    if (projectBefore === undefined) rmSync(projectFile, { force: true });
+    else writeFileSync(projectFile, projectBefore);
+    if (willWriteDefaults) {
+      if (defaultsBefore === undefined) rmSync(defaultsFile, { force: true });
+      else writeFileSync(defaultsFile, defaultsBefore);
+    }
+    if (!dirExisted) {
+      try {
+        rmdirSync(configDir); // only when empty
+      } catch {
+        // not empty, or already gone
+      }
+    }
+  };
 
   // ── Apply. ──────────────────────────────────────────────────────────────────
   if (!dirExisted) {
@@ -102,7 +142,28 @@ export async function setup(input: TopInput): Promise<number> {
 
   // Validate the freshly written config so a bad combination fails loudly here
   // rather than on the user's next command.
-  loadProject(configDir, name, loadDefaults(configDir));
+  const defaults = loadDefaults(configDir);
+  const project = loadProject(configDir, name, defaults);
+
+  if (detect) {
+    const { trust, draft } = await cloneTrustDetect({ ...ctx, defaults }, project, {
+      repo,
+      clearApproval: projectBefore === undefined,
+      rollback,
+      untrustedHint: `testlane config trust ${name}`,
+      detect: { repoReason: "setup --repo", ...(branch ? { defaultBranch: branch } : {}) },
+    });
+    if (draft !== undefined) {
+      writeFileSync(projectFile, draft);
+      loadProject(configDir, name, defaults);
+      ctx.log.step(`wrote a detected config to ${projectFile}; check each # guess: and # note: line`);
+      ctx.log.step(`next: testlane config edit ${name}`);
+      return ExitCode.SUCCESS;
+    }
+    if (trust.outcome === "no-ref") ctx.log.step("origin has no default branch yet; nothing to detect");
+    ctx.log.step(`next: testlane ${name} ${branch ?? trust.branch ?? "<branch|pr|path>"}`);
+    return ExitCode.SUCCESS;
+  }
 
   ctx.log.step(`next: testlane ${name} ${branch ?? "<branch|pr|path>"}`);
   return ExitCode.SUCCESS;

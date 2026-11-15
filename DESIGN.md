@@ -94,7 +94,7 @@ testlane [global flags] <top-verb> [args...]                                 # g
 |---|---|---|
 | `projects` | List configured projects | §9.10 |
 | `doctor` | Diagnose environment & configs | §9.11 |
-| `config` | `edit\\|path\\|validate [project]` | §9.12 |
+| `config` | `path\\|edit\\|add\\|validate\\|show\\|trust\\|detect`: read, edit, check and draft project configs | §9.12 |
 | `completions <shell>` | Print shell completion script (M2) | §9.13 |
 | `mcp` | Serve Testlane's tools to an MCP client over stdio | §9.18 |
 | `help`, `--help`, `-h` | Usage | — |
@@ -178,7 +178,7 @@ Recognized anywhere before the verb; also accepted after it (verb parsers must t
 |---|---|
 | `--config-dir <path>` | Override config directory (highest precedence). |
 | `--dry-run` | Print external commands instead of executing; no state writes. §13.4 |
-| `--json` | Machine-readable stdout where supported (`checkout`, `list`, `info`, `start`, `ps`, `projects`, `doctor`). Elsewhere: exit 2. Setup and hook output goes to stderr while it's set. |
+| `--json` | Machine-readable stdout where supported (`checkout`, `list`, `info`, `start`, `ps`, `projects`, `doctor`, `config detect`). Elsewhere: exit 2. Setup and hook output goes to stderr while it's set. |
 | `--quiet`, `-q` | Suppress step logging on stderr (errors still print). |
 | `--verbose`, `-v` | Log every external command with timing to stderr. |
 | `--yes`, `-y` | Skip confirmation prompts (required for destructive ops when stdin is not a TTY). |
@@ -192,7 +192,7 @@ Ref disambiguators (workspace commands only): `--pr <n>`, `--branch <name>`, `--
 
 ### 5.1 Discovery
 
-Config directory resolution order: `--config-dir` flag → `TESTLANE_CONFIG_DIR` env → `~/.testlane` (default). Testlane 2.x also falls back to the 1.x variable and directory, with a warning (§5.6). If the directory does not exist, every command except `help`/`version`/`doctor`/`completions`/`setup`/`mcp`/bare `config`/`config path` and `config add <url>` fails with exit 3 and a hint to create it.
+Config directory resolution order: `--config-dir` flag → `TESTLANE_CONFIG_DIR` env → `~/.testlane` (default). Testlane 2.x also falls back to the 1.x variable and directory, with a warning (§5.6). If the directory does not exist, every command except `help`/`version`/`doctor`/`completions`/`setup`/`mcp`/bare `config`/`config path`, `config add <url>` and `config detect <path>` fails with exit 3 and a hint to create it.
 
 ### 5.2 Layout
 
@@ -714,10 +714,23 @@ Runs the checks below; each prints `ok` / `warn` / `fail` + one-line detail to s
 - A state file left by an earlier project of the same name loses its approval, saved before the trust prompt, so it never vouches for this repo, even when the run then stops at the prompt.
 - With a `.testlane.toml` on the default branch, it shows it and asks for trust (§5.7). Off a TTY without `--yes`, the project stays and the run exits 3 with `hint: testlane config trust <name>`. Without a repo file, it writes the §9.12 template with the real `repo` line and opens the editor, as `config add <name>` does.
 - `--dry-run` prints the files it would write and the clone commands, and touches nothing.
+- `--detect` drafts the file from the repo instead of the template (`config detect` below). It changes only the no-repo-file case: it writes the draft, with the real `repo` line, from `origin/<default>` of the new clone, then opens the editor. A `.testlane.toml` on the default branch wins, and nothing is detected. An empty repo (no default branch) gets the template. `--dry-run` adds the line `detect origin/<default> → <name>.toml`.
 
 `config trust <project>` → under the lock, clone the primary repo if needed, fetch the default branch, then show the repo file (first use) or the diff from the approved one, ask, and record the approval. When there is nothing to approve, it reports "already trusted" or "no .testlane.toml on origin/<default>" as a `→` step line (silenced by `--quiet`) and exits 0. A stored approval that no longer matches its sha256 or no longer validates counts as none, so `config trust` shows the file and asks again as on first use. Off a TTY without `--yes`, it exits 3 with `hint: re-run on a terminal, or pass --yes`. It loads the user file alone, so a broken snapshot never stops it.
 
 `config show <project>` → the merged config, offline, one `key = value  # source` line per key, where the source is `user`, `repo` or `default` (`defaults.toml` and built-in defaults). `--json` prints one object: `{ project, approved: { sha256, approvedAt } | null, config, sources }`, where `config` uses TOML key names and `sources` maps a dotted key (`commands.dev`, `env.PORT`, `setup.run`) to its source.
+
+`config detect [path | project] [--repo-file]` → print a draft project config, read from a repo's own files, on stdout. It writes nothing and runs nothing from the repo: no install, no script, no `node -e`. It only reads files, and never a lockfile's content, only whether one is there.
+
+- **The argument.** None means `.`. An argument that holds a `/`, is `.` or `..`, or starts with `~` is a path. Anything else is a project name, and an unknown one is `E_USAGE` with `hint: pass ./<name> for a directory`. A path that isn't a directory is `E_USAGE`.
+- **A path** is read with `node:fs` alone, so no process runs, git included (a checkout's git config can run `core.fsmonitor`). It lists regular files, skips `node_modules/` and `.git/`, and never follows a symlink. It needs no config dir (§5.1).
+- **A project** is read from `refs/remotes/origin/<default>` of its primary bare repo, with the branch from `repoConfigBranch` (§5.7): one `git ls-tree -r`, then `git cat-file` per file it reads, capped at 1 MiB each. No clone, fetch, worktree, lock or state write. The repo is a partial clone, so a read may download a blob into its object store, as the trust gate's reads do. A repo not cloned yet, or a default branch not fetched, is `E_CONFIG` with `hint: … testlane config trust <project>`, which clones and fetches it. A `.testlane.toml` on that branch gets a warning, since the draft doesn't read it.
+- **The rules.** The package manager comes from the root `packageManager`, else the one lockfile, else (several lockfiles) the manager of `pnpm-workspace.yaml` as a guess. `setup.run` is its frozen install, and `cache_key` the lockfile, `pnpm-workspace.yaml` and the `package.json` files. Workspace packages come from the `packages:` list of `pnpm-workspace.yaml`, read by hand, since there's no YAML parser in the dependency budget (ADR-001), else `package.json` `workspaces`. An app is a workspace package with a `dev` script that doesn't call a task runner, and packages under `apps/` win. The root counts only when no workspace package does, or when its `dev` runs a known framework. A known `dev` (`nuxt dev`, `next dev`, `vite`, `astro dev`, `storybook dev`) becomes its framework's command on `127.0.0.1:{port}`, run through the package manager's filter. An unknown `dev` is run by its script name, with `PORT = "{port}"`. The main app (`apps/web`, then `apps/docs`, then the root, else the first by path) is `dev`, and the others are named after their package, with `ports = N` and `{port+i}`. A root `turbo.json` appends `&& <pm> turbo run build --filter=<main app>^...` to `setup.run`, while nx, vite-plus (`vp`) and lerna get a note and no guess. Each `.env*.example` adds its real name to `seed_files`. `test` and `check` come from the root scripts, run with `yarn run <script>` under Yarn, since Yarn 1's built-in `yarn check` beats a `check` script. Repo text in a templated value (`run`, `cwd`) has each `{` doubled (§5.5), so a package name can't name a variable. A Nuxt app adds `NUXT_TELEMETRY_DISABLED = "1"`, and `conductor.toml` `[scripts]` become notes.
+- **The draft.** Every key line ends with `# detected: <reason>` or `# guess: <reason>`, and what the draft leaves to the reader is a `# note:` line. Repo text in comments is escaped with `printableLine`, and string values escape control characters as `\uXXXX`. The draft is parsed back and checked with the project-file schema (or the repo-file schema) before it prints. One that fails is a bug, never printed: exit 1, `E_INTERNAL`.
+- **`--repo-file`** prints only the keys a `.testlane.toml` may hold (no `repo`), checked with the repo-file schema, for maintainers who want to commit one.
+- **`--json`** prints one object: `{ source, repoFile, config, findings }`. `source` is `{ kind: "path", path }` or `{ kind: "project", project, ref: "origin/<branch>" }`. `config` is the draft under TOML key names. Each finding is `{ key, value, kind, confidence, reason }`, where `key` is a dotted path (`setup.run`, `commands.dev.env.PORT`) or `null` for a note, `kind` is `detected`, `guess` or `note`, and `confidence` is `high`, `medium` or `low` (`guess` ⇔ `low`).
+
+`setup --detect` clones the repo and drafts its config, as `config add <url> --detect` does, and shares its steps. After it writes `<name>.toml`, it clones the primary repo (or, on a `--force` re-run with an existing clone, fetches its default branch) and runs the trust gate. Without a `.testlane.toml`, it rewrites `<name>.toml` as `repo`, `default_branch` (when given) and the draft, checks it loads, opens no editor, since setup runs unattended, and ends with `next: testlane config edit <name>`. With one, the trust flow runs as for `config add`, and the file stays `repo` (and `default_branch`). A reused clone whose `remote.origin.url` isn't the new `repo` puts back what the run wrote and exits 3 with a hint to remove `repo_path`, so the draft and the trust approval never come from another repo. A failed clone puts back what the run wrote and exits 5. `--dry-run` prints the planned writes, the clone commands and the `detect origin/<branch> → <name>.toml` line, and touches nothing.
 
 ### 9.13 `completions <bash|zsh|fish>` (M2)
 
@@ -890,6 +903,9 @@ testlane/
       schema.ts           # zod schemas + inferred types (Config, ProjectConfig, …)
       load.ts             # discovery (§5.1), TOML parse, defaults merge, aggregate errors
       repo.ts             # .testlane.toml parse/validate and the user-over-repo merge (§5.7)
+      detect.ts           # config detect: the rules over a list/read/exists interface, pure (§9.12)
+      detect-parse.ts     # pnpm-workspace.yaml packages: list, workspace globs
+      detect-emit.ts      # the draft as TOML, with reasons, validated by the schema
     core/
       resolve.ts          # ref → RefSpec (§6.1), slug(), URL extraction
       workspace.ts        # ensureWorkspace pipeline (§8.1)
@@ -897,6 +913,7 @@ testlane/
       ports.ts            # allocation (§8.5)
       state.ts            # load/save (atomic), lock/unlock (§7.6)
       trust.ts            # the repo-config trust gate (§5.7)
+      repo-files.ts       # config detect's file adapters: a local directory, a commit in the bare repo
       supervise.ts        # process.json, liveness, stop, readiness (§9.14–9.17)
     git/
       repo.ts             # init, fetch strategies, default-branch detect (§7.1–7.3)
@@ -906,6 +923,7 @@ testlane/
       checkout.ts code.ts run.ts exec.ts shell.ts sync.ts diff.ts
       info.ts list.ts clean.ts projects.ts doctor.ts config.ts completions.ts
       lifecycle.ts        # start/stop/logs/ps (§9.14–9.17)
+      clone-detect.ts     # clone → trust → detect, shared by config add <url> and setup --detect
     lib/
       proc.ts             # capture/passthrough/detach (§11.1)
       log.ts              # stderr steps, levels, color gating
@@ -1015,6 +1033,7 @@ Runner: `vitest` (was `bun test`; see ADR-002). `gh` is never invoked in tests �
 - `lib/template`: all vars, `{port+N}` bounds, unknown-var error, `{{` escape.
 - `core/ports`: determinism, stride math, conflict scan (probe fn injected).
 - `config`: valid fixture parses to expected `ProjectConfig`; each invalid fixture yields its aggregate error strings; defaults merge and derived paths.
+- `config/detect`: one test per §9.12 rule on the in-memory adapter, and five fixtures shaped like real repos, each with the exact draft it must produce. No git.
 
 ### 17.2 Integration (real git, tmp dirs)
 

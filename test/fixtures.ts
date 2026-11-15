@@ -3,7 +3,7 @@
 
 import { spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { main, unavailableGh } from "../src/main.ts";
 import type { GhClient, PrMeta } from "../src/git/gh.ts";
 
@@ -58,6 +58,7 @@ export function makeFixtureOrigin(tmp: string): FixtureOrigin {
   const author = (branch: string, files: Record<string, string>, force: boolean): string => {
     git(["-C", workPath, "checkout", "-B", branch]);
     for (const [rel, body] of Object.entries(files)) {
+      mkdirSync(dirname(join(workPath, rel)), { recursive: true });
       writeFileSync(join(workPath, rel), body);
     }
     git(["-C", workPath, "add", "-A"]);

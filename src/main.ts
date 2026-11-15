@@ -20,6 +20,7 @@ import {
 } from "./core/resolve.ts";
 import { RealGhClient, unavailableGh, type GhClient } from "./git/gh.ts";
 import type { Ctx, Defaults, ProjectConfig } from "./config/schema.ts";
+import { isPathArgument } from "./config/detect.ts";
 
 import { HELP, version } from "./cli/help.ts";
 import { checkout } from "./commands/checkout.ts";
@@ -171,10 +172,12 @@ function isExemptFromConfigDir(result: ParseResult): boolean {
   // `setup` creates the config dir, so it must run when the dir is still absent.
   if (result.verb === "setup") return true;
   // `config path` is exempt; `config edit/validate` are not. `config add <url>`
-  // is, since it creates the config dir on a new machine (§9.12).
+  // is, since it creates the config dir on a new machine, and so is
+  // `config detect <path>`, which reads only that directory (§9.12).
   if (result.verb === "config") {
     const sub = result.args[0];
     if (sub === "add") return configAddTarget(result.args.slice(1)) !== undefined;
+    if (sub === "detect") return isPathArgument(result.args.slice(1).find((a) => !a.startsWith("-") || a === "-"));
     return sub === undefined || sub === "path";
   }
   return false;

@@ -70,7 +70,7 @@ Here's the smallest session that works, from a fresh install to a running worksp
 testlane setup --name my-project --repo git@github.com:my-org/my-project.git --yes
 ```
 
-When the repository ships a `.testlane.toml`, you can skip writing the project file: `testlane config add https://github.com/my-org/my-project` writes it, clones the repository and asks you to trust the repository's setup and commands. [Repository config](#repository-config) says more.
+When the repository ships a `.testlane.toml`, you can skip writing the project file: `testlane config add https://github.com/my-org/my-project` writes it, clones the repository and asks you to trust the repository's setup and commands. [Repository config](#repository-config) says more. When it doesn't ship one, add `--detect` to either command and Testlane drafts the project file from the repository's own files, like its lockfile, workspace packages and dev scripts, with a reason on every line.
 
 `setup` writes only the repository, so open the file with `testlane config edit my-project` and tell Testlane how to install dependencies and what your commands are:
 
@@ -207,13 +207,15 @@ These take no project:
 | `setup`       | Creates the config directory and writes your first project file                      |
 | `projects`    | Lists the projects you've set up                                                     |
 | `doctor`      | Checks git, `gh`, the config and state directories and every project                 |
-| `config`      | Prints the config directory (`path`), edits, adds, validates or shows a project's config, and trusts a repository's `.testlane.toml` |
+| `config`      | Prints the config directory (`path`), edits, adds, validates or shows a project's config, trusts a repository's `.testlane.toml` and drafts a config from a repository's files (`detect`) |
 | `completions` | Prints a completion script for `bash`, `zsh` or `fish`                               |
 | `mcp`         | Serves Testlane's tools to an MCP client over stdio                                  |
 | `help`        | Prints the usage                                                                     |
 | `version`     | Prints the version                                                                   |
 
-`config` takes `path`, `edit [project]`, `add [project]`, `add <url>`, `validate [project]`, `show <project>` or `trust <project>`. `add` and `edit` both write a starter file when the project has none, while `add <url>` names the project after the repository, clones it and asks you to trust its `.testlane.toml`. `show` prints the config a run would use, with where each key came from, and `trust` shows the repository's file and records your approval. To turn on completions in bash or fish, add the line for your shell to its startup file:
+`config` takes `path`, `edit [project]`, `add [project]`, `add <url>`, `validate [project]`, `show <project>`, `trust <project>` or `detect [path | project]`. `add` and `edit` both write a starter file when the project has none, while `add <url>` names the project after the repository, clones it and asks you to trust its `.testlane.toml`. `show` prints the config a run would use, with where each key came from, and `trust` shows the repository's file and records your approval.
+
+`detect` prints a draft config read from a repository's files: a directory, or a project's default branch. It writes nothing and runs nothing from the repository, and every line says why it's there with `# detected:`, `# guess:` or `# note:`. `--repo-file` keeps only the keys a `.testlane.toml` may hold, and `--json` prints each finding with its reason and confidence. `config add <url> --detect` and `setup --detect` start the project file from the same draft when the repository has no `.testlane.toml`. To turn on completions in bash or fish, add the line for your shell to its startup file:
 
 ```bash
 eval "$(testlane completions bash)"   # ~/.bashrc
@@ -241,7 +243,7 @@ These work with every command, before or after the verb:
 | `--config-dir <dir>`               | Reads the config from `<dir>` instead of `$TESTLANE_CONFIG_DIR` or `~/.testlane`                |
 | `--pr`, `--branch`, `--path <v>`   | Reads the ref as a PR, a branch or a path, whatever it looks like. Only one goes with a command |
 | `--dry-run`                        | Prints what would run and changes nothing                                                       |
-| `--json`                           | Prints JSON on stdout, from `checkout`, `list`, `info`, `start`, `ps`, `projects` and `doctor`  |
+| `--json`                           | Prints JSON on stdout, from `checkout`, `list`, `info`, `start`, `ps`, `projects`, `doctor` and `config detect` |
 | `-q`, `--quiet`                    | Leaves out the step lines on stderr. Warnings still print                                       |
 | `-v`, `--verbose`                  | Prints each command Testlane runs, and the stack trace when a command fails                     |
 | `-y`, `--yes`                      | Answers yes to every prompt                                                                     |
@@ -293,7 +295,7 @@ A repository can commit a `.testlane.toml` at its root, so its maintainers write
 
 Testlane reads the file only from the tip of the default branch, never from the branch or pull request you check out, so a pull request, even one from a fork, can't change what runs on your machine. It runs the file's commands only after you approve that exact content: the first time, it prints what the file would run and the whole file, and after a change, the diff. With no terminal to ask on, a command stops with exit `3` and the hint `testlane config trust my-project`, and `--yes` approves without asking. Until you approve, your project file works on its own.
 
-Your project file wins wherever both set a key. `[env]` merges by key, `[commands]` by name and `[hooks]` by hook name, and a command of yours replaces the repository's command of that name whole. `testlane config show my-project` prints the merged config with where each key came from, and a repository with no `.testlane.toml` works exactly as before. [Ship a config with your repo](https://testlane.dev/docs/guides/ship-a-config-with-your-repo) walks through it from both sides.
+Your project file wins wherever both set a key. `[env]` merges by key, `[commands]` by name and `[hooks]` by hook name, and a command of yours replaces the repository's command of that name whole. `testlane config show my-project` prints the merged config with where each key came from, and a repository with no `.testlane.toml` works exactly as before. To write one, start from `testlane config detect --repo-file > .testlane.toml` in your checkout. [Ship a config with your repo](https://testlane.dev/docs/guides/ship-a-config-with-your-repo) walks through it from both sides.
 
 ### Template variables
 
