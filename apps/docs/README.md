@@ -214,10 +214,9 @@ Keep in mind that `wrangler dev` only serves your machine. Never run `wrangler d
 
 Every build without `WORKERS_CI` keeps Nitro's server output, `.output/server/index.mjs`, so these still work:
 
-- **Vercel** builds with `vercel.json`.
 - **Docker** builds with `Dockerfile`, from the repository root.
 - **Nixpacks** builds with `nixpacks.toml`, from the repository root, with `NIXPACKS_CONFIG_FILE=apps/docs/nixpacks.toml`.
 
 The prerenderer needs more memory than Node's default, so the builds set `NODE_OPTIONS=--max-old-space-size=4096`.
 
-The server needs Node 22.13 or newer, both to build and to run: Docus reads its content with Node's built-in `node:sqlite`, which older versions don't have or keep behind a flag. `engines` in `package.json` says so, which Nixpacks and Vercel read to pick their Node version, and the `Dockerfile` uses `node:22-slim`, which is newer.
+The server needs Node 22.13 or newer, both to build and to run: Docus reads its content with Node's built-in `node:sqlite`, which older versions don't have or keep behind a flag. `engines` in `package.json` says so, which Nixpacks reads to pick its Node version, and the `Dockerfile` uses `node:22-slim`, which is newer.
