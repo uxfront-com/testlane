@@ -1,9 +1,12 @@
 import { queryCollection } from "@nuxt/content/server";
+import { GIT_DATES } from "#git-dates";
 
 // The fields read below. Nitro's types don't see the collections Docus defines.
 interface DocsPage {
 	path: string;
-	meta: { sitemap?: boolean; modifiedAt?: string };
+	stem: string;
+	extension: string;
+	meta: { sitemap?: boolean };
 }
 
 /**
@@ -11,8 +14,10 @@ interface DocsPage {
 * crawlers at. Docus lists its docs and landing pages, and skips the landing
 * collection when the app has its own app/pages/index.vue, so the homepage
 * never made it in. This lists the homepage first, then the docs pages by
-* Docus's rules: `sitemap: false` in a page's frontmatter leaves it out, and
-* `modifiedAt` sets its `<lastmod>`.
+* Docus's rules: `sitemap: false` in a page's frontmatter leaves it out. Each
+* `<lastmod>` is the date of the last commit of the page's source file, or of
+* app/pages/index.vue for the homepage (modules/git-dates.ts), and is left out
+* when the build couldn't read git history.
 *
 * Nitro keeps the first handler for a route, and it scans the app's server/
 * before the layers'. Docus still adds the route to the prerendered ones.
@@ -22,10 +27,13 @@ export default defineEventHandler(async (event) => {
 	const pages = (await queryCollection(event, "docs" as never).all()) as DocsPage[];
 
 	const urls = [
-		{ loc: "/", lastmod: undefined },
+		{ loc: "/", lastmod: GIT_DATES["app/pages/index.vue"] },
 		...pages
 			.filter((page) => page.meta.sitemap !== false && !isNavigationPath(page.path))
-			.map((page) => ({ loc: page.path, lastmod: page.meta.modifiedAt?.split("T")[0] })),
+			.map((page) => ({
+				loc: page.path,
+				lastmod: GIT_DATES[`content/${page.stem}.${page.extension}`],
+			})),
 	];
 
 	setHeader(event, "Content-Type", "application/xml");
