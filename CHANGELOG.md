@@ -1,5 +1,26 @@
 # Changelog
 
+## 3.0.0
+
+### Major Changes
+
+- e8fe6dc: Testlane now reads and writes only its own names. It reads its config from `--config-dir`, `$TESTLANE_CONFIG_DIR` or `~/.testlane`, in that order, and keeps its state in `${XDG_STATE_HOME:-~/.local/state}/testlane`. Debug output turns on only with `TESTLANE_DEBUG=1` or `--verbose`, and the commands, setup and hooks it runs get only the `TESTLANE_*` variables. If you still keep a config or state directory, or set a variable, under another name, move or rename it to the one above while no `testlane` command is running.
+
+### Minor Changes
+
+- 87a665c: Add a docs guide, "Use Testlane from an Agent", for AI coding agents that drive Testlane. It lists the commands to call to check out a ref, start a command, read its logs, stop it and remove the workspace, the `--json` fields to read, how to handle each exit code and which interactive commands to avoid. It ends with a block to paste into `AGENTS.md` or `CLAUDE.md`. The CLI itself is unchanged.
+- bb6627f: Add `testlane config detect [path | project]`, which drafts a project config from a repository's own files: its package manager and frozen install, its workspace packages, a dev command for each app on its own port, bound to `127.0.0.1` for Nuxt, Next.js, Vite, Astro and Storybook, a `turbo` build before dev, seed files from `.env*.example`, and `test` and `check` commands. It only reads files and runs nothing from the repository, and every line ends with `# detected:`, `# guess:` or `# note:` so you can see why it's there. `--repo-file` prints only the keys a `.testlane.toml` may hold, and `--json` prints each finding with its reason and confidence. `config add <url> --detect` and `setup --detect` start the project file from the same draft when the repository has no `.testlane.toml`. Without these flags, nothing changes.
+- 9cf6e40: Add `testlane mcp`, an MCP server over stdio with no new dependency, so an AI agent can check out a ref, start a command, read its logs, stop it and remove the workspace through typed tools instead of parsing the CLI's output. Its twelve tools (`projects`, `doctor`, `config_validate`, `list`, `ps`, `info`, `diff`, `logs`, `checkout`, `start`, `stop` and `rm`) call the same code as their commands and return the same JSON as `--json`, and `checkout` and `start` send progress and take a `timeout`. Connect it with `claude mcp add testlane -- testlane mcp`. A project named `mcp` can now only be reached by its repository URL, and a branch ref can no longer start with `-`, which git would read as an option.
+- 0076bf5: Read a `.testlane.toml` that a repo commits, so `testlane config add <url>` sets up a project without hand-written TOML. Its commands run only after you approve the file from the default branch, and `config show` marks where each key came from. A script that runs off a terminal without `--yes` stops with `E_CONFIG` once the repo adds or changes the file, until you run `testlane config trust <project>`.
+
+### Patch Changes
+
+- 0076bf5: `--branch` refuses names that git would read as a refspec, like `a:b` or `+x`, with exit code 4. Before, such a name reached `git fetch`, where it could write a ref other than the branch you asked for. On macOS and Windows, a branch name that differs from another fetched branch only in case, like `Main` beside `main`, is refused too, since both would land in the same file.
+- 09abe3e: State Testlane's MIT licence: the package now ships a `LICENSE` file and declares `"license": "MIT"`, so npm shows the licence on its page. The CLI itself is unchanged.
+- 0e9966f: Rewrite the README so it reads in one sitting, with the depth left to [testlane.dev](https://testlane.dev). Each of the three verb groups is now a table, the project file's keys are in a table too, and every section links to its page on the site. It still lists every exit code, global flag and template variable. The CLI itself is unchanged.
+- 3b7fa9f: Point the README's documentation link at [testlane.dev](https://testlane.dev), since the old address no longer resolves.
+- 77d72b6: Link the package's npm page to its docs at [testlane.dev](https://testlane.dev), rather than the GitHub README, and add keywords like `worktree`, `pull-request` and `dev-server` so npm search finds it. The CLI itself is unchanged.
+
 ## 2.0.0
 
 ### Major Changes
