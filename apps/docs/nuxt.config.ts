@@ -93,6 +93,12 @@ export default defineNuxtConfig({
 		groups: AI_CRAWLERS.map((userAgent) => ({ userAgent, allow: "/" })),
 	},
 
+	// The docs pages' Open Graph cards, at the 1200×630 the social sites ask
+	// for (audit G1). nuxt-og-image defaults to 1200×600.
+	ogImage: {
+		defaults: { width: 1200, height: 630 },
+	},
+
 	// Docus's MCP server is off, like on the other UXFront docs sites.
 	mcp: {
 		enabled: false,

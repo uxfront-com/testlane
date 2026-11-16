@@ -165,6 +165,14 @@ jobs:
           rm -rf apps/docs/.output
           pnpm --filter @uxfront/docs run generate
 
+      # The tags, sitemap, robots.txt, llms.txt, Markdown copies, structured
+      # data and redirects of every page in the static build (apps/docs/README.md,
+      # "Search and AI search"). It reads dist/ only, so it runs before
+      # Lighthouse and fails fast, naming the page and the rule.
+      - name: Check SEO
+        if: steps.filter.outputs.changed == 'true'
+        run: pnpm --filter @uxfront/docs check:seo
+
       # Six pages of the static build, served by `wrangler dev` the way
       # Cloudflare serves them (apps/docs/lighthouserc.json). Accessibility and
       # best practices below 0.95, or SEO below 1, fail the job. Performance only
