@@ -12,10 +12,26 @@ process.env.NUXT_SITE_URL ||= SITE_URL;
 // the root wrangler.jsonc serves. Without a preset, Nitro would pick
 // cloudflare-module, whose generated wrangler.json replaces wrangler.jsonc and
 // points at a server entry that a static build never writes. An explicit
-// NITRO_PRESET still wins. Every other build keeps Nitro's server output.
-if (process.env.WORKERS_CI) {
+// NITRO_PRESET still wins. Every other build keeps Nitro's server output, which
+// is never indexed (routeRules below).
+const STATIC_BUILD = Boolean(process.env.WORKERS_CI);
+if (STATIC_BUILD) {
 	process.env.NITRO_PRESET ||= "cloudflare_pages_static";
 }
+
+// The AI crawlers robots.txt names, each allowed the whole site: the answer
+// engines, then the crawlers that gather training data.
+const AI_CRAWLERS = [
+	"OAI-SearchBot",
+	"ChatGPT-User",
+	"PerplexityBot",
+	"Claude-SearchBot",
+	"Claude-User",
+	"GPTBot",
+	"ClaudeBot",
+	"Google-Extended",
+	"CCBot",
+];
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
@@ -71,6 +87,18 @@ export default defineNuxtConfig({
 		},
 	},
 
+	// robots.txt. Layers concatenate arrays, so these groups join Docus's
+	// `User-agent: *` group, and Docus's `Sitemap:` line stays.
+	robots: {
+		groups: AI_CRAWLERS.map((userAgent) => ({ userAgent, allow: "/" })),
+	},
+
+	// The docs pages' Open Graph cards, at the 1200×630 the social sites ask
+	// for (audit G1). nuxt-og-image defaults to 1200×600.
+	ogImage: {
+		defaults: { width: 1200, height: 630 },
+	},
+
 	// Docus's MCP server is off, like on the other UXFront docs sites.
 	mcp: {
 		enabled: false,
@@ -104,6 +132,32 @@ export default defineNuxtConfig({
 		"/_nuxt/**": {
 			headers: { "cache-control": "public, max-age=31536000, immutable" },
 		},
+		// The SPA fallback Nitro writes as 200.html has no content of its own.
+		"/200": {
+			headers: { "X-Robots-Tag": "noindex" },
+		},
+		...(STATIC_BUILD
+			? {
+					// Production: the static build writes these into dist/_headers. No CSP,
+					// since the scene and Nuxt's inline payload would need nonces or hashes.
+					"/**": {
+						headers: {
+							"X-Content-Type-Options": "nosniff",
+							"Referrer-Policy": "strict-origin-when-cross-origin",
+							"Strict-Transport-Security": "max-age=31536000",
+						},
+					},
+				}
+			: {
+					// Every other build (Vercel, Docker, Nixpacks, the daemon Mac's
+					// previews, CI's server build) is a copy of the site on another host,
+					// so it's never indexed. @nuxtjs/robots turns this into the robots meta
+					// tag on every prerendered page and an X-Robots-Tag header. robots.txt
+					// still lets crawlers in, since one that's kept out never reads the
+					// noindex. Workers Builds' branch previews are static builds, and
+					// Cloudflare sends X-Robots-Tag: noindex on their workers.dev hosts.
+					"/**": { robots: "noindex, nofollow" },
+				}),
 	},
 
 	nitro: {

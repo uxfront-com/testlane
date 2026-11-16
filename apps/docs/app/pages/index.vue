@@ -3,15 +3,19 @@ import { hold } from "@uxfront/scene";
 import { corridor, outline } from "@uxfront/scene/formations";
 
 import { WORKSPACES as workspaces, configCode, refsCode } from "~/data/samples";
-import { DOCS_URL, GITHUB_URL, UXFRONT_URL } from "~/data/site";
+import { homeGraph } from "~/data/schema";
+import { DOCS_URL, GITHUB_URL, SITE_NAME, UXFRONT_URL } from "~/data/site";
 import { lanes } from "~/lib/formations/lanes";
 import { dimmed, spotlight } from "~/lib/formations/spotlight";
 
+const title = "Testlane: run any pull request locally in its own worktree";
+const description =
+	"Point Testlane at a pull request, branch, commit or link to get it checked out in a git worktree, with dependencies installed and ports of its own.";
+
 useUxHead({
-	title: "Testlane - Run any pull request or branch locally, in one command",
-	description:
-		"Point Testlane at a pull request, a branch, a commit or a link. You get the code checked out, dependencies installed and a port of your own, while everything you already had open stays untouched.",
-	siteName: "Testlane",
+	title,
+	description,
+	siteName: SITE_NAME,
 	image: {
 		path: "/og.jpg",
 		width: 1200,
@@ -19,6 +23,21 @@ useUxHead({
 		alt: "A stream of white light that four refs branch off, each into a lane of its own that ends in a lit workspace with its port, beside the words: any git ref, running locally in one command.",
 	},
 	sameAs: [GITHUB_URL],
+});
+// useUxHead writes no Twitter title or description. A later @uxfront/layer-ui
+// adds them, and Unhead keeps one tag per name, so these never double.
+useSeoMeta({ twitterTitle: title, twitterDescription: description });
+// The structured data: the site, Testlane as software and UXFront as its
+// publisher. useUxHead's Organization named Testlane is dropped by
+// app/plugins/structured-data.ts (audit S1).
+useHead({
+	script: [
+		{
+			key: "home-graph",
+			type: "application/ld+json",
+			innerHTML: JSON.stringify(homeGraph(description)),
+		},
+	],
 });
 
 // The lanes tell the story: one stream of light (the repository) that refs

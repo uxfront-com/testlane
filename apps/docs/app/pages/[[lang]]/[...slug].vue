@@ -1,14 +1,29 @@
 <!--
   A copy of Docus's docs page (docus/app/pages/[[lang]]/[...slug].vue, Docus
-  5.13.0) with one change: the separator above "Edit this page" and "Report an
-  issue" is decorative, since it holds those links. Keep the rest in step with
-  Docus's when it's upgraded, and drop this copy once Docus or
-  @uxfront/layer-docs fixes it.
+  5.13.0) with these changes:
+
+  - The separator above "Edit this page" and "Report an issue" is decorative,
+    since it holds those links.
+  - The head is the app's own, in place of Docus's `useSeo`: a `TechArticle`
+    with the page's date and Open Graph image, published by UXFront, rather
+    than an `Article` published by an Organization named after the site (audit
+    S2), and breadcrumbs whose items are all pages, not group paths that only
+    redirect (S3). It adds `twitter:title`, `twitter:description` and a link to
+    the page's Markdown copy (G2, A4).
+  - The Open Graph card gets its alt text, and the whole description, commas
+    included. Docus drops the commas and cuts the description to keep the
+    card's URL under nuxt-og-image's length limit, but over that limit a
+    prerendered card's URL becomes a hash, so nothing needs cutting.
+
+  Keep the rest in step with Docus's when it's upgraded.
 -->
 <script setup lang="ts">
 import { kebabCase } from 'scule'
 import type { ContentNavigationItem, Collections, DocsCollectionItem } from '@nuxt/content'
 import { findPageHeadline } from '@nuxt/content/utils'
+import { GIT_DATES } from '#build/git-dates.mjs'
+import { breadcrumbList, techArticle } from '~/data/schema'
+import { DOCS_OG_IMAGE_ALT, SITE_URL } from '~/data/site'
 
 definePageMeta({
   layout: 'docs',
@@ -40,21 +55,56 @@ const description = page.value.seo?.description || page.value.description
 const headline = ref(findPageHeadline(navigation?.value, page.value?.path))
 const breadcrumbs = computed(() => findPageBreadcrumbs(navigation?.value, page.value?.path || ''))
 
-useSeo({
-  title,
-  description,
-  type: 'article',
-  modifiedAt: (page.value as unknown as Record<string, unknown>).modifiedAt as string | undefined,
-  breadcrumbs,
-})
 watch(() => navigation?.value, () => {
   headline.value = findPageHeadline(navigation?.value, page.value?.path) || headline.value
 })
 
-defineOgImage('Docs', {
+const ogImages = defineOgImage('Docs', {
   headline: headline.value,
   title: title?.slice(0, 60),
-  description: formatOgDescription(title, description),
+  description,
+}, {
+  alt: DOCS_OG_IMAGE_ALT,
+})
+// The card's path is known only on the server, so the payload carries it to
+// the client, which writes the same structured data when it hydrates.
+const ogImage = useState(`og-image:${route.path}`, () => ogImages[0])
+
+const url = `${SITE_URL}${route.path}`
+const markdownUrl = `${SITE_URL}/raw${route.path}.md`
+const dateModified = GIT_DATES[`content/${page.value.stem}.${page.value.extension}`]
+
+useSeoMeta({
+  title,
+  description,
+  ogTitle: title,
+  ogDescription: description,
+  ogType: 'article',
+  ogUrl: url,
+  twitterTitle: title,
+  twitterDescription: description,
+})
+
+useHead({
+  link: [
+    { rel: 'canonical', href: url },
+    { rel: 'alternate', type: 'text/markdown', href: markdownUrl },
+  ],
+  script: computed(() => [
+    {
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify(techArticle({
+        headline: title,
+        description,
+        path: route.path,
+        dateModified,
+        image: ogImage.value,
+      })),
+    },
+    ...(breadcrumbs.value?.length
+      ? [{ type: 'application/ld+json', innerHTML: JSON.stringify(breadcrumbList(breadcrumbs.value)) }]
+      : []),
+  ]),
 })
 
 const github = computed(() => appConfig.github ? appConfig.github : null)

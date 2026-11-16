@@ -9,9 +9,10 @@ Run them from the repository root, since the site shares its lockfile with the w
 ```bash
 pnpm install --filter @uxfront/docs
 pnpm --filter @uxfront/docs dev         # dev server on http://localhost:3000
-pnpm --filter @uxfront/docs test        # the redirects, the homepage's samples and the lanes formation
+pnpm --filter @uxfront/docs test        # the redirects, the structured data, the SEO check's rules, the homepage's samples…
 pnpm --filter @uxfront/docs build       # nuxt build → .output, every page prerendered into .output/public
-pnpm --filter @uxfront/docs lighthouse  # Lighthouse CI against .output/public, fails below 0.95 in any category
+pnpm --filter @uxfront/docs check:seo   # the SEO check on the static build in dist (see Search and AI search)
+pnpm --filter @uxfront/docs lighthouse  # Lighthouse CI on six pages of the static build in dist (see Deploying)
 ```
 
 The build prerenders by crawling links from `/` and the introduction, and fails on any page that doesn't render, so a broken link or a renamed page fails it too.
@@ -51,7 +52,7 @@ The refs, the project file and the workspace labels the page shows live in `app/
 
 ## The docs
 
-The documentation is built with Docus, through [`@uxfront/layer-docs`](https://www.npmjs.com/package/@uxfront/layer-docs), the second layer in `nuxt.config.ts`. Pages are markdown files in `content/docs/`, served under `/docs`. Number files and folders to order them in the sidebar, as in `1.getting-started/1.introduction.md`, which is served at `/docs/getting-started/introduction`. From those files, Docus builds the sidebar, search, table of contents, a markdown copy of each page at `/raw/<path>.md`, `llms.txt`, `llms-full.txt`, `sitemap.xml` and each page's Open Graph image.
+The documentation is built with Docus, through [`@uxfront/layer-docs`](https://www.npmjs.com/package/@uxfront/layer-docs), the second layer in `nuxt.config.ts`. Pages are markdown files in `content/docs/`, served under `/docs`. Number files and folders to order them in the sidebar, as in `1.getting-started/1.introduction.md`, which is served at `/docs/getting-started/introduction`. From those files, Docus builds the sidebar, search, table of contents, `llms.txt` and each page's Open Graph image, and the app adds a Markdown copy of each page at `/raw/<path>.md`, `llms-full.txt` and `sitemap.xml` (see [Search and AI search](#search-and-ai-search)).
 
 How it shares the app with the homepage:
 
@@ -61,7 +62,7 @@ How it shares the app with the homepage:
 - `app/app.config.ts` sets the theme colours and the GitHub, "Edit this page" and "Report an issue" links, with `rootDir: "apps/docs"`, since the docs don't live at the repository root.
 - Docus reads the site URL from `NUXT_SITE_URL`, which `nuxt.config.ts` defaults to the production origin.
 - Docus's MCP server is off (`mcp.enabled` in `nuxt.config.ts`), and so is its AI assistant, which only starts with an `AI_GATEWAY_API_KEY`.
-- `server/routes/sitemap.xml.ts` replaces Docus's `/sitemap.xml` route, as on unframework.dev. Docus's lists a landing page from `content/index.md`, which this site doesn't have, so it left the homepage out. This one lists `/` first, then the docs pages.
+- `server/routes/sitemap.xml.ts` replaces Docus's `/sitemap.xml` route, as on unframework.dev. Docus's lists a landing page from `content/index.md`, which this site doesn't have, so it left the homepage out. This one lists `/` first, then the docs pages, each with the date its source file last changed.
 - In content, link to the generated files (`/llms.txt`, `/raw/…`) with `{external}`. Otherwise the router handles the click and shows the 404 page.
 
 ### Writing the docs
@@ -86,8 +87,8 @@ description: <one sentence, starting from what the reader gets>
 navigation:
   icon: <the page's icon>
 seo:
-  title: <the title>
-  description: <a sentence or two in the same voice>
+  title: <the title for search, 49 characters or fewer>
+  description: <70 to 160 characters in the same voice>
 ---
 
 <What it lets people do, starting from them.>
@@ -155,11 +156,20 @@ These follow the Open Components rules. Testlane does three things its own way, 
 - **Link by absolute path.** Link within the docs by path, anchors included, like `/docs/cli/exit-codes`. Keep any heading another page links to, like `## Known caveats`, since renaming it breaks that link. **Testlane:** link to a generated file, like `/llms.txt`, with `{external}`, where Open Components writes `{external=""}`.
 - **Check every fact.** Every verb, flag, exit code, config key, template variable, `TESTLANE_*` variable and `--json` field matches `src/` and `DESIGN.md`. Run every example that's safe to run, and show the output it really prints, with `/home/you` in place of your home directory.
 
+#### Write the title and description for search
+
+Search engines show a page's `<title>` and meta description in their results, and cut what doesn't fit, so each page's `seo:` block keeps both in range:
+
+- **`seo.title`** is 49 characters or fewer, since the title template adds " - Testlane" and the whole title stays within 60. Leave "Testlane" out of it, and name what the page answers in the words a searcher uses, like "CLI Exit Codes and Error Names" rather than "Exit Codes".
+- **`seo.description`** is 70 to 160 characters, and says what the page answers.
+
+Both are unique across the site. `pnpm --filter @uxfront/docs check:seo` names any page that breaks either rule (see [Search and AI search](#search-and-ai-search)).
+
 #### Check a page before you hand it over
 
 Before a page goes into review, check it against these rules, since a reviewer will:
 
-- **Its format.** It has a `title` without "&" and a `description`, and opens with a paragraph rather than a heading, list or table. Its headings hold no links, emphasis or dashes, it has no `::note` or `::tip`, and it links by absolute path. A concept or reference page has `## At a glance`, a guide has a `::steps` block and ends on `## Where to go next`, and an FAQ is an `::accordion`.
+- **Its format.** It has a `title` without "&", a `description` and an `seo:` block in range, and opens with a paragraph rather than a heading, list or table. Its headings hold no links, emphasis or dashes, it has no `::note` or `::tip`, and it links by absolute path. A concept or reference page has `## At a glance`, a guide has a `::steps` block and ends on `## Where to go next`, and an FAQ is an `::accordion`.
 - **Its voice.** Its prose, outside code, has none of the words and punctuation above, and no US spelling like `behavior` or `color`.
 - **Its facts.** Every flag, `TESTLANE_*` variable, `E_*` code and TOML key it names exists in `src/`.
 - **Its verbs.** Every verb in `src/cli/help.ts` has a heading in the CLI pages and a row in the README's verb tables.
@@ -180,6 +190,33 @@ Every page passes axe's contrast rule in light and dark mode, and the homepage a
 
 A page that moves to another group keeps its old URL working through `MOVED_PAGES` in `redirects.ts`, which answers that URL with a 301 to the new one. How it works, Refs and Workspaces moved from Getting Started to Concepts this way, so `/docs/getting-started/refs` opens `/docs/concepts/refs`.
 
+## Search and AI search
+
+Search engines and answer engines, like ChatGPT search, Perplexity and Google's AI Overviews, read more than a page's text. The site gives them these, and `pnpm --filter @uxfront/docs check:seo` checks them in the static build:
+
+- **Sitemap dates.** Every URL in `sitemap.xml` has a `<lastmod>`: the date of the last commit that changed its source file, or `app/pages/index.vue` for `/`. `modules/git-dates.ts` reads them with `git log` when the site builds. A shallow clone would date every file to its one commit, so the build fetches the full history first with `git fetch --unshallow`. A build that can't read the history, like the `Dockerfile`'s, which has no git, leaves the dates out and warns, while the production build (`WORKERS_CI`) fails instead.
+- **Structured data.** The homepage has one JSON-LD graph: a `WebSite` for testlane.dev, Testlane as `SoftwareSourceCode` and UXFront as the `Organization` that publishes it. `useUxHead` also writes an `Organization` named Testlane, which `app/plugins/structured-data.ts` drops, since Testlane is software. Each docs page has a `TechArticle` with the page's date and Open Graph image, and a `BreadcrumbList` whose group items point at the group's first page, since the group's own path only redirects. `app/data/schema.ts` builds both.
+- **Social cards.** Every page has Open Graph and Twitter card tags, with a title and description of their own. The docs pages' generated cards are 1200 × 630px, with the alt text `DOCS_OG_IMAGE_ALT` in `app/data/site.ts`.
+- **Markdown copies.** `/raw/<path>.md` serves each docs page's source as Markdown: its title as an H1, its description as a quote, then its body, with its tables as Markdown tables. `llms-full.txt` joins all of them, and each docs page links its copy with `<link rel="alternate" type="text/markdown">`. Nuxt Content's own copies render tables as HTML and leave MDC attributes behind, so `modules/markdown-copies.ts` replaces its route and nuxt-llms's.
+
+The check reads `apps/docs/dist` only, and CI's `docs build` job runs it after the static build. Run it the same way after you build the static site (see [Deploying](#deploying)):
+
+```sh
+WORKERS_CI=1 NODE_OPTIONS=--max-old-space-size=4096 pnpm --filter @uxfront/docs run generate
+pnpm --filter @uxfront/docs check:seo
+```
+
+It prints one line per page and file, and under each failing one the rule it breaks:
+
+- **On every page in the sitemap:** one `<title>` of 60 characters or fewer and one meta description of 70 to 160, both unique. Exactly one `<h1>`, `<html lang="en">` and one canonical URL, equal to the page's sitemap URL. The Open Graph tags `og:title`, `og:description`, `og:type`, `og:url`, which equals the canonical, and `og:image`, whose file in the build measures 1200 × 630px, with tags that say so and `og:image:alt`. The Twitter tags `twitter:card`, which is `summary_large_image`, `twitter:title`, `twitter:description` and `twitter:image`. No `noindex` in the page or in `_headers`.
+- **In the structured data:** every JSON-LD block parses. The homepage has a `WebSite`, a `SoftwareSourceCode` and an `Organization`, and no `Organization` named Testlane. Each docs page has a `TechArticle` whose image is its `og:image` and whose `dateModified` is its sitemap date, and a `BreadcrumbList` whose items are all in the sitemap.
+- **In the sitemap:** its URLs are exactly the indexable pages in the build, which leaves out `404.html`, `200.html`, the redirect stubs Nitro writes, like `docs/cli.html`, and any page with a `noindex`. Every URL has a valid `<lastmod>` that isn't in the future.
+- **In `robots.txt`:** the `Sitemap:` line, a group for each AI crawler we allow (see [Hosts and indexing](#hosts-and-indexing)) and no `Disallow: /`. The check keeps its own list of crawlers, so one dropped from `nuxt.config.ts` fails it.
+- **In `llms.txt` and the Markdown copies:** `llms.txt` has its H1, a `> ` summary and a link to each docs page's copy, each docs page has its copy and its `<link rel="alternate">`, and no copy or `llms-full.txt` has a `<table>` or `&#x22;`.
+- **In `_redirects`:** no 302 or 307, since a moved page should pass its ranking on with a permanent redirect.
+
+`test/check-seo.test.ts` runs the check on a small build that breaks each rule in turn.
+
 ## Deploying
 
 The site deploys to Cloudflare Workers through Workers Builds, on the Worker `testlane`. A merge to `main` deploys `testlane.dev`, and every other branch gets a preview of its own.
@@ -199,6 +236,7 @@ Here's how the pieces fit:
 
 - **The build is static.** Workers Builds sets `WORKERS_CI`, and `nuxt.config.ts` then defaults `NITRO_PRESET` to `cloudflare_pages_static`. `nuxt generate` prerenders every page into `apps/docs/dist`, with `_headers`, `_redirects`, `404.html` and the content database dumps that the pages query in the browser. Set `NITRO_PRESET` yourself to build another preset there.
 - **`wrangler.jsonc` sits at the repository root**, because the deploy command runs from the root. It serves `apps/docs/dist` as static assets, with no Worker script, and answers unknown paths with the 404 page. `wrangler preview` stops without its `previews` block, so the block stays, even though it's empty.
+- **The sitemap's dates come from git**, so the build fetches the clone's full history when Workers Builds clones only part of it, and fails when it can't (see [Search and AI search](#search-and-ai-search)).
 - **`modules/workers-redirects.ts` rewrites `_redirects` after the build**, because Nitro writes two rules that Workers handle wrongly. It removes the `/* /404.html 404` rule, which Workers reject, failing the whole upload. It also turns a target like `/docs/old/cli/**` into `/docs/old/cli/:splat`, since Workers read `**` as part of the path and forward the matched part only through `:splat`. Its test is `test/workers-redirects.test.ts`.
 
 A static site has no server, so one feature of the server build doesn't run on Cloudflare: the layer's redirect from `/` to `/llms.txt` for `curl` and for requests that accept `text/markdown`.
@@ -212,13 +250,44 @@ npx wrangler dev
 
 Keep in mind that `wrangler dev` only serves your machine. Never run `wrangler deploy` or `wrangler preview` by hand, since each one uploads to the live Worker.
 
+Remove `apps/docs/.output` before you build the static site after a server build. Nitro's prerenderer serves the files it finds in `.output/public`, so the homepage would come out as the server build's page, with its `noindex` and links to chunks the static build doesn't have.
+
+### Hosts and indexing
+
+Only `testlane.dev` is indexed, so search engines send people to one copy of each page:
+
+- **`testlane.dev`** serves the static build, indexable, with `robots.txt` and `sitemap.xml`.
+- **The Worker's own `workers.dev` host** doesn't serve the production deploy, since `wrangler.jsonc` sets `workers_dev` to `false`. Its `preview_urls` keeps each branch's preview at `<branch>-testlane.<subdomain>.workers.dev`, which Cloudflare serves with `X-Robots-Tag: noindex`. Previews are static builds too, so that header is what keeps them out of search.
+- **`http://` and `www.testlane.dev`** need Cloudflare settings on the zone rather than code: "Always Use HTTPS", and a 301 from `www` to the apex.
+- **The server build** sends `noindex` wherever it runs (see [Other hosts](#other-hosts)).
+
+The static build also writes these headers into `dist/_headers`, from `routeRules` in `nuxt.config.ts`:
+
+| Path      | What `nuxt.config.ts` adds                                                                                                                       |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `/*`      | `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Strict-Transport-Security: max-age=31536000` |
+| `/200`    | `X-Robots-Tag: noindex`, since Nitro's SPA fallback page has no content of its own                                            |
+| `/_nuxt/*` | `cache-control: public, max-age=31536000, immutable`, since hashed build files never change                                    |
+
+There's no `Content-Security-Policy`, since the scene and Nuxt's inline payload would need a nonce or hash for each script. Browsers remember `Strict-Transport-Security` for a year, so keep it without `includeSubDomains` or `preload` unless every subdomain serves HTTPS.
+
+`robots.txt` lets every crawler in. Beside Docus's `User-agent: *` group, `robots.groups` in `nuxt.config.ts` names the AI crawlers we allow, so the policy is stated rather than implied: the answer engines (`OAI-SearchBot`, `ChatGPT-User`, `PerplexityBot`, `Claude-SearchBot` and `Claude-User`) and the crawlers that gather training data (`GPTBot`, `ClaudeBot`, `Google-Extended` and `CCBot`). Testlane is open-source documentation, so being in answers and in training data helps people find it. To keep one out, give its group `disallow: "/"` instead.
+
+### Lighthouse
+
+CI's `docs build` job builds the static site, runs the SEO check on it and runs `pnpm --filter @uxfront/docs lighthouse` on every pull request that touches the docs. `lighthouserc.json` serves `dist` with `wrangler dev`, the way Cloudflare does, and audits six pages three times each: the homepage, Introduction, Quick Start, Review a Pull Request, Workspace Verbs and Project File. Accessibility or best practices below 0.95, or SEO below 1, fails the job. Performance only warns, since it varies with the runner.
+
+To run it locally, build the static site as above first. It needs Google Chrome.
+
 ### Other hosts
 
-Every build without `WORKERS_CI` keeps Nitro's server output, `.output/server/index.mjs`, so these still work:
+Every build without `WORKERS_CI` is a copy of the site on another host, so it's never indexed: the `/**` route rule in `nuxt.config.ts` gives every page a `noindex, nofollow` robots meta tag and `X-Robots-Tag` header. Its `robots.txt` still lets crawlers in, since a crawler that's kept out never reads the `noindex`.
+
+These builds keep Nitro's server output, `.output/server/index.mjs`, so these hosts still work:
 
 - **Docker** builds with `Dockerfile`, from the repository root.
 - **Nixpacks** builds with `nixpacks.toml`, from the repository root, with `NIXPACKS_CONFIG_FILE=apps/docs/nixpacks.toml`.
 
-The prerenderer needs more memory than Node's default, so the builds set `NODE_OPTIONS=--max-old-space-size=4096`.
+The prerenderer needs more memory than Node's default, so the builds set `NODE_OPTIONS=--max-old-space-size=4096`. The `Dockerfile`'s image has no git, so its sitemap has no dates, and the build says so in a warning.
 
 The server needs Node 22.13 or newer, both to build and to run: Docus reads its content with Node's built-in `node:sqlite`, which older versions don't have or keep behind a flag. `engines` in `package.json` says so, which Nixpacks reads to pick its Node version, and the `Dockerfile` uses `node:22-slim`, which is newer.

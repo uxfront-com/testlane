@@ -15,6 +15,12 @@
 		// Answers unknown paths with dist/404.html and a 404 status.
 		"not_found_handling": "404-page",
 	},
+	// The production deploy serves testlane.dev only. Without this, it also
+	// answers on the Worker's own workers.dev host, an indexable copy of the site.
+	"workers_dev": false,
+	// Branch previews keep their own workers.dev URLs, which Cloudflare serves
+	// with `x-robots-tag: noindex`.
+	"preview_urls": true,
 	// `wrangler preview`, the deploy command for non-production branches, stops
 	// without this block. Previews use the settings above, so it stays empty.
 	"previews": {},
