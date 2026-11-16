@@ -71,17 +71,6 @@ export default defineNuxtConfig({
 					// Project files are TOML. Layers concatenate arrays, so this joins
 					// the languages Docus and @uxfront/layer-docs highlight.
 					langs: ["toml"],
-
-					// Docus's default Shiki themes put comments and punctuation below
-					// WCAG AA (4.5:1) on the code block's background. The high-contrast
-					// GitHub pair clears it in both modes. All three keys are set: Shiki
-					// emits a `.light` rule that outranks `default`, so leaving `light`
-					// out would keep the old palette in light mode.
-					theme: {
-						default: "github-light-high-contrast",
-						light: "github-light-high-contrast",
-						dark: "github-dark-high-contrast",
-					},
 				},
 			},
 		},

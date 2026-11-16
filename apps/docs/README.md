@@ -181,8 +181,8 @@ Every page passes axe's contrast rule in light and dark mode, and the homepage a
 
 - **Colours.** `app/app.css` darkens Nuxt UI's light-mode primary to the 700 shade, since green's default 500 fails AA contrast on white. `ui.prose.callout` in `app/app.config.ts` draws the callouts' text, links and inline code (`::note`, `::tip`, `::warning`, `::caution`) in the 800 shade in light mode, since Nuxt UI's 600 fails on their tinted background, `::warning`'s yellow worst at 2.75:1.
 - **Links.** `ui.prose.a` underlines links at rest, so a link in a sentence doesn't stand out by colour alone.
-- **Code.** `nuxt.config.ts` highlights code with the high-contrast GitHub themes, since the default themes put comments below 4.5:1.
-- **Three Docus components.** `app/components/docs/DocsPageHeaderLinks.vue` names the button that opens the page menu, which only shows an arrow, and leaves out the menu's MCP items. `app/components/IconMenuToggle.vue` names the button that opens the header's menu on phones, and says whether it's open. `app/pages/[[lang]]/[...slug].vue` makes the separator above "Edit this page" decorative, since a separator can't hold links. The first and last are copies of Docus 5.13.0's, and the toggle draws the same lines, so keep all three in step when you upgrade Docus.
+- **Code.** `@uxfront/layer-docs` highlights code with the high-contrast GitHub themes, since Docus's default themes put comments below 4.5:1. To use other themes, set all three keys of `content.build.markdown.highlight.theme` in `nuxt.config.ts`: `default`, `light` and `dark`.
+- **Two Docus components.** `app/components/docs/DocsPageHeaderLinks.vue` names the button that opens the page menu, which only shows an arrow, and leaves out the menu's MCP items. `app/pages/[[lang]]/[...slug].vue` makes the separator above "Edit this page" decorative, since a separator can't hold links. Both are copies of Docus 5.13.0's, so keep them in step when you upgrade Docus.
 
 ### Redirects
 
