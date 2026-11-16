@@ -27,6 +27,7 @@ describe("homeGraph", () => {
 			codeRepository: "https://github.com/uxfront-com/testlane",
 			programmingLanguage: "TypeScript",
 			runtimePlatform: "Node.js",
+			license: "MIT",
 			sameAs: ["https://github.com/uxfront-com/testlane", "https://www.npmjs.com/package/@uxfront/testlane"],
 		});
 		expect(byType("Organization")).toEqual([

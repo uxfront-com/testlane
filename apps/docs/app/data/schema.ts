@@ -47,7 +47,7 @@ export function homeGraph(description: string) {
 				codeRepository: GITHUB_URL,
 				programmingLanguage: "TypeScript",
 				runtimePlatform: "Node.js",
-				// No `license`: the repository and the npm package don't state one yet.
+				license: "MIT",
 				sameAs: [GITHUB_URL, NPM_URL],
 				author: { "@id": PUBLISHER_ID },
 				publisher: { "@id": PUBLISHER_ID },

@@ -13,6 +13,7 @@
     "agents"
   ],
   "homepage": "https://testlane.dev",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/uxfront-com/testlane.git"
