@@ -137,7 +137,7 @@ The **README** runs in this order, with the depth left to this site so it stays 
 - `## Usage`, the smallest session that works, from `setup` to a running workspace.
 - `## Commands`, with `### Workspace verbs`, `### Project verbs` and `### Top-level verbs`, each a `Verb | What it does` table followed by the few examples that matter.
 - `## Global flags`, a table.
-- `## Configuration`, then `## Upgrading from uxd`.
+- `## Configuration`.
 - `## Exit codes`, a table.
 - `## Development`.
 
@@ -174,9 +174,11 @@ Every page passes axe's contrast rule in light and dark mode, and the homepage a
 - **Code.** `nuxt.config.ts` highlights code with the high-contrast GitHub themes, since the default themes put comments below 4.5:1.
 - **Three Docus components.** `app/components/docs/DocsPageHeaderLinks.vue` names the button that opens the page menu, which only shows an arrow, and leaves out the menu's MCP items. `app/components/IconMenuToggle.vue` names the button that opens the header's menu on phones, and says whether it's open. `app/pages/[[lang]]/[...slug].vue` makes the separator above "Edit this page" decorative, since a separator can't hold links. The first and last are copies of Docus 5.13.0's, and the toggle draws the same lines, so keep all three in step when you upgrade Docus.
 
-### Old URLs
+### Redirects
 
-Until 2.0 the docs lived one level deeper, under a prefix with the CLI's old name. `redirects.ts` sends every old URL to its page with a permanent 301, and `nuxt.config.ts` turns it into route rules: `/docs` and the group roots go to their first page, the old prefix forwards the rest of the URL to `/docs/**`, and the old scripting guide goes to `/docs/guides/script-with-testlane`. `test/redirects.test.ts` checks that every target is a page in `content/docs/`, so moving or renaming a page fails the test until its redirects follow.
+`/docs` and the root of each sidebar group, like `/docs/cli`, have no page of their own. `redirects.ts` sends each one to its first page with a permanent 301, and `nuxt.config.ts` turns it into route rules. `test/redirects.test.ts` checks that every target is a page in `content/docs/`, so moving or renaming a page fails the test until its redirects follow.
+
+A page that moves to another group keeps its old URL working through `MOVED_PAGES` in `redirects.ts`, which answers that URL with a 301 to the new one. How it works, Refs and Workspaces moved from Getting Started to Concepts this way, so `/docs/getting-started/refs` opens `/docs/concepts/refs`.
 
 ## Deploying
 
@@ -197,7 +199,7 @@ Here's how the pieces fit:
 
 - **The build is static.** Workers Builds sets `WORKERS_CI`, and `nuxt.config.ts` then defaults `NITRO_PRESET` to `cloudflare_pages_static`. `nuxt generate` prerenders every page into `apps/docs/dist`, with `_headers`, `_redirects`, `404.html` and the content database dumps that the pages query in the browser. Set `NITRO_PRESET` yourself to build another preset there.
 - **`wrangler.jsonc` sits at the repository root**, because the deploy command runs from the root. It serves `apps/docs/dist` as static assets, with no Worker script, and answers unknown paths with the 404 page. `wrangler preview` stops without its `previews` block, so the block stays, even though it's empty.
-- **`modules/workers-redirects.ts` rewrites `_redirects` after the build**, because Nitro writes two rules that Workers handle wrongly. It removes the `/* /404.html 404` rule, which Workers reject, failing the whole upload. It also turns a target like `/docs/uxd/cli/**` into `/docs/uxd/cli/:splat`, since Workers read `**` as part of the path and forward the matched part only through `:splat`. Its test is `test/workers-redirects.test.ts`.
+- **`modules/workers-redirects.ts` rewrites `_redirects` after the build**, because Nitro writes two rules that Workers handle wrongly. It removes the `/* /404.html 404` rule, which Workers reject, failing the whole upload. It also turns a target like `/docs/old/cli/**` into `/docs/old/cli/:splat`, since Workers read `**` as part of the path and forward the matched part only through `:splat`. Its test is `test/workers-redirects.test.ts`.
 
 A static site has no server, so one feature of the server build doesn't run on Cloudflare: the layer's redirect from `/` to `/llms.txt` for `curl` and for requests that accept `text/markdown`.
 
@@ -245,10 +247,9 @@ Every build without `WORKERS_CI` is a copy of the site on another host, so it's 
 
 These builds keep Nitro's server output, `.output/server/index.mjs`, so these hosts still work:
 
-- **Vercel** builds with `vercel.json`.
 - **Docker** builds with `Dockerfile`, from the repository root.
 - **Nixpacks** builds with `nixpacks.toml`, from the repository root, with `NIXPACKS_CONFIG_FILE=apps/docs/nixpacks.toml`.
 
 The prerenderer needs more memory than Node's default, so the builds set `NODE_OPTIONS=--max-old-space-size=4096`.
 
-The server needs Node 22.13 or newer, both to build and to run: Docus reads its content with Node's built-in `node:sqlite`, which older versions don't have or keep behind a flag. `engines` in `package.json` says so, which Nixpacks and Vercel read to pick their Node version, and the `Dockerfile` uses `node:22-slim`, which is newer.
+The server needs Node 22.13 or newer, both to build and to run: Docus reads its content with Node's built-in `node:sqlite`, which older versions don't have or keep behind a flag. `engines` in `package.json` says so, which Nixpacks reads to pick its Node version, and the `Dockerfile` uses `node:22-slim`, which is newer.

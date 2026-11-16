@@ -120,7 +120,7 @@ export default defineNuxtConfig({
 	},
 
 	routeRules: {
-		// The old docs URLs (redirects.ts), each a permanent redirect.
+		// `/docs` and the group roots (redirects.ts), each a permanent redirect.
 		...redirectRules(),
 		// Hashed build assets never change, so cache them forever.
 		"/_nuxt/**": {
@@ -157,7 +157,7 @@ export default defineNuxtConfig({
 	nitro: {
 		// Every page is prerendered. On Workers Builds (WORKERS_CI, above) that's
 		// the static production site in dist/. Elsewhere it's a Nitro server
-		// (Docker, Nixpacks or Vercel) with the pages in .output/public.
+		// (Docker or Nixpacks) with the pages in .output/public.
 		prerender: {
 			crawlLinks: true,
 			// /docs only redirects, so crawling the docs starts from the introduction.

@@ -103,7 +103,7 @@ testlane my-project feat/login checkout
 cd "$(testlane my-project feat/login checkout)"
 ```
 
-Keep in mind that a git worktree has a few quirks, like a `.git` file where tools expect a directory, and hooks that husky sets up can point the wrong way. [Known caveats](https://testlane.dev/docs/getting-started/workspaces#known-caveats) lists each one and what to do about it.
+Keep in mind that a git worktree has a few quirks, like a `.git` file where tools expect a directory, and hooks that husky sets up can point the wrong way. [Known caveats](https://testlane.dev/docs/concepts/workspaces#known-caveats) lists each one and what to do about it.
 
 `run` opens the same workspace, runs the `[setup]` install, then runs a command from your project file inside it. The next `run` skips the install while the files in `cache_key` stay the same:
 
@@ -118,7 +118,7 @@ testlane my-project list
 testlane my-project clean --all --yes
 ```
 
-A ref can also be a PR number like `42` or `#42`, a full 40-character commit SHA, a path to a working tree you already have, a repository URL in place of the project or `-` for the last ref you used. [Quick start](https://testlane.dev/docs/getting-started/quick-start) runs this session step by step, and [Refs](https://testlane.dev/docs/getting-started/refs) lists every kind of ref in the order Testlane tries them.
+A ref can also be a PR number like `42` or `#42`, a full 40-character commit SHA, a path to a working tree you already have, a repository URL in place of the project or `-` for the last ref you used. [Quick start](https://testlane.dev/docs/getting-started/quick-start) runs this session step by step, and [Refs](https://testlane.dev/docs/concepts/refs) lists every kind of ref in the order Testlane tries them.
 
 ## Commands
 
@@ -318,45 +318,6 @@ Testlane also exports each value to every command it runs, whether your config u
 `editor` takes one of these presets: `zed`, `code`, `cursor`, `windsurf`, `idea`, `webstorm`, `phpstorm`, `goland`, `vim`, `nvim`, `helix`, `hx` or `terminal`. Or it takes a command with `{path}` in it, like `emacsclient -n {path}`, and a command that ends in `:wait` keeps Testlane in the foreground until the editor exits.
 
 [Configuration](https://testlane.dev/docs/configuration/overview) on the site goes through every key, with [Project file](https://testlane.dev/docs/configuration/project-file), [Environment and templates](https://testlane.dev/docs/configuration/environment-and-templates) and [Editors](https://testlane.dev/docs/configuration/editors).
-
-## Upgrading from uxd
-
-Testlane is the new name of uxd, and 2.0.0 is its first release under that name. Your projects, workspaces and running processes carry over, because Testlane 2.x still reads everything uxd wrote. Each time it falls back to an old name, it prints one warning on stderr with the fix, so you can move at your own pace, and `--json` output stays valid. Testlane 3.0 drops these fallbacks.
-
-Here's how to move over:
-
-1. Swap the package. The two commands have different names, so you can keep `uxd` installed until you're done:
-
-   ```bash
-   npm i -g @uxfront/testlane
-   npm rm -g @uxfront/uxd       # once nothing calls uxd any more
-   ```
-
-2. Call `testlane` wherever you called `uxd`, like scripts, shell aliases and agent instructions. There's no `uxd` alias, since it would clash with an installed `@uxfront/uxd`.
-3. Regenerate your shell completions, because the old script completes `uxd`. Remove the `uxd completions` line or file, then set up Testlane's as [Install Shell Completions](https://testlane.dev/docs/guides/shell-completions) shows: a line in your startup file for bash or fish, and a `_testlane` file on your `fpath` for zsh.
-4. Move the config directory and the state directory while no `uxd` or `testlane` command is running. Your clones and workspaces stay where they are, because each project file names their paths:
-
-   ```bash
-   mv ~/.uxd ~/.testlane
-   mv "${XDG_STATE_HOME:-$HOME/.local/state}/uxd" "${XDG_STATE_HOME:-$HOME/.local/state}/testlane"
-   ```
-
-5. Rename the variables you set, `UXD_CONFIG_DIR` to `TESTLANE_CONFIG_DIR` and `UXD_DEBUG` to `TESTLANE_DEBUG`, and the ones your dev servers, hooks and `[env]` values read, like `$UXD_PORT` to `$TESTLANE_PORT`.
-
-This is what Testlane 2.x does with each old name:
-
-| uxd 1.x                                   | Testlane 2.x                                           | What 2.x does with the old name                                              |
-| ----------------------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------- |
-| `uxd`                                     | `testlane`                                             | Nothing. Scripts that call `uxd` need updating                               |
-| `~/.uxd`                                  | `~/.testlane`                                          | Reads it when `~/.testlane` doesn't exist, and warns                         |
-| `${XDG_STATE_HOME:-~/.local/state}/uxd`   | `${XDG_STATE_HOME:-~/.local/state}/testlane`           | Reads and writes it when the new directory doesn't exist, and warns          |
-| `$UXD_CONFIG_DIR`                         | `$TESTLANE_CONFIG_DIR`                                 | Reads it when `--config-dir` and `$TESTLANE_CONFIG_DIR` aren't set, and warns |
-| `UXD_DEBUG=1`                             | `TESTLANE_DEBUG=1`                                     | Turns on debug output when `$TESTLANE_DEBUG` isn't set, and warns            |
-| `UXD_PATH`, `UXD_PORT`, `UXD_PORT_1`, …   | `TESTLANE_PATH`, `TESTLANE_PORT`, `TESTLANE_PORT_1`, … | Exports both names with the same value. Testlane can't see who reads them, so this one never warns |
-
-When the old and the new name are both there, the new one wins and nothing warns. The project's `[env]`, a command's `env` and `--env` still win over both sets of exported variables.
-
-If you're coming from an early 1.x, two more things changed along the way. 1.0.0 has no `setup` command and reports its version as `0.0.0`. 1.1.0 removed the `extends` key, and project files are validated strictly, so a file that still has an `extends` line fails every command that loads it until you delete that line. [`CHANGELOG.md`](CHANGELOG.md) lists what changed in each release.
 
 ## Exit codes
 
