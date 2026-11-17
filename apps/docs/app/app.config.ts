@@ -18,19 +18,14 @@ export default defineAppConfig({
 		// no wordmark, the name stays Docus's plain title, as the homepage writes it.
 		byline: true,
 		// The docs header's links, beside its buttons from 768px up and at the top
-		// of its menu below that.
+		// of its menu below that. GitHub isn't one of them, since Docus already
+		// shows its icon button among the header's buttons, from github.url above.
 		headerLinks: [
 			// The introduction, rather than /docs, which only redirects to it.
 			{
-				label: "Docs",
+				label: "Documentation",
 				to: "/docs/getting-started/introduction",
 				activeFor: "/docs",
-			},
-			{
-				label: "GitHub",
-				to: GITHUB_URL,
-				icon: "i-simple-icons-github",
-				target: "_blank",
 			},
 		],
 	},
