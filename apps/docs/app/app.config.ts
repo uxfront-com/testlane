@@ -23,7 +23,7 @@ export default defineAppConfig({
 		headerLinks: [
 			// The introduction, rather than /docs, which only redirects to it.
 			{
-				label: "Docs",
+				label: "Documentation",
 				to: "/docs/getting-started/introduction",
 				activeFor: "/docs",
 			},

@@ -25,7 +25,11 @@ describe("the docs header", () => {
 	// link with an external icon.
 	it("has no GitHub link among its header links", () => {
 		const links = config.docsTheme.headerLinks;
-		expect(links.map((link) => link.label)).toEqual(["Docs"]);
 		expect(links.some((link) => link.to.startsWith(GITHUB_URL))).toBe(false);
+	});
+
+	// Spelled out, as the homepage header writes it.
+	it("names its link to the docs Documentation", () => {
+		expect(config.docsTheme.headerLinks.map((link) => link.label)).toEqual(["Documentation"]);
 	});
 });
