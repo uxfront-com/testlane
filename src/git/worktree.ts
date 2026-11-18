@@ -3,8 +3,7 @@
 import { capture } from "../lib/proc.ts";
 import { TestlaneError } from "../lib/errors.ts";
 import type { GitEnv } from "./repo.ts";
-
-const env = () => ({ ...(process.env as Record<string, string>), GIT_TERMINAL_PROMPT: "0" });
+import { gitEnv as env } from "./env.ts";
 
 async function runGit(
   g: GitEnv,

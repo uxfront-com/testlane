@@ -5,6 +5,7 @@ import { capture, captureBytes } from "../lib/proc.ts";
 import { TestlaneError, resolveError } from "../lib/errors.ts";
 import { isValidBranchName } from "../core/resolve.ts";
 import type { Logger } from "../lib/log.ts";
+import { gitEnv as env } from "./env.ts";
 
 export const MIN_GIT_VERSION = "2.38";
 
@@ -16,12 +17,6 @@ export interface GitEnv {
   planned?: string[][];
   /** Kills a running git command when it fires (`testlane mcp`). */
   signal?: AbortSignal;
-}
-
-const NON_INTERACTIVE = { GIT_TERMINAL_PROMPT: "0" } as const;
-
-function env(): Record<string, string> {
-  return { ...(process.env as Record<string, string>), ...NON_INTERACTIVE };
 }
 
 /** Execute a git argv, or record it when in dry-run. Read-only calls pass `read`. */
@@ -411,4 +406,53 @@ export async function readBlob(repoPath: string, id: string, label: string): Pro
   const blob = await run(["git", "-C", repoPath, "cat-file", "blob", id]);
   if (blob.code !== 0) throw new TestlaneError("E_GIT", `cannot read ${label}: ${blob.stderr.trim()}`);
   return blob.stdout;
+}
+
+/** Object ids per `git fetch`, so the argv stays far below the OS limit. */
+const PREFETCH_CHUNK = 1000;
+
+/**
+ * Download the blobs among `ids` that a partial clone doesn't have yet, in one
+ * fetch, as git's own on-demand read does for one blob. Reading 100 files then
+ * costs one round trip to origin instead of 100, and adds one pack, not 100.
+ * Best effort: on any failure, `readBlob` still fetches each blob on its own.
+ */
+export async function prefetchBlobs(repoPath: string, ids: string[]): Promise<void> {
+  const wanted = [...new Set(ids)].filter((id) => /^[0-9a-f]{40,64}$/.test(id));
+  if (wanted.length === 0) return;
+  // `--missing=print` lists what's absent without fetching it.
+  const present = await capture(
+    ["git", "-C", repoPath, "rev-list", "--objects", "--no-walk", "--missing=print", ...wanted],
+    { env: env(), allowFailure: true },
+  );
+  if (present.code !== 0) return;
+  const missing = present.stdout
+    .split("\n")
+    .filter((line) => line.startsWith("?"))
+    .map((line) => line.slice(1).trim());
+  for (let i = 0; i < missing.length; i += PREFETCH_CHUNK) {
+    const res = await capture(prefetchArgv(repoPath, missing.slice(i, i + PREFETCH_CHUNK)), {
+      env: env(),
+      allowFailure: true,
+    });
+    if (res.code !== 0) return;
+  }
+}
+
+/** The fetch git runs for an on-demand read, with the ids as arguments. It moves no ref. */
+export function prefetchArgv(repoPath: string, ids: string[]): string[] {
+  return [
+    "git",
+    "-C",
+    repoPath,
+    "-c",
+    "fetch.negotiationAlgorithm=noop",
+    "fetch",
+    "origin",
+    "--no-tags",
+    "--no-write-fetch-head",
+    "--recurse-submodules=no",
+    "--filter=blob:none",
+    ...ids,
+  ];
 }

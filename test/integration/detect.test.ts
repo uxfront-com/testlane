@@ -83,8 +83,14 @@ function markers(dir: string): string[] {
 }
 
 const git = (dir: string, ...args: string[]) => spawnSync("git", ["-C", dir, ...args]).stdout.toString();
-const READ_ONLY_GIT = new Set(["ls-tree", "cat-file", "rev-parse", "symbolic-ref", "ls-remote", "config"]);
-const gitSubcommand = (argv: string[]) => (argv[1] === "-C" ? argv[3] : argv[1]);
+const READ_ONLY_GIT = new Set(["ls-tree", "cat-file", "rev-list", "rev-parse", "symbolic-ref", "ls-remote", "config"]);
+const gitSubcommand = (argv: string[]) => argv.slice(argv[1] === "-C" ? 3 : 1).find((a, i, rest) => !a.startsWith("-") && rest[i - 1] !== "-c");
+/** A fetch of blobs by id, as a partial clone's on-demand read runs it: it moves no ref. */
+const isBlobFetch = (argv: string[]) =>
+  gitSubcommand(argv) === "fetch" &&
+  argv.includes("--no-write-fetch-head") &&
+  argv.slice(argv.indexOf("origin") + 1).every((a) => a.startsWith("--") || /^[0-9a-f]{40,64}$/.test(a));
+const packs = (repoPath: string) => readdirSync(join(repoPath, "objects", "pack")).filter((f) => f.endsWith(".pack"));
 
 // ── config detect <path> ─────────────────────────────────────────────────────
 
@@ -265,7 +271,7 @@ describe("config detect <project>", () => {
 
     for (const argv of recorded) {
       expect(argv[0]).toBe("git");
-      expect(READ_ONLY_GIT.has(gitSubcommand(argv)!), argv.join(" ")).toBe(true);
+      expect(READ_ONLY_GIT.has(gitSubcommand(argv)!) || isBlobFetch(argv), argv.join(" ")).toBe(true);
     }
     expect(git(repoPath, "for-each-ref")).toBe(refs);
     expect(git(repoPath, "worktree", "list").trim().split("\n")).toHaveLength(1);
@@ -284,6 +290,39 @@ describe("config detect <project>", () => {
     const r = await env.run(["config", "detect", "app"]);
     expect(r.code).toBe(3);
     expect(r.stderr).toContain("hint: clone it with `testlane config trust app`");
+  });
+
+  it("downloads the files it reads in one fetch, adding one pack", async () => {
+    expect((await env.run(["config", "trust", "app"])).code).toBe(0);
+    const repoPath = env.repoPath("app");
+    const before = packs(repoPath);
+    recorded = [];
+
+    expect((await env.run(["config", "detect", "app"])).code).toBe(0);
+    expect(recorded.filter(isBlobFetch)).toHaveLength(1);
+    expect(packs(repoPath).filter((p) => !before.includes(p))).toHaveLength(1);
+
+    // Everything is local now, so a second run doesn't fetch.
+    recorded = [];
+    expect((await env.run(["config", "detect", "app"])).code).toBe(0);
+    expect(recorded.filter(isBlobFetch)).toEqual([]);
+    expect(packs(repoPath)).toHaveLength(before.length + 1);
+  });
+
+  it("starts no git maintenance, from its own git or the ones git starts", async () => {
+    const trace = join(tmp, "git-trace.log");
+    const prev = process.env.GIT_TRACE;
+    process.env.GIT_TRACE = trace;
+    try {
+      expect((await env.run(["config", "trust", "app"])).code).toBe(0);
+      expect((await env.run(["config", "detect", "app"])).code).toBe(0);
+    } finally {
+      if (prev === undefined) delete process.env.GIT_TRACE;
+      else process.env.GIT_TRACE = prev;
+    }
+    const log = readFileSync(trace, "utf8");
+    expect(log).toContain("built-in: git fetch");
+    expect(log).not.toMatch(/maintenance run|git gc/);
   });
 
   it("the git adapter lists regular files and caps a read at 1 MiB", async () => {

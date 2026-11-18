@@ -7,7 +7,8 @@ import { lstatSync, readdirSync, readFileSync } from "node:fs";
 import { join, relative, resolve, sep } from "node:path";
 import { TestlaneError, configError } from "../lib/errors.ts";
 import { capture } from "../lib/proc.ts";
-import { MAX_BLOB_BYTES, readBlob } from "../git/repo.ts";
+import { gitEnv } from "../git/env.ts";
+import { MAX_BLOB_BYTES, prefetchBlobs, readBlob } from "../git/repo.ts";
 import type { RepoFiles } from "../config/detect.ts";
 
 const SKIP_DIRS = new Set(["node_modules", ".git"]);
@@ -92,7 +93,8 @@ export function localFiles(root: string): RepoFiles {
 /**
  * A commit in a bare repo: one `git ls-tree -r` lists it, and each read is one
  * `git cat-file`, capped at 1 MiB as the trust gate's reads are. A partial
- * clone may download a blob it reads; nothing else in the repo changes.
+ * clone downloads the blobs it reads, in one fetch for what `prefetch` names;
+ * nothing else in the repo changes.
  */
 export function gitFiles(repoPath: string, ref: string): RepoFiles {
   let index: Map<string, string> | undefined;
@@ -101,7 +103,7 @@ export function gitFiles(repoPath: string, ref: string): RepoFiles {
     if (index) return index;
     const res = await capture(["git", "-C", repoPath, "ls-tree", "-r", "-z", "--full-tree", ref], {
       allowFailure: true,
-      env: { ...(process.env as Record<string, string>), GIT_TERMINAL_PROMPT: "0" },
+      env: gitEnv(),
       errCode: "E_GIT",
     });
     if (res.code !== 0) throw new TestlaneError("E_GIT", `git ls-tree failed for ${ref}: ${res.stderr.trim()}`);
@@ -125,5 +127,9 @@ export function gitFiles(repoPath: string, ref: string): RepoFiles {
       return decode(await readBlob(repoPath, id, `${path} on ${ref}`), `${path} on ${ref}`);
     },
     exists: async (path) => (await load()).has(path),
+    prefetch: async (paths) => {
+      const files = await load();
+      await prefetchBlobs(repoPath, paths.flatMap((p) => files.get(p) ?? []));
+    },
   };
 }
