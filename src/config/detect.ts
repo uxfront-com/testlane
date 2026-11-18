@@ -14,7 +14,12 @@ export interface RepoFiles {
   /** UTF-8 text, or null when the file is absent. Throws E_CONFIG for a file over 1 MiB. */
   read(path: string): Promise<string | null>;
   exists(path: string): Promise<boolean>;
+  /** Get `paths` ready to read in one go, where a read can be slow on its own, like in a partial clone. */
+  prefetch?(paths: string[]): Promise<void>;
 }
+
+/** The root files `detect` reads, besides each workspace's `package.json`. */
+const ROOT_READS = new Set(["package.json", "pnpm-workspace.yaml", "conductor.toml"]);
 
 /** Files from a map: the adapter the unit tests use. */
 export function memoryFiles(files: Record<string, string>): RepoFiles {
@@ -102,6 +107,8 @@ export async function detect(files: RepoFiles, opts: DetectOptions = {}): Promis
   };
 
   const list = await files.list();
+  // Everything below reads at most these files, so ask for them all at once.
+  await files.prefetch?.(list.filter((p) => p.endsWith("/package.json") || ROOT_READS.has(p)));
   const rootText = await files.read("package.json");
   const root = rootText === null ? null : parsePkg("", rootText);
 
