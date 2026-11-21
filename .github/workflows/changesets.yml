@@ -29,7 +29,7 @@ jobs:
       id-token: write # npm trusted publishing (OIDC)
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
 
@@ -39,14 +39,14 @@ jobs:
       # Pinned here rather than through `packageManager` in package.json, so this
       # workflow cannot change which pnpm the `docs build` job in ci.yml runs.
       - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
           version: 11.13.1
 
       # No NODE_AUTH_TOKEN, on purpose. Trusted publishing mints a short-lived
       # credential from the OIDC token above; there is no npm token to leak.
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           registry-url: "https://registry.npmjs.org"
@@ -68,7 +68,7 @@ jobs:
       # absent from the registry, then pushes the git tag and creates the
       # GitHub release.
       - name: Version or publish
-        uses: changesets/action@v1
+        uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0
         with:
           version: pnpm version-packages
           publish: pnpm release
