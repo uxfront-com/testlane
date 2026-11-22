@@ -10,3 +10,8 @@ updates:
         patterns: ["*"]
     commit-message:
       prefix: ci
+    ignore:
+      # changesets/action v2 needs @changesets/cli 3, and this repo is on CLI 2.
+      # Remove this when the CLI moves to 3 (the shared release workflow work).
+      - dependency-name: changesets/action
+        update-types: ["version-update:semver-major"]
