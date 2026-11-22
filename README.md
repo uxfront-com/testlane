@@ -20,7 +20,7 @@ Testlane runs on Node.js and shells out to git, so you'll need both:
 
 | Tool                           | Version       | Required                                                                 |
 | ------------------------------ | ------------- | ------------------------------------------------------------------------ |
-| [Node.js](https://nodejs.org)  | 18 or later   | Yes                                                                      |
+| [Node.js](https://nodejs.org)  | 22 or later   | Yes                                                                      |
 | `git`                          | 2.38 or later | Yes                                                                      |
 | [`gh`](https://cli.github.com) | Any           | No, though it adds each PR's state and title, `gh pr diff` and push-back |
 

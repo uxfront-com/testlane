@@ -5,7 +5,7 @@
 # Dokploy: Build Type "Dockerfile", Docker File "apps/docs/Dockerfile",
 # Docker Context Path ".", container port 3000.
 
-FROM node:22-slim AS build
+FROM node:24-slim AS build
 
 ENV PNPM_HOME=/pnpm \
     PATH=/pnpm:$PATH \
@@ -23,7 +23,7 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
 # The prerenderer needs more heap than node's default in memory-limited containers.
 RUN NODE_OPTIONS=--max-old-space-size=4096 pnpm --filter @uxfront/docs run build
 
-FROM node:22-slim AS runtime
+FROM node:24-slim AS runtime
 
 ENV NODE_ENV=production \
     HOST=0.0.0.0 \

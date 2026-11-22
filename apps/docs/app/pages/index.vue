@@ -283,7 +283,7 @@ const lifespan = [
 ];
 
 const stack = [
-	{ term: "Node and git", detail: "Node 18 or newer and git 2.38 or newer. Install it with npm, pnpm or yarn." },
+	{ term: "Node and git", detail: "Node 22 or newer and git 2.38 or newer. Install it with npm, pnpm or yarn." },
 	{ term: "GitHub CLI", detail: "Optional. With it you get pull request status, CI results and true pull request diffs." },
 	{ term: "One file", detail: "Your commands, environment and hooks live in one TOML file per project, which Testlane can check for mistakes." },
 ];
