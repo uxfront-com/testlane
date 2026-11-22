@@ -50,7 +50,7 @@
   },
   "devDependencies": {
     "@changesets/cli": "^3.0.3",
-    "@types/node": "^20.11.0",
+    "@types/node": "^26.6.6",
     "@uxfront/typescript-config": "^0.2.0",
     "typescript": "^7.0.2",
     "vitest": "^2.1.8"
