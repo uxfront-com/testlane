@@ -1,4 +1,5 @@
 {
+  "extends": "@uxfront/typescript-config/tsconfig.json",
   "compilerOptions": {
     "lib": ["ES2022"],
     "module": "NodeNext",
@@ -11,6 +12,7 @@
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "skipLibCheck": true,
+    "noEmit": false,
     "declaration": false,
     "sourceMap": false,
     "outDir": "dist",
