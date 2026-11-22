@@ -139,7 +139,7 @@ install from.
 
 - `testlane version` on the published package disagrees with the release → immediately.
 - Any documented verb fails on a clean global install → immediately.
-- `npm install -g` fails on a supported Node version (`>=18`) → immediately.
+- `npm install -g` fails on a supported Node version (`>=22`) → immediately.
 
 ## Known failure modes
 
