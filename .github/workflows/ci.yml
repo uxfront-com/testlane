@@ -48,20 +48,28 @@ jobs:
           echo "::error::This PR changes the published package but adds no changeset. Run 'pnpm changeset', or 'pnpm changeset --empty' if nothing consumer-visible changed."
           exit 1
 
+  # Two legs: the floor that `engines.node` in package.json promises, and the
+  # line the repository runs on, read from .node-version. setup-node ignores
+  # whichever of the two inputs a leg leaves empty.
   test:
-    name: node ${{ matrix.node }}
+    name: node ${{ matrix.name }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        node: ['18', '20', '22', '24']
+        include:
+          - name: 22 (floor)
+            node-version: '22'
+          - name: current (.node-version)
+            node-version-file: .node-version
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up Node ${{ matrix.node }}
+      - name: Set up Node ${{ matrix.name }}
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: ${{ matrix.node }}
+          node-version: ${{ matrix.node-version }}
+          node-version-file: ${{ matrix.node-version-file }}
           cache: npm
 
       - name: Install dependencies
@@ -123,12 +131,13 @@ jobs:
           # root CLI package installs with npm. So pin the version here instead.
           version: 10.33.4
 
-      # Node 22 matches the runtime the docs image ships on (apps/docs/Dockerfile).
+      # .node-version names the Node line the docs image ships on (the
+      # `node:<line>-slim` images in apps/docs/Dockerfile), so keep the two in step.
       - name: Set up Node
         if: steps.filter.outputs.changed == 'true'
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '22'
+          node-version-file: .node-version
           cache: pnpm
 
       # `--frozen-lockfile` is half the gate: it fails when a dependency bump in

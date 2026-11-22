@@ -290,4 +290,4 @@ These builds keep Nitro's server output, `.output/server/index.mjs`, so these ho
 
 The prerenderer needs more memory than Node's default, so the builds set `NODE_OPTIONS=--max-old-space-size=4096`. The `Dockerfile`'s image has no git, so its sitemap has no dates, and the build says so in a warning.
 
-The server needs Node 22.13 or newer, both to build and to run: Docus reads its content with Node's built-in `node:sqlite`, which older versions don't have or keep behind a flag. `engines` in `package.json` says so, which Nixpacks reads to pick its Node version, and the `Dockerfile` uses `node:22-slim`, which is newer.
+The server needs Node 22.13 or newer, both to build and to run: Docus reads its content with Node's built-in `node:sqlite`, which older versions don't have or keep behind a flag. `engines` in `package.json` says so, which Nixpacks reads to pick its Node version, and the `Dockerfile` uses `node:24-slim`, which is newer.
