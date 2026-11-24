@@ -9,7 +9,6 @@ export default defineConfig({
   rules: {
     // Baseline for 0.2.0: each rule that fails here today is off, and the commits that follow
     // turn them on one by one.
-    "eqeqeq": "off",
     "no-console": "off",
     "no-promise-executor-return": "off",
     "no-useless-assignment": "off",

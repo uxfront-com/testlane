@@ -223,7 +223,7 @@ export async function info(input: WorkspaceInput): Promise<number> {
     ["last used", row.lastUsedAt],
   ];
   if (row.pr) {lines.push(["pr", `${row.pr.state} — ${row.pr.title}`], ["pr url", row.pr.url]);}
-  if (du && row.diskBytes != null) {lines.push(["disk", humanBytes(row.diskBytes)]);}
+  if (du && typeof row.diskBytes === "number") {lines.push(["disk", humanBytes(row.diskBytes)]);}
   for (const [k, v] of lines) {stdoutOf(ctx).write(`${k}: ${v}\n`);}
   return ExitCode.SUCCESS;
 }
