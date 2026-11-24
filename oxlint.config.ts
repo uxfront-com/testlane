@@ -7,8 +7,10 @@ export default defineConfig({
   env: vue.env,
   ignorePatterns: [...vue.ignorePatterns],
   rules: {
-    // Baseline for 0.2.0: each rule that fails here today is off, and the commits that follow
-    // turn them on one by one.
+    // It flags each explicit Record<string, T> and inline return type. Testlane's dictionaries
+    // are lookup tables read by any string key (signal names, duration units, characters to
+    // escape, environment variables), and functions state the type they return. Inferring
+    // instead would need a cast at each lookup and hide the contract each function promises.
     "quality/no-known-value-widening": "off",
   },
   overrides: [
