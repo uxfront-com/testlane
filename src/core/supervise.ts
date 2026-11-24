@@ -150,7 +150,7 @@ export function tailLines(file: string, n: number): Array<string> {
     const buf = Buffer.alloc(len);
     readSync(fd, buf, 0, len, size - len);
     const lines = buf.toString("utf8").split("\n");
-    if (lines[lines.length - 1] === "") {lines.pop();}
+    if (lines.at(-1) === "") {lines.pop();}
     return lines.slice(-n);
   } finally {
     closeSync(fd);
