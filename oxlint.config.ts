@@ -11,7 +11,6 @@ export default defineConfig({
     // turn them on one by one.
     "no-console": "off",
     "no-promise-executor-return": "off",
-    "no-useless-assignment": "off",
     "quality/no-array-filter-map": "off",
     "quality/no-chained-type-assertions": "off",
     "quality/no-conditional-empty-object-spread": "off",

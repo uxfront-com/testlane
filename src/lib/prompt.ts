@@ -13,7 +13,7 @@ export function promptLine(message: string, out: NodeJS.WritableStream = process
   let readAny = false;
 
   for (;;) {
-    let bytes = 0;
+    let bytes: number;
     try {
       bytes = readSync(0, buf, 0, buf.length, null);
     } catch (error) {
