@@ -84,6 +84,27 @@ jobs:
       - name: Test
         run: npm test
 
+  # oxlint with the shared uxfront config (oxlint.config.ts), over the whole
+  # repository, apps/docs included. Errors fail the job, and warnings are only
+  # reported. `--format=github` turns each finding into an annotation on the PR.
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint -- --format=github
+
   # `apps/docs` is a pnpm workspace package that the `test` job above never
   # touches — it runs `npm ci` and the root scripts only. A consumer upgrade of
   # `@uxfront/layer-docs` could break the CSS entry point or add mandatory peer

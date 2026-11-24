@@ -344,6 +344,8 @@ npm install
 npm test                        # unit and integration tests
 npm run typecheck               # tsc --noEmit
 npm run build                   # writes dist/
+npm run lint                    # oxlint, with the shared uxfront config
+npm run format                  # oxfmt, with the shared uxfront config
 node dist/bin/testlane.js help  # runs the CLI you built
 ```
 

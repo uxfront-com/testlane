@@ -33,6 +33,10 @@
     "dev": "npm run build && node dist/bin/testlane.js",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
     "guard:packaging": "vitest run test/integration/packaging.test.ts",
     "changeset": "changeset",
     "version-packages": "changeset version",
@@ -51,7 +55,11 @@
   "devDependencies": {
     "@changesets/cli": "^3.0.3",
     "@types/node": "^20.11.0",
+    "@uxfront/oxfmt-config": "^0.1.1",
+    "@uxfront/oxlint-config": "^0.1.1",
     "@uxfront/typescript-config": "^0.2.0",
+    "oxfmt": "^0.79.0",
+    "oxlint": "^1.94.0",
     "typescript": "^7.0.2",
     "vitest": "^2.1.8"
   }
