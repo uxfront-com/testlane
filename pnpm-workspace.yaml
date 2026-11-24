@@ -40,7 +40,7 @@ catalogs:
     vue-tsc: ^3.3.5
   # The uxfront homepage and docs kit.
   uxfront:
-    '@uxfront/layer-docs': ^0.8.4
+    '@uxfront/layer-docs': ^0.9.0
     '@uxfront/layer-ui': ^0.1.10
     '@uxfront/scene': ^0.5.0
     '@uxfront/ui': ^0.9.0
