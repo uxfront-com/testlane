@@ -26,7 +26,6 @@ export default defineConfig({
     "unicorn/consistent-function-scoping": "off",
     "unicorn/prefer-set-has": "off",
     "unicorn/prefer-top-level-await": "off",
-    "unicorn/text-encoding-identifier-case": "off",
   },
   overrides: [
     {
