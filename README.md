@@ -51,12 +51,12 @@ To work on Testlane itself, install it from a clone. It ships as compiled JavaSc
 ```bash
 git clone git@github.com:uxfront-com/testlane.git
 cd testlane
-npm install
-npm run build   # writes dist/bin/testlane.js, the file the command runs
-npm link        # or `pnpm link --global` (after `pnpm setup`), or `yarn global add "file:$PWD"`
+pnpm install
+pnpm run build   # writes dist/bin/testlane.js, the file the command runs
+pnpm add -g .    # links the clone, after `pnpm setup`. Or `npm link`, or `yarn global add "file:$PWD"`
 ```
 
-The linked command runs your clone's `dist/`, not its source, so run `npm run build` again after every `git pull`. To skip linking altogether, call the built entry point with Node, as in `node dist/bin/testlane.js version`, and put it in place of `testlane` in the examples below.
+The linked command runs your clone's `dist/`, not its source, so run `pnpm run build` again after every `git pull`. To skip linking altogether, call the built entry point with Node, as in `node dist/bin/testlane.js version`, and put it in place of `testlane` in the examples below.
 
 [Installation](https://testlane.dev/docs/getting-started/installation) on the site walks through each way to install it.
 
@@ -340,12 +340,12 @@ Every error prints one line on stderr, like `error(E_CONFIG): unknown project 'n
 Testlane's CLI is TypeScript, compiled to `dist/`, and its tests run on Vitest. From a clone:
 
 ```bash
-npm install
-npm test                        # unit and integration tests
-npm run typecheck               # tsc --noEmit
-npm run build                   # writes dist/
-npm run lint                    # oxlint, with the shared uxfront config
-npm run format                  # oxfmt, with the shared uxfront config
+pnpm install
+pnpm test                       # unit and integration tests
+pnpm run typecheck              # tsc --noEmit
+pnpm run build                  # writes dist/
+pnpm run lint                   # oxlint, with the shared uxfront config
+pnpm run format                 # oxfmt, with the shared uxfront config
 node dist/bin/testlane.js help  # runs the CLI you built
 ```
 
