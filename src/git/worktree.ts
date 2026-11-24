@@ -7,7 +7,7 @@ import { gitEnv as env } from "./env.ts";
 
 async function runGit(
   g: GitEnv,
-  argv: string[],
+  argv: Array<string>,
   opts: { read?: boolean; allowFailure?: boolean } = {},
 ): Promise<{ code: number; stdout: string; stderr: string }> {
   if (g.dryRun && !opts.read) {
@@ -20,15 +20,15 @@ async function runGit(
 
 // ── Argv builders ────────────────────────────────────────────────────────────
 
-export function addBranchWorktreeArgv(repoPath: string, dir: string, name: string): string[] {
+export function addBranchWorktreeArgv(repoPath: string, dir: string, name: string): Array<string> {
   return ["git", "-C", repoPath, "worktree", "add", dir, "-B", name, "--track", `origin/${name}`];
 }
 
-export function addPrWorktreeArgv(repoPath: string, dir: string, n: number): string[] {
+export function addPrWorktreeArgv(repoPath: string, dir: string, n: number): Array<string> {
   return ["git", "-C", repoPath, "worktree", "add", dir, `pr/${n}`];
 }
 
-export function addCommitWorktreeArgv(repoPath: string, dir: string, sha: string): string[] {
+export function addCommitWorktreeArgv(repoPath: string, dir: string, sha: string): Array<string> {
   return ["git", "-C", repoPath, "worktree", "add", "--detach", dir, sha];
 }
 
@@ -165,13 +165,13 @@ export async function mergedBranches(repoPath: string, base: string): Promise<Se
 }
 
 /** List worktree directories known to git (for doctor orphan detection, §9.11). */
-export async function listWorktrees(repoPath: string): Promise<string[]> {
+export async function listWorktrees(repoPath: string): Promise<Array<string>> {
   const res = await capture(["git", "-C", repoPath, "worktree", "list", "--porcelain"], {
     allowFailure: true,
     env: env(),
   });
   if (res.code !== 0) {return [];}
-  const dirs: string[] = [];
+  const dirs: Array<string> = [];
   for (const line of res.stdout.split("\n")) {
     if (line.startsWith("worktree ")) {dirs.push(line.slice("worktree ".length));}
   }

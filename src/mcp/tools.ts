@@ -42,7 +42,7 @@ interface Param {
   type: "string" | "boolean" | "integer" | "number";
   description: string;
   required?: boolean;
-  enum?: readonly string[];
+  enum?: ReadonlyArray<string>;
   pattern?: string;
   minimum?: number;
   exclusiveMinimum?: number;
@@ -81,7 +81,7 @@ const WORKSPACE = { project: PROJECT, ref: REF, kind: KIND };
 
 function jsonSchema(params: Record<string, Param>): object {
   const properties: Record<string, object> = {};
-  const required: string[] = [];
+  const required: Array<string> = [];
   for (const [name, p] of Object.entries(params)) {
     const { required: isRequired, ...schema } = p;
     properties[name] = schema;
@@ -98,7 +98,7 @@ function zodSchema(params: Record<string, Param>): z.ZodType<Record<string, unkn
     else if (p.type === "string") {
       let str = z.string().min(1);
       if (p.pattern) {str = str.regex(new RegExp(p.pattern), `must match ${p.pattern}`);}
-      s = p.enum ? z.enum(p.enum as [string, ...string[]]) : str;
+      s = p.enum ? z.enum(p.enum as [string, ...Array<string>]) : str;
     } else {
       let n = p.type === "integer" ? z.number().int() : z.number();
       if (p.minimum !== undefined) {n = n.min(p.minimum);}
@@ -186,11 +186,11 @@ function refOf(args: Record<string, unknown>): RefSpec {
   return kind ? refFromDisambiguator(kind, ref) : parseRef(ref);
 }
 
-function workspace(env: CallEnv, args: Record<string, unknown>, verbArgs: string[]): WorkspaceInput {
+function workspace(env: CallEnv, args: Record<string, unknown>, verbArgs: Array<string>): WorkspaceInput {
   return { ctx: env.ctx, project: project(env, args), ref: refOf(args), args: verbArgs, passthrough: [] };
 }
 
-const flag = (on: unknown, name: string): string[] => (on === true ? [name] : []);
+const flag = (on: unknown, name: string): Array<string> => (on === true ? [name] : []);
 
 /** Run a `--json` verb into a buffer and return its JSON. */
 async function viaJson(env: CallEnv, run: (ctx: Ctx) => Promise<number> | number): Promise<ToolResult> {
@@ -200,7 +200,7 @@ async function viaJson(env: CallEnv, run: (ctx: Ctx) => Promise<number> | number
   return jsonResult(code, out, env.err);
 }
 
-export const TOOLS: Tool[] = [
+export const TOOLS: Array<Tool> = [
   {
     name: "projects",
     description: "List the configured projects, with each one's repository and number of workspaces. Same as `testlane projects --json`.",
@@ -395,7 +395,7 @@ export function findTool(name: string): Tool | undefined {
 }
 
 /** The `tools/list` entries. */
-export function toolList(): object[] {
+export function toolList(): Array<object> {
   return TOOLS.map((t) => ({
     name: t.name,
     description: t.description,

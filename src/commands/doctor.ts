@@ -66,7 +66,7 @@ function resolveBinary(bin: string): string | null {
  */
 function canonical(dir: string): string {
   let cur = dir;
-  const tail: string[] = [];
+  const tail: Array<string> = [];
   while (!existsSync(cur)) {
     const parent = dirname(cur);
     if (parent === cur) {return dir;}
@@ -82,7 +82,7 @@ function canonical(dir: string): string {
 
 export async function doctor(input: TopInput): Promise<number> {
   const { ctx } = input;
-  const checks: Check[] = [];
+  const checks: Array<Check> = [];
 
   // ── git version ────────────────────────────────────────────────────────────
   const git = await checkGitVersion();
@@ -142,7 +142,7 @@ async function checkProject(
   configDir: string,
   name: string,
   defaults: ReturnType<typeof loadDefaults>,
-  checks: Check[],
+  checks: Array<Check>,
 ): Promise<void> {
   let project: ProjectConfig;
   try {
@@ -288,7 +288,7 @@ async function repoFileCheck(name: string, project: ProjectConfig, snapshotError
  * paths; a configured `worktrees_path` crossing a symlink (`/tmp` on macOS)
  * would otherwise mismatch every entry and warn permanently.
  */
-async function checkOrphans(name: string, repoPath: string, checks: Check[]): Promise<void> {
+async function checkOrphans(name: string, repoPath: string, checks: Array<Check>): Promise<void> {
   let tracked: Set<string>;
   try {
     const st = loadState(name);
@@ -304,7 +304,7 @@ async function checkOrphans(name: string, repoPath: string, checks: Check[]): Pr
   const untracked = gitDirs.filter((d) => !tracked.has(d));
   const missing = [...tracked].filter((d) => !gitSet.has(d) || !existsSync(d));
   if (untracked.length === 0 && missing.length === 0) {return;}
-  const bits: string[] = [];
+  const bits: Array<string> = [];
   if (untracked.length) {bits.push(`${untracked.length} git worktree(s) not in state`);}
   if (missing.length) {
     bits.push(
@@ -327,9 +327,9 @@ function isReadable(path: string): boolean {
   }
 }
 
-function staleLocks(sdir: string): string[] {
+function staleLocks(sdir: string): Array<string> {
   if (!existsSync(sdir)) {return [];}
-  const out: string[] = [];
+  const out: Array<string> = [];
   for (const f of readdirSync(sdir)) {
     if (!f.endsWith(".lock")) {continue;}
     const p = join(sdir, f);
@@ -352,7 +352,7 @@ function pidAlive(pid: number): boolean {
   }
 }
 
-function report(out: Sink, json: boolean, checks: Check[]): number {
+function report(out: Sink, json: boolean, checks: Array<Check>): number {
   const failed = checks.some((c) => c.status === "fail");
   if (json) {
     out.write(JSON.stringify({ ok: !failed, checks }) + "\n");

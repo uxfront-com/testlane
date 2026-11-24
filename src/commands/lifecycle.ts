@@ -330,7 +330,7 @@ export async function ps(input: ProjectInput): Promise<number> {
     for (const d of readdirSync(dataRoot, { withFileTypes: true })) {if (d.isDirectory()) {slugs.add(d.name);}}
   }
 
-  const rows: PsRow[] = [];
+  const rows: Array<PsRow> = [];
   for (const slug of [...slugs].sort()) {
     const e = readEntry(dataDirFor(project, slug));
     if (!e) {continue;}

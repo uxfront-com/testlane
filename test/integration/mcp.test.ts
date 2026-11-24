@@ -36,9 +36,9 @@ const TOOL_NAMES = [
 
 let tmp: string;
 let origin: ReturnType<typeof makeFixtureOrigin>;
-let clients: McpClient[];
+let clients: Array<McpClient>;
 /** Projects whose `start` entries and `bg.pid` files afterEach kills. */
-let envs: Array<{ env: Harness; projects: string[] }>;
+let envs: Array<{ env: Harness; projects: Array<string> }>;
 
 beforeEach(() => {
   tmp = realpathSync(mkdtempSync(join(tmpdir(), "testlane-mcp-")));
@@ -52,7 +52,7 @@ beforeEach(() => {
 afterEach(async () => {
   for (const c of clients) {c.kill();}
   await Promise.all(clients.map((c) => c.exited));
-  const pids: number[] = [];
+  const pids: Array<number> = [];
   for (const { env, projects } of envs) {
     for (const project of projects) {
       const trees = env.worktreesPath(project);
@@ -103,14 +103,14 @@ function serverEnv(env: Harness): Record<string, string> {
   return { TESTLANE_CONFIG_DIR: env.configDir, XDG_STATE_HOME: env.stateHome };
 }
 
-function connect(env: Harness, preArgs: string[] = []): McpClient {
+function connect(env: Harness, preArgs: Array<string> = []): McpClient {
   const c = new McpClient(serverEnv(env), preArgs);
   clients.push(c);
   return c;
 }
 
 /** The built CLI's `--json` answer, spawned with the server's environment. */
-function cliJson(env: Harness, argv: string[]): { code: number; value: any } {
+function cliJson(env: Harness, argv: Array<string>): { code: number; value: any } {
   const r = spawnSync(process.execPath, [builtCli, ...argv, "--json"], {
     encoding: "utf8",
     env: { ...(process.env as Record<string, string>), NO_COLOR: "1", TESTLANE_DEBUG: "0", ...serverEnv(env) },
@@ -119,11 +119,11 @@ function cliJson(env: Harness, argv: string[]): { code: number; value: any } {
 }
 
 /** Same keys everywhere, and equal values outside `changing`. */
-function expectSameShape(tool: unknown, cli: unknown, changing: string[] = [], path = "$"): void {
+function expectSameShape(tool: unknown, cli: unknown, changing: Array<string> = [], path = "$"): void {
   if (Array.isArray(cli)) {
     expect(Array.isArray(tool), path).toBe(true);
-    expect((tool as unknown[]).length, path).toBe(cli.length);
-    cli.forEach((v, i) => expectSameShape((tool as unknown[])[i], v, changing, `${path}[${i}]`));
+    expect((tool as Array<unknown>).length, path).toBe(cli.length);
+    cli.forEach((v, i) => expectSameShape((tool as Array<unknown>)[i], v, changing, `${path}[${i}]`));
     return;
   }
   if (cli !== null && typeof cli === "object") {
@@ -265,7 +265,7 @@ describe("same shape as the CLI's --json", () => {
     expect(st.value.reused).toBe(false);
     expectSameShape(st.value, cliJson(env, ["shape", "feature-x", "start", "web"]).value, ["reused"]);
 
-    const pairs: Array<[string, Record<string, unknown>, string[], string[]]> = [
+    const pairs: Array<[string, Record<string, unknown>, Array<string>, Array<string>]> = [
       ["projects", {}, ["projects"], []],
       ["doctor", {}, ["doctor"], []],
       ["config_validate", {}, ["config", "validate"], []],
@@ -803,7 +803,7 @@ describe("a crafted branch ref that differs from origin/main only in case, over 
     for (const name of ["Main", "head"]) {
       expect(spawnSync("git", ["-C", origin.path, "update-ref", `refs/heads/${name}`, evil]).status).toBe(0);
     }
-    const git = (...args: string[]) => spawnSync("git", ["-C", env.repoPath("app"), ...args], { encoding: "utf8" }).stdout.trim();
+    const git = (...args: Array<string>) => spawnSync("git", ["-C", env.repoPath("app"), ...args], { encoding: "utf8" }).stdout.trim();
     const before = git("rev-parse", "refs/remotes/origin/main");
     const ignoresCase = git("config", "--bool", "core.ignorecase") === "true";
 

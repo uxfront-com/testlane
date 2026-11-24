@@ -5,11 +5,11 @@
 
 export interface WorkspaceYaml {
   /** The `packages:` entries, quotes removed; `undefined` when the key is absent. */
-  packages?: string[];
+  packages?: Array<string>;
   /** Other top-level keys, in file order. */
-  skippedKeys: string[];
+  skippedKeys: Array<string>;
   /** Lines this parser could not read, trimmed, in file order. */
-  skippedLines: string[];
+  skippedLines: Array<string>;
 }
 
 const TOP_KEY = /^(?:"([^"]*)"|'([^']*)'|([^\s#:'"-][^:#]*?))\s*:(.*)$/;
@@ -31,8 +31,8 @@ function stripComment(text: string): string {
 }
 
 /** A flow list's items, split on commas outside quotes. */
-function splitFlow(text: string): string[] {
-  const parts: string[] = [];
+function splitFlow(text: string): Array<string> {
+  const parts: Array<string> = [];
   let quote: string | null = null;
   let cur = "";
   for (const c of text) {
@@ -156,7 +156,7 @@ function segmentRegExp(seg: string): RegExp {
   return new RegExp(`^${re}$`);
 }
 
-function matchSegments(pattern: string[], path: string[]): boolean {
+function matchSegments(pattern: Array<string>, path: Array<string>): boolean {
   if (pattern.length === 0) {return path.length === 0;}
   const [head, ...rest] = pattern;
   if (head === "**") {
@@ -179,7 +179,7 @@ export function globMatch(glob: string, dir: string): boolean {
 }
 
 /** Directories matched by an include pattern and by no `!` pattern. `.` (the root) is never matched. */
-export function matchWorkspaces(patterns: string[], dirs: string[]): string[] {
+export function matchWorkspaces(patterns: Array<string>, dirs: Array<string>): Array<string> {
   const include = patterns.filter((p) => !p.startsWith("!") && normalizePattern(p) !== ".");
   const exclude = patterns.filter((p) => p.startsWith("!")).map((p) => p.slice(1));
   return dirs.filter((d) => include.some((p) => globMatch(p, d)) && !exclude.some((p) => globMatch(p, d)));

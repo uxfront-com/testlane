@@ -76,7 +76,7 @@ describe("§17.2 scenario 8 — adopted path ref", () => {
     // A real git working tree outside Testlane's worktrees.
     const adopted = join(tmp, "external");
     mkdirSync(adopted, { recursive: true });
-    const g = (args: string[]) =>
+    const g = (args: Array<string>) =>
       spawnSync("git", ["-C", adopted, "-c", "user.email=t@t.local", "-c", "user.name=t", ...args]);
     g(["init", "-b", "main"]);
     writeFileSync(join(adopted, "a.txt"), "x\n");

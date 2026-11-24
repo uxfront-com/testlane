@@ -37,10 +37,10 @@ let state: State;
 
 const sha256 = (s: string) => createHash("sha256").update(Buffer.from(s, "utf8")).digest("hex");
 
-function fakeIO(opts: { tty: boolean; answer?: string | null }): TrustIO & { out: string; asked: string[] } {
+function fakeIO(opts: { tty: boolean; answer?: string | null }): TrustIO & { out: string; asked: Array<string> } {
   const io = {
     out: "",
-    asked: [] as string[],
+    asked: [] as Array<string>,
     isTTY: () => opts.tty,
     prompt: (message: string) => {
       io.asked.push(message);
@@ -272,7 +272,7 @@ describe("trust gate", () => {
 
   it("a .testlane.toml that is not a regular file is refused", async () => {
     const work = join(tmp, "work");
-    const git = (...args: string[]) => {
+    const git = (...args: Array<string>) => {
       const res = spawnSync("git", ["-C", work, "-c", "user.name=t", "-c", "user.email=t@t", ...args]);
       expect(res.status, res.stderr.toString()).toBe(0);
     };
@@ -338,7 +338,7 @@ describe("an unusable stored approval", () => {
   it("one that no longer matches its sha256 counts as none: the gate asks again and --yes repairs it", async () => {
     await trustGate(ctx, project, state, { io: fakeIO({ tty: true, answer: "y" }) });
     state.repoConfig!.content += "# tampered\n";
-    const warnings: string[] = [];
+    const warnings: Array<string> = [];
     ctx.log.warn = (m: string) => {
       warnings.push(m);
     };

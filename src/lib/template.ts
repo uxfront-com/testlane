@@ -58,7 +58,7 @@ export function workspaceVars(input: {
   ref: string;
   branch: string;
   slug: string;
-  ports: number[];
+  ports: Array<number>;
 }): TemplateVars {
   const first = input.ports[0];
   const vars: TemplateVars = {

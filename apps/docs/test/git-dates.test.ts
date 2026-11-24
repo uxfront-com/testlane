@@ -7,7 +7,7 @@ import { type Git, readGitDates } from "../modules/git-dates";
 
 /** A fake git that answers from a table, and records what it ran. */
 function fakeGit(answers: Record<string, string | Error>) {
-	const calls: string[] = [];
+	const calls: Array<string> = [];
 	const git: Git = async (args) => {
 		const command = args.join(" ");
 		calls.push(command);
@@ -99,7 +99,7 @@ describe("readGitDates in a repository", () => {
 
 	it("reads the committer date of the last commit that changed each file", async () => {
 		dir = mkdtempSync(join(tmpdir(), "git-dates-"));
-		const run = (args: string[], date?: string) =>
+		const run = (args: Array<string>, date?: string) =>
 			execFileSync("git", args, {
 				cwd: dir,
 				encoding: "utf8",

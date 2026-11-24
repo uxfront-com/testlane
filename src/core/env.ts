@@ -12,7 +12,7 @@ export interface WorkspaceContext {
   ref: string;
   branch: string;
   slug: string;
-  ports: number[];
+  ports: Array<number>;
 }
 
 export function wsContext(project: ProjectConfig, ws: Workspace, dataDir: string): WorkspaceContext {

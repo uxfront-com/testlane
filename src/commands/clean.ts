@@ -39,8 +39,8 @@ function fmtBytes(bytes: number | null): string {
   return `${Math.max(1, Math.round(bytes / 1e3))} KB`;
 }
 
-async function buildPlan(targets: Workspace[], reasons: Map<string, string>): Promise<PlanEntry[]> {
-  const plan: PlanEntry[] = [];
+async function buildPlan(targets: Array<Workspace>, reasons: Map<string, string>): Promise<Array<PlanEntry>> {
+  const plan: Array<PlanEntry> = [];
   for (const ws of targets) {
     const present = existsSync(ws.path);
     const dirty = present && !ws.adopted ? await isDirty(ws.path) : false;
@@ -64,11 +64,11 @@ async function execute(
   ctx: Ctx,
   project: ProjectConfig,
   state: State,
-  plan: PlanEntry[],
+  plan: Array<PlanEntry>,
   force: boolean,
 ): Promise<number> {
   let freed = 0;
-  const removed: string[] = [];
+  const removed: Array<string> = [];
 
   for (const entry of plan) {
     if (entry.dirty && !force) {
@@ -148,7 +148,7 @@ function parseOlderThan(raw: string | undefined): number | undefined {
 async function runClean(
   ctx: Ctx,
   project: ProjectConfig,
-  explicit: string[],
+  explicit: Array<string>,
   filters: Filters,
   includeAdopted: boolean,
   force: boolean,
@@ -157,7 +157,7 @@ async function runClean(
   const state = loadState(project.name);
   const all = Object.values(state.workspaces);
   const reasons = new Map<string, string>();
-  let targets: Workspace[];
+  let targets: Array<Workspace>;
 
   if (explicit.length > 0) {
     // Explicit slugs select exactly those workspaces, adopted or not (§9.9).
@@ -196,20 +196,20 @@ async function runClean(
 async function selectByFilters(
   ctx: Ctx,
   project: ProjectConfig,
-  all: Workspace[],
+  all: Array<Workspace>,
   filters: Filters,
   includeAdopted: boolean,
   reasons: Map<string, string>,
-): Promise<Workspace[]> {
+): Promise<Array<Workspace>> {
   const now = Date.now();
   const merged = filters.merged ? await mergedSlugs(ctx, project, all) : null;
   const closed = filters.closed ? await closedSlugs(ctx, project, all) : null;
 
-  const selected: Workspace[] = [];
+  const selected: Array<Workspace> = [];
   for (const ws of all) {
     if (ws.adopted && !includeAdopted) {continue;}
 
-    const why: string[] = [];
+    const why: Array<string> = [];
     if (filters.pruneState) {
       if (existsSync(ws.path)) {continue;} // only entries whose worktree is gone
       why.push("state-only");
@@ -239,7 +239,7 @@ async function selectByFilters(
  * state, then a cached `ws.pr.state`, and finally falls back to the git-only
  * `--merged` heuristic when neither is available.
  */
-async function closedSlugs(ctx: Ctx, project: ProjectConfig, all: Workspace[]): Promise<Set<string>> {
+async function closedSlugs(ctx: Ctx, project: ProjectConfig, all: Array<Workspace>): Promise<Set<string>> {
   const slugs = new Set<string>();
   const prs = all.filter((w) => w.kind === "pr" && w.number !== undefined);
   if (prs.length === 0) {return slugs;}
@@ -275,7 +275,7 @@ async function closedSlugs(ctx: Ctx, project: ProjectConfig, all: Workspace[]): 
 }
 
 /** Slugs whose branch is merged into origin/<default> (git-only, no gh). */
-async function mergedSlugs(ctx: Ctx, project: ProjectConfig, all: Workspace[]): Promise<Set<string>> {
+async function mergedSlugs(ctx: Ctx, project: ProjectConfig, all: Array<Workspace>): Promise<Set<string>> {
   const base = project.defaultBranch ?? "main";
   const g: GitEnv = { repoPath: project.repoPath, dryRun: false, log: ctx.log, signal: ctx.signal };
   // Best-effort refresh so the merge check sees the latest default branch.

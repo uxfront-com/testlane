@@ -141,7 +141,7 @@ export interface ProjectConfig {
   defaultCommand: string;
   ports: number;
   basePort: number;
-  setup: { run?: string; cacheKey: string[]; seedFiles: string[]; seedFrom?: string };
+  setup: { run?: string; cacheKey: Array<string>; seedFiles: Array<string>; seedFrom?: string };
   env: Record<string, string>;
   commands: Record<string, CommandConfig>;
   hooks: Partial<Record<(typeof HOOK_NAMES)[number], string>>;

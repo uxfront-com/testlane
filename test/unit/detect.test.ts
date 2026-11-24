@@ -12,7 +12,7 @@ import { FIXTURES, F1_PNPM_TURBO, F2_SINGLE_NUXT, F3_NPM_ROOT_PNPM_DOCS, F4_MANY
 const REPO = { value: "git@github.com:acme/app.git", reason: "app.toml" };
 const json = (v: unknown): string => JSON.stringify(v);
 
-async function findings(files: Record<string, string>, opts: Parameters<typeof detect>[1] = { repo: REPO }): Promise<Finding[]> {
+async function findings(files: Record<string, string>, opts: Parameters<typeof detect>[1] = { repo: REPO }): Promise<Array<Finding>> {
   return detect(memoryFiles(files), opts);
 }
 
@@ -24,8 +24,8 @@ async function config(files: Record<string, string>): Promise<Record<string, any
   return parseToml((await draft(files)).text) as Record<string, any>;
 }
 
-const notes = (fs: Finding[]): string[] => fs.filter((f) => f.kind === "note").map((f) => f.reason);
-const find = (fs: Finding[], key: string): Finding | undefined => fs.find((f) => f.key === key);
+const notes = (fs: Array<Finding>): Array<string> => fs.filter((f) => f.kind === "note").map((f) => f.reason);
+const find = (fs: Array<Finding>, key: string): Finding | undefined => fs.find((f) => f.key === key);
 
 /** A root package.json plus extra files. */
 function repo(pkg: Record<string, unknown>, files: Record<string, string> = {}): Record<string, string> {

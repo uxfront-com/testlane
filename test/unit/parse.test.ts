@@ -18,7 +18,7 @@ const deps: ParseDeps = {
   },
 };
 
-const p = (argv: string[]) => parse(argv, deps);
+const p = (argv: Array<string>) => parse(argv, deps);
 
 describe("parse — §4.4 canonical examples", () => {
   it("bare PR → default_command (code)", () => {
@@ -221,7 +221,7 @@ describe("parse — top-level verbs precede project lookup (UXF-265)", () => {
 describe("parse — start, stop, logs and ps", () => {
   // "start" and "ps" are configured commands here too: the built-in verbs win.
   const withCommands: ParseDeps = { ...deps, projectCommandNames: () => ["dev", "start", "logs", "ps"] };
-  const q = (argv: string[]) => parse(argv, withCommands);
+  const q = (argv: Array<string>) => parse(argv, withCommands);
 
   it("P1-C8 — start is a workspace verb and passes --port through for start to reject", () => {
     const r = q(["n8n", "main", "start", "dev", "--port", "1"]);

@@ -21,7 +21,7 @@ import {
  * and its port there.
  */
 export function lanes(options: FormationOptions): Formation {
-	const anchors: AnchorDef[] = Array.from({ length: LANES }, (_, index) => ({
+	const anchors: Array<AnchorDef> = Array.from({ length: LANES }, (_, index) => ({
 		id: String(index),
 		place: ({ approach, local }, out) => {
 			out[0] = BOX_X1;

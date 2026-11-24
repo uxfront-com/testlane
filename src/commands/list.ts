@@ -33,9 +33,9 @@ interface FreshPr {
   ci: CiState;
 }
 
-async function computeRows(project: string, du: boolean): Promise<Row[]> {
+async function computeRows(project: string, du: boolean): Promise<Array<Row>> {
   const state = loadState(project);
-  const rows: Row[] = [];
+  const rows: Array<Row> = [];
   for (const ws of Object.values(state.workspaces)) {
     const missing = !existsSync(ws.path);
     const dirty = !missing && ws.kind !== "path" ? await isDirty(ws.path) : false;
@@ -59,7 +59,7 @@ function prStale(fetchedAt: string | undefined): boolean {
  * budget, returning whatever came back. gh-unavailable → empty (cached render).
  * Purely in-memory — the persisted cache is written on checkout, not here.
  */
-async function refreshPrMeta(ctx: Ctx, project: ProjectConfig, rows: Row[]): Promise<Map<string, FreshPr>> {
+async function refreshPrMeta(ctx: Ctx, project: ProjectConfig, rows: Array<Row>): Promise<Map<string, FreshPr>> {
   const fresh = new Map<string, FreshPr>();
   if (!(await ctx.gh.available())) {return fresh;}
   const repo = ghRepoSlug(project.repo);
@@ -90,7 +90,7 @@ function ciMark(ci: CiState): string {
 /** Compose the STATUS column: PR state + CI, plus dirty/missing (§9.8). */
 function status(r: Row, fresh: Map<string, FreshPr>): string {
   if (r.missing) {return "missing";}
-  const parts: string[] = [];
+  const parts: Array<string> = [];
   if (r.kind === "pr") {
     const f = fresh.get(r.slug);
     const state = f?.state ?? r.pr?.state;
@@ -189,7 +189,7 @@ export async function pick(input: ProjectInput): Promise<number> {
 }
 
 /** Drop the transient diskBytes field when `--du` wasn't requested. */
-function stripDisk(rows: Row[]): Omit<Row, "diskBytes">[] {
+function stripDisk(rows: Array<Row>): Array<Omit<Row, "diskBytes">> {
   return rows.map(({ diskBytes: _drop, ...rest }) => rest);
 }
 
@@ -209,7 +209,7 @@ export async function info(input: WorkspaceInput): Promise<number> {
     return ExitCode.SUCCESS;
   }
   const fresh = await refreshPrMeta(ctx, project, [row]);
-  const lines: [string, string][] = [
+  const lines: Array<[string, string]> = [
     ["slug", row.slug],
     ["kind", row.kind],
     ["ref", row.ref],

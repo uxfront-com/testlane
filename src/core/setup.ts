@@ -102,7 +102,7 @@ const HASH_EXCLUDES = ["**/node_modules/**", "**/.git/**"];
  * its bytes. Anything under `node_modules/` or `.git/` is excluded. An empty glob
  * set yields a stable hash so a `setup.run` with no cache_key installs exactly once.
  */
-export async function computeSetupHash(worktree: string, globs: string[]): Promise<string> {
+export async function computeSetupHash(worktree: string, globs: Array<string>): Promise<string> {
   const matched = new Set<string>();
   for (const pattern of globs) {
     // Prune excluded trees during the walk, not after it: filtering the results

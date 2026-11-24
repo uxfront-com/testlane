@@ -6,14 +6,14 @@ import type { TemplateVars } from "../lib/template.ts";
 
 export interface EditorLaunch {
   /** argv to spawn. When viaBash, argv is ["bash","-c",script]. */
-  argv: string[];
+  argv: Array<string>;
   wait: boolean;
   cwd?: string;
   viaBash: boolean;
 }
 
 interface Preset {
-  build(path: string): string[];
+  build(path: string): Array<string>;
   wait: boolean;
   needsShellCwd?: boolean;
 }

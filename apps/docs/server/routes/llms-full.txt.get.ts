@@ -20,7 +20,7 @@ export default defineEventHandler(async (event) => {
 	const pages = (await queryCollection(event, "docs" as never)
 		.where("extension", "=", "md")
 		.order("stem", "ASC")
-		.all()) as DocsPage[];
+		.all()) as Array<DocsPage>;
 	const { siteUrl } = useRuntimeConfig(event).public;
 
 	setHeader(event, "Content-Type", "text/plain; charset=utf-8");

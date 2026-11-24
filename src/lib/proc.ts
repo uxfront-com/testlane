@@ -7,8 +7,8 @@ import type { Sink } from "./log.ts";
 
 // Optional recorder: when set, every spawned argv is recorded before execution.
 // Used by integration tests to assert which external commands ran (§17.2).
-let recorder: ((argv: string[]) => void) | null = null;
-export function setProcRecorder(fn: ((argv: string[]) => void) | null): void {
+let recorder: ((argv: Array<string>) => void) | null = null;
+export function setProcRecorder(fn: ((argv: Array<string>) => void) | null): void {
   recorder = fn;
 }
 
@@ -33,7 +33,7 @@ export interface CaptureResult {
  * Run `argv` capturing stdout/stderr. Argv-based, never through a shell.
  * Non-zero exit throws TestlaneError unless `allowFailure` is set (§11.1).
  */
-export async function capture(argv: string[], opts: CaptureOptions = {}): Promise<CaptureResult> {
+export async function capture(argv: Array<string>, opts: CaptureOptions = {}): Promise<CaptureResult> {
   if (opts.signal?.aborted) {throw abortedError();}
   recorder?.(argv);
   return await new Promise<CaptureResult>((resolve, reject) => {
@@ -77,7 +77,7 @@ export async function capture(argv: string[], opts: CaptureOptions = {}): Promis
  * (a repo file's sha256, §5.7). Never throws on a non-zero exit.
  */
 export async function captureBytes(
-  argv: string[],
+  argv: Array<string>,
   opts: { cwd?: string; env?: Record<string, string> } = {},
 ): Promise<{ code: number; stdout: Buffer; stderr: string }> {
   recorder?.(argv);
@@ -87,7 +87,7 @@ export async function captureBytes(
       env: opts.env ?? (process.env as Record<string, string>),
       stdio: ["ignore", "pipe", "pipe"],
     });
-    const out: Buffer[] = [];
+    const out: Array<Buffer> = [];
     let stderr = "";
     child.stdout!.on("data", (chunk: Buffer) => out.push(chunk));
     child.stderr!.setEncoding("utf8");
@@ -146,7 +146,7 @@ export interface Detached {
  * unref it so Testlane can exit while it runs. stdio is ignored, or appended to
  * `log` when given (§10, §9.14).
  */
-export async function detach(argv: string[], opts: DetachOptions = {}): Promise<Detached> {
+export async function detach(argv: Array<string>, opts: DetachOptions = {}): Promise<Detached> {
   recorder?.(argv);
   const fd = opts.log !== undefined ? openSync(opts.log, "a") : undefined;
   try {
@@ -177,7 +177,7 @@ export async function detach(argv: string[], opts: DetachOptions = {}): Promise<
  * child's process group for the duration, then restores handlers (§11.1, §19.13).
  * Returns the child's exit code (128+signal on signal death).
  */
-export async function passthrough(argv: string[], opts: PassthroughOptions = {}): Promise<number> {
+export async function passthrough(argv: Array<string>, opts: PassthroughOptions = {}): Promise<number> {
   if (opts.detach) {
     await detach(argv, { cwd: opts.cwd, env: opts.env });
     return 0;
@@ -318,7 +318,7 @@ function signalNumber(sig: string): number {
  * instead of surfacing as E_INTERNAL (§14). node:child_process reports ENOENT
  * asynchronously via the `error` event, unlike Bun's synchronous throw.
  */
-function mapSpawnError(e: unknown, argv: string[]): TestlaneError {
+function mapSpawnError(e: unknown, argv: Array<string>): TestlaneError {
   if ((e as NodeJS.ErrnoException).code === "ENOENT") {
     return new TestlaneError("E_SETUP", `command not found: ${argv[0]}`, {
       hint: `ensure '${argv[0]}' is installed and on your PATH`,

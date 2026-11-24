@@ -34,7 +34,7 @@ const REPO_FILES: Record<string, string> = {
 
 let tmp: string;
 let env: Harness;
-let recorded: string[][];
+let recorded: Array<Array<string>>;
 
 beforeEach(() => {
   tmp = realpathSync(mkdtempSync(join(tmpdir(), "testlane-detect-")));
@@ -56,9 +56,9 @@ function writeTree(dir: string, files: Record<string, string>): void {
 }
 
 /** Every path under `dir` with its mtime, so a test can prove nothing was written. */
-function snapshot(dir: string): string[] {
+function snapshot(dir: string): Array<string> {
   if (!existsSync(dir)) {return [];}
-  const out: string[] = [];
+  const out: Array<string> = [];
   const walk = (d: string): void => {
     for (const e of readdirSync(d, { withFileTypes: true })) {
       const p = join(d, e.name);
@@ -70,8 +70,8 @@ function snapshot(dir: string): string[] {
   return out.sort();
 }
 
-function markers(dir: string): string[] {
-  const found: string[] = [];
+function markers(dir: string): Array<string> {
+  const found: Array<string> = [];
   const walk = (d: string): void => {
     for (const e of readdirSync(d, { withFileTypes: true })) {
       if (e.name.startsWith("pwned")) {found.push(join(d, e.name));}
@@ -82,11 +82,11 @@ function markers(dir: string): string[] {
   return found;
 }
 
-const git = (dir: string, ...args: string[]) => spawnSync("git", ["-C", dir, ...args]).stdout.toString();
+const git = (dir: string, ...args: Array<string>) => spawnSync("git", ["-C", dir, ...args]).stdout.toString();
 const READ_ONLY_GIT = new Set(["ls-tree", "cat-file", "rev-list", "rev-parse", "symbolic-ref", "ls-remote", "config"]);
-const gitSubcommand = (argv: string[]) => argv.slice(argv[1] === "-C" ? 3 : 1).find((a, i, rest) => !a.startsWith("-") && rest[i - 1] !== "-c");
+const gitSubcommand = (argv: Array<string>) => argv.slice(argv[1] === "-C" ? 3 : 1).find((a, i, rest) => !a.startsWith("-") && rest[i - 1] !== "-c");
 /** A fetch of blobs by id, as a partial clone's on-demand read runs it: it moves no ref. */
-const isBlobFetch = (argv: string[]) =>
+const isBlobFetch = (argv: Array<string>) =>
   gitSubcommand(argv) === "fetch" &&
   argv.includes("--no-write-fetch-head") &&
   argv.slice(argv.indexOf("origin") + 1).every((a) => a.startsWith("--") || /^[0-9a-f]{40,64}$/.test(a));
@@ -383,7 +383,7 @@ describe("--detect", () => {
     const f = join(env.stateHome, "testlane", `${name}.json`);
     return existsSync(f) ? JSON.parse(readFileSync(f, "utf8")) : null;
   };
-  const onlyGitAnd = (extra: string[]) => {
+  const onlyGitAnd = (extra: Array<string>) => {
     for (const argv of recorded) {
       if (argv[0] === "git") {continue;}
       expect(extra, argv.join(" ")).toContain(argv[0]);

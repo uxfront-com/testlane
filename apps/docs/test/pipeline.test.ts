@@ -9,7 +9,7 @@ const CONTENT = join(import.meta.dirname, "../content/docs");
 const COMMANDS = join(import.meta.dirname, "../../../src/commands");
 
 /** Every docs page, as [path relative to content/docs, source]. */
-function pages(dir = CONTENT): [string, string][] {
+function pages(dir = CONTENT): Array<[string, string]> {
 	return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
 		const path = join(dir, entry.name);
 		if (entry.isDirectory()) {return pages(path);}

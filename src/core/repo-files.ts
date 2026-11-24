@@ -25,9 +25,9 @@ function decode(bytes: Buffer, label: string): string {
  */
 export function localFiles(root: string): RepoFiles {
   const base = resolve(root);
-  let cache: string[] | undefined;
+  let cache: Array<string> | undefined;
 
-  const walk = (dir: string, out: string[]): void => {
+  const walk = (dir: string, out: Array<string>): void => {
     let entries;
     try {
       entries = readdirSync(dir, { withFileTypes: true });

@@ -141,7 +141,7 @@ export async function waitForPort(
 }
 
 /** The last `n` lines of `file` (reads at most its last 64 KiB). */
-export function tailLines(file: string, n: number): string[] {
+export function tailLines(file: string, n: number): Array<string> {
   if (!existsSync(file)) {return [];}
   const fd = openSync(file, "r");
   try {

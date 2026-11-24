@@ -4,29 +4,29 @@ import { usage } from "../lib/errors.ts";
 
 export interface FlagSpec {
   /** Boolean flags, e.g. "--fetch". */
-  bools?: readonly string[];
+  bools?: ReadonlyArray<string>;
   /** Value-taking flags, e.g. "--older-than". */
-  values?: readonly string[];
+  values?: ReadonlyArray<string>;
   /** Repeatable value-taking flags, e.g. "--env" (collected in order). */
-  multi?: readonly string[];
+  multi?: ReadonlyArray<string>;
 }
 
 export interface ParsedFlags {
   bool(name: string): boolean;
   value(name: string): string | undefined;
   /** All values for a repeatable flag, in the order they appeared. */
-  list(name: string): string[];
-  positionals: string[];
+  list(name: string): Array<string>;
+  positionals: Array<string>;
 }
 
-export function parseFlags(args: string[], spec: FlagSpec): ParsedFlags {
+export function parseFlags(args: Array<string>, spec: FlagSpec): ParsedFlags {
   const bools = new Set(spec.bools ?? []);
   const values = new Set(spec.values ?? []);
   const multi = new Set(spec.multi ?? []);
   const boolOut = new Set<string>();
   const valueOut = new Map<string, string>();
-  const multiOut = new Map<string, string[]>();
-  const positionals: string[] = [];
+  const multiOut = new Map<string, Array<string>>();
+  const positionals: Array<string> = [];
 
   for (let i = 0; i < args.length; i++) {
     const tok = args[i]!;

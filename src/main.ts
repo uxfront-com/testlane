@@ -42,7 +42,7 @@ export interface MainOptions {
   gh?: GhClient;
 }
 
-export async function main(argv: string[], opts: MainOptions = {}): Promise<number> {
+export async function main(argv: Array<string>, opts: MainOptions = {}): Promise<number> {
   const debug = wantsDebug(argv);
   try {
     const configDir = resolveConfigDir(argv);
@@ -71,7 +71,7 @@ export async function main(argv: string[], opts: MainOptions = {}): Promise<numb
 // ── Config-dir resolution (§5.1) ────────────────────────────────────────────
 
 /** --config-dir flag → $TESTLANE_CONFIG_DIR → ~/.testlane. */
-function resolveConfigDir(argv: string[]): string {
+function resolveConfigDir(argv: Array<string>): string {
   const fromFlag = preScanConfigDir(argv);
   if (fromFlag) {return fromFlag;}
   const fromEnv = process.env.TESTLANE_CONFIG_DIR;
@@ -80,7 +80,7 @@ function resolveConfigDir(argv: string[]): string {
 }
 
 /** Lightweight pre-scan for --config-dir before parse (deps need it first). */
-function preScanConfigDir(argv: string[]): string | undefined {
+function preScanConfigDir(argv: Array<string>): string | undefined {
   for (let i = 0; i < argv.length; i++) {
     const tok = argv[i]!;
     if (tok === "--") {break;}
@@ -90,7 +90,7 @@ function preScanConfigDir(argv: string[]): string | undefined {
   return undefined;
 }
 
-function wantsDebug(argv: string[]): boolean {
+function wantsDebug(argv: Array<string>): boolean {
   if (process.env.TESTLANE_DEBUG === "1") {return true;}
   const cut = argv.indexOf("--");
   const pre = cut === -1 ? argv : argv.slice(0, cut);
@@ -100,7 +100,7 @@ function wantsDebug(argv: string[]): boolean {
 // ── ParseDeps backed by config/load ─────────────────────────────────────────
 
 function buildDeps(configDir: string, defaults: Defaults): ParseDeps {
-  const commandNames = (name: string): string[] => {
+  const commandNames = (name: string): Array<string> => {
     try {
       return Object.keys(loadEffectiveProject(configDir, name, defaults).commands);
     } catch {
@@ -175,7 +175,7 @@ function isExemptFromConfigDir(result: ParseResult): boolean {
 }
 
 /** The URL `config add` was given, skipping its `--name`/`--root` values. */
-function configAddTarget(args: string[]): string | undefined {
+function configAddTarget(args: Array<string>): string | undefined {
   for (let i = 0; i < args.length; i++) {
     const tok = args[i]!;
     if (tok === "--name" || tok === "--root") {

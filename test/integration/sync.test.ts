@@ -26,7 +26,7 @@ afterEach(() => {
   rmSync(tmp, { recursive: true, force: true });
 });
 
-function gitOut(dir: string, args: string[]): string {
+function gitOut(dir: string, args: Array<string>): string {
   const res = spawnSync("git", ["-C", dir, ...args]);
   return res.stdout.toString();
 }

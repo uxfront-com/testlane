@@ -20,7 +20,7 @@ const WINDOW = 100; // ports window is 100 strides wide (§8.5)
  * deterministic candidate `basePort + (fnv1a32(slug) % 100) * ports`, then scans
  * upward in `ports`-sized strides within the window on conflict (§8.5).
  */
-export async function allocatePorts(opts: AllocateOptions): Promise<number[]> {
+export async function allocatePorts(opts: AllocateOptions): Promise<Array<number>> {
   const { slug, basePort, ports, reserved, isFree } = opts;
   const stride = ports;
   const windowStart = basePort;

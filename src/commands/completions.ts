@@ -31,7 +31,7 @@ const TOP = TOP_LEVEL_VERBS.join(" ");
 const PROJECT = PROJECT_VERBS.join(" ");
 const WORKSPACE = WORKSPACE_VERBS.join(" ");
 
-function render(shell: Shell, projects: string[]): string {
+function render(shell: Shell, projects: Array<string>): string {
   if (shell === "bash") {return bash(projects);}
   if (shell === "zsh") {return zsh(projects);}
   return fish(projects);
@@ -42,7 +42,7 @@ function render(shell: Shell, projects: string[]): string {
  * project name; after a project, offer project+workspace verbs plus the live
  * workspace slugs from `testlane <project> list --json`.
  */
-function bash(projects: string[]): string {
+function bash(projects: Array<string>): string {
   const projWords = projects.join(" ");
   return `# testlane bash completion — eval "$(testlane completions bash)"
 _testlane() {
@@ -81,7 +81,7 @@ complete -F _testlane testlane
  * zsh: a `#compdef`-style function driven by `compadd`. Same two-level model as
  * bash — top verbs/projects first, then project verbs + live slugs.
  */
-function zsh(projects: string[]): string {
+function zsh(projects: Array<string>): string {
   const projWords = projects.join(" ");
   return `#compdef testlane
 # testlane zsh completion — eval "$(testlane completions zsh)"
@@ -114,7 +114,7 @@ _testlane "$@"
  * fish: per-condition `complete` rules. Slugs are produced by a helper function
  * that inspects `commandline` for the project token.
  */
-function fish(projects: string[]): string {
+function fish(projects: Array<string>): string {
   const projLines = projects.map((p) => `complete -c testlane -n '__fish_testlane_no_project' -a '${p}'`).join("\n");
   const topLine = `complete -c testlane -n '__fish_testlane_no_project' -a '${TOP}'`;
   return `# testlane fish completion — testlane completions fish | source

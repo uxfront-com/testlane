@@ -6,7 +6,7 @@ import type { Sink } from "../lib/log.ts";
 
 /** Keeps everything written to it. With `tee`, also passes each chunk on. */
 export class BufferSink implements Sink {
-  private readonly chunks: Buffer[] = [];
+  private readonly chunks: Array<Buffer> = [];
 
   constructor(private readonly tee?: Sink) {}
 
@@ -30,7 +30,7 @@ export class BufferSink implements Sink {
  * writes, so a child process writing to it never blocks on a full pipe.
  */
 export class CappedSink implements Sink {
-  private readonly chunks: Buffer[] = [];
+  private readonly chunks: Array<Buffer> = [];
   private size = 0;
   truncated = false;
 
@@ -66,7 +66,7 @@ export class CappedSink implements Sink {
 /** Keeps only the last `n` lines written to it, so memory stays bounded. */
 export class TailSink implements Sink {
   private readonly decoder = new StringDecoder("utf8");
-  private readonly lines: string[] = [];
+  private readonly lines: Array<string> = [];
   private partial = "";
 
   constructor(private readonly n: number) {}

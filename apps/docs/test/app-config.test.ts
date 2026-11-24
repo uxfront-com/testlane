@@ -3,7 +3,7 @@ import { GITHUB_URL } from "../app/data/site";
 
 type AppConfig = {
 	github: { url: string };
-	docsTheme: { headerLinks: { label: string; to: string }[] };
+	docsTheme: { headerLinks: Array<{ label: string; to: string }> };
 };
 
 let config: AppConfig;

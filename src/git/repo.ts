@@ -14,7 +14,7 @@ export interface GitEnv {
   dryRun: boolean;
   log: Logger;
   /** Collector for dry-run command lines (argv arrays). */
-  planned?: string[][];
+  planned?: Array<Array<string>>;
   /** Kills a running git command when it fires (`testlane mcp`). */
   signal?: AbortSignal;
 }
@@ -22,7 +22,7 @@ export interface GitEnv {
 /** Execute a git argv, or record it when in dry-run. Read-only calls pass `read`. */
 async function runGit(
   g: GitEnv,
-  argv: string[],
+  argv: Array<string>,
   opts: { read?: boolean; allowFailure?: boolean } = {},
 ): Promise<{ code: number; stdout: string; stderr: string }> {
   if (g.dryRun && !opts.read) {
@@ -35,11 +35,11 @@ async function runGit(
 
 // ── Argv builders (pure — shared by exec + dry-run planning) ─────────────────
 
-export function bareCloneArgv(repo: string, repoPath: string): string[] {
+export function bareCloneArgv(repo: string, repoPath: string): Array<string> {
   return ["git", "clone", "--bare", "--filter=blob:none", repo, repoPath];
 }
 
-export function initConfigArgvs(repoPath: string): string[][] {
+export function initConfigArgvs(repoPath: string): Array<Array<string>> {
   return [
     ["git", "-C", repoPath, "config", "remote.origin.fetch", "+refs/heads/*:refs/remotes/origin/*"],
     ["git", "-C", repoPath, "config", "fetch.prune", "true"],
@@ -47,7 +47,7 @@ export function initConfigArgvs(repoPath: string): string[][] {
   ];
 }
 
-export function initFetchArgv(repoPath: string): string[] {
+export function initFetchArgv(repoPath: string): Array<string> {
   return ["git", "-C", repoPath, "fetch", "origin", "--no-tags"];
 }
 
@@ -56,7 +56,7 @@ export function initFetchArgv(repoPath: string): string[] {
  * The name is checked and the refspec spelled out, so a name like
  * `+refs/pull/7/head:refs/remotes/origin/main` can never move another ref.
  */
-export function fetchBranchArgv(repoPath: string, name: string): string[] {
+export function fetchBranchArgv(repoPath: string, name: string): Array<string> {
   if (!isValidBranchName(name)) {
     throw resolveError(`'${name}' is not a valid branch name`, "git refuses it as a branch name, or would read it as a refspec");
   }
@@ -396,7 +396,7 @@ export const MAX_BLOB_BYTES = 1024 * 1024;
  * Throws E_CONFIG for a blob over `MAX_BLOB_BYTES`, E_GIT on any git failure.
  */
 export async function readBlob(repoPath: string, id: string, label: string): Promise<Buffer> {
-  const run = (argv: string[]) => captureBytes(argv, { env: env() });
+  const run = (argv: Array<string>) => captureBytes(argv, { env: env() });
   const size = await run(["git", "-C", repoPath, "cat-file", "-s", id]);
   if (size.code !== 0) {throw new TestlaneError("E_GIT", `cannot read ${label}: ${size.stderr.trim()}`);}
   const bytes = Number(size.stdout.toString("utf8").trim());
@@ -417,7 +417,7 @@ const PREFETCH_CHUNK = 1000;
  * costs one round trip to origin instead of 100, and adds one pack, not 100.
  * Best effort: on any failure, `readBlob` still fetches each blob on its own.
  */
-export async function prefetchBlobs(repoPath: string, ids: string[]): Promise<void> {
+export async function prefetchBlobs(repoPath: string, ids: Array<string>): Promise<void> {
   const wanted = [...new Set(ids)].filter((id) => /^[0-9a-f]{40,64}$/.test(id));
   if (wanted.length === 0) {return;}
   // `--missing=print` lists what's absent without fetching it.
@@ -440,7 +440,7 @@ export async function prefetchBlobs(repoPath: string, ids: string[]): Promise<vo
 }
 
 /** The fetch git runs for an on-demand read, with the ids as arguments. It moves no ref. */
-export function prefetchArgv(repoPath: string, ids: string[]): string[] {
+export function prefetchArgv(repoPath: string, ids: Array<string>): Array<string> {
   return [
     "git",
     "-C",

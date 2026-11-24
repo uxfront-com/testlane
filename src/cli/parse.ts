@@ -13,14 +13,14 @@ import {
 import { parseRef, refFromDisambiguator, type RefSpec } from "../core/resolve.ts";
 
 export type ParseResult =
-  | { kind: "top"; verb: TopLevelVerb; args: string[]; global: GlobalFlags }
+  | { kind: "top"; verb: TopLevelVerb; args: Array<string>; global: GlobalFlags }
   | {
       kind: "project";
       project: string;
       verb: ProjectVerb;
       /** True when `list` was reached via bare `testlane <project>` (enables the TTY picker, §4.3/M2). */
       defaulted?: boolean;
-      args: string[];
+      args: Array<string>;
       global: GlobalFlags;
     }
   | {
@@ -30,8 +30,8 @@ export type ParseResult =
       verb: WorkspaceVerb;
       /** Set when the verb was reached via command-name sugar (§4.3 step 5). */
       commandName?: string;
-      args: string[];
-      passthrough: string[];
+      args: Array<string>;
+      passthrough: Array<string>;
       global: GlobalFlags;
     };
 
@@ -39,9 +39,9 @@ export interface ParseDeps {
   projectExists(name: string): boolean;
   /** Match a URL to a configured project, extracting an embedded ref if present. */
   resolveUrlProject(url: string): { project: string; ref?: RefSpec } | null;
-  projectCommandNames(project: string): string[];
+  projectCommandNames(project: string): Array<string>;
   projectDefaultCommand(project: string): string;
-  knownProjects(): string[];
+  knownProjects(): Array<string>;
 }
 
 type Disambiguator = { kind: "pr" | "branch" | "path"; value: string };
@@ -59,13 +59,13 @@ function emptyGlobals(): GlobalFlags {
 interface Extracted {
   global: GlobalFlags;
   disambiguator?: Disambiguator;
-  rest: string[];
+  rest: Array<string>;
 }
 
 /** Pull global flags + ref disambiguators out of the pre-`--` tokens (§4.5). */
-function extractFlags(pre: string[]): Extracted {
+function extractFlags(pre: Array<string>): Extracted {
   const global = emptyGlobals();
-  const rest: string[] = [];
+  const rest: Array<string> = [];
   let disambiguator: Disambiguator | undefined;
 
   for (let i = 0; i < pre.length; i++) {
@@ -127,7 +127,7 @@ function extractFlags(pre: string[]): Extracted {
   return { global, disambiguator, rest };
 }
 
-export function parse(argv: string[], deps: ParseDeps): ParseResult {
+export function parse(argv: Array<string>, deps: ParseDeps): ParseResult {
   // 1. Tokenize: first bare `--` ends Testlane parsing.
   const dashIdx = argv.indexOf("--");
   const pre = dashIdx === -1 ? argv : argv.slice(0, dashIdx);
@@ -206,9 +206,9 @@ export function parse(argv: string[], deps: ParseDeps): ParseResult {
 function classifyWorkspace(
   project: string,
   ref: RefSpec,
-  rest: string[],
+  rest: Array<string>,
   idx: number,
-  passthrough: string[],
+  passthrough: Array<string>,
   global: GlobalFlags,
   deps: ParseDeps,
 ): ParseResult {
@@ -258,7 +258,7 @@ function classifyWorkspace(
 }
 
 // Levenshtein-based nearest name (edit distance ≤ 2), for project suggestions.
-function nearest(input: string, candidates: string[]): string | undefined {
+function nearest(input: string, candidates: Array<string>): string | undefined {
   let best: string | undefined;
   let bestDist = 3;
   for (const c of candidates) {

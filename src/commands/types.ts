@@ -5,20 +5,20 @@ import type { RefSpec } from "../core/resolve.ts";
 
 export interface TopInput {
   ctx: Ctx;
-  args: string[];
+  args: Array<string>;
 }
 
 export interface ProjectInput {
   ctx: Ctx;
   project: ProjectConfig;
-  args: string[];
+  args: Array<string>;
 }
 
 export interface WorkspaceInput {
   ctx: Ctx;
   project: ProjectConfig;
   ref: RefSpec;
-  args: string[];
-  passthrough: string[];
+  args: Array<string>;
+  passthrough: Array<string>;
   commandName?: string;
 }

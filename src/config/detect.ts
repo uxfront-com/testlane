@@ -10,12 +10,12 @@ import { matchWorkspaces, parseWorkspaceYaml } from "./detect-parse.ts";
 /** A read-only view of a repo's files: a checkout, a commit, or a map in a test. */
 export interface RepoFiles {
   /** Every regular file, repo-relative with `/`, outside the `node_modules` and `.git` directories. Symlinks are left out. */
-  list(): Promise<string[]>;
+  list(): Promise<Array<string>>;
   /** UTF-8 text, or null when the file is absent. Throws E_CONFIG for a file over 1 MiB. */
   read(path: string): Promise<string | null>;
   exists(path: string): Promise<boolean>;
   /** Get `paths` ready to read in one go, where a read can be slow on its own, like in a partial clone. */
-  prefetch?(paths: string[]): Promise<void>;
+  prefetch?(paths: Array<string>): Promise<void>;
 }
 
 /** The root files `detect` reads, besides each workspace's `package.json`. */
@@ -74,7 +74,7 @@ interface App {
   confidence: Confidence;
   reason: string;
   /** Arguments the dev script had that the draft drops. */
-  dropped: string[];
+  dropped: Array<string>;
 }
 
 type Framework = "nuxt" | "next" | "vite" | "astro" | "storybook";
@@ -87,7 +87,7 @@ const LOCKFILES: Array<[string, PackageManager]> = [
   ["bun.lockb", "bun"],
 ];
 
-const PM_ORDER: PackageManager[] = ["pnpm", "yarn", "bun", "npm"];
+const PM_ORDER: Array<PackageManager> = ["pnpm", "yarn", "bun", "npm"];
 const MAX_APPS = 10;
 const PLACEHOLDER_REPO = "git@github.com:ORG/REPO.git";
 const ENV_EXAMPLE = /^\.env(\..+)?\.example$/;
@@ -97,8 +97,8 @@ const TASK_RUNNER = /(^|[\s;&|(])(turbo|vp|nx|lerna)(\s|$)/;
  * The findings for a repo, in the order the draft prints them. Every key the
  * draft sets is one finding; notes carry what the draft leaves to the reader.
  */
-export async function detect(files: RepoFiles, opts: DetectOptions = {}): Promise<Finding[]> {
-  const out: Finding[] = [];
+export async function detect(files: RepoFiles, opts: DetectOptions = {}): Promise<Array<Finding>> {
+  const out: Array<Finding> = [];
   const key = (k: string, value: unknown, confidence: Confidence, reason: string): void => {
     out.push({ key: k, value, kind: confidence === "low" ? "guess" : "detected", confidence, reason });
   };
@@ -165,7 +165,7 @@ export async function detect(files: RepoFiles, opts: DetectOptions = {}): Promis
   }
 
   // ── 3. Workspace ───────────────────────────────────────────────────────────
-  let patterns: string[] | undefined;
+  let patterns: Array<string> | undefined;
   let patternSource = "";
   const wsText = await files.read("pnpm-workspace.yaml");
   if (wsText !== null) {
@@ -188,7 +188,7 @@ export async function detect(files: RepoFiles, opts: DetectOptions = {}): Promis
     .filter((p) => p.endsWith("/package.json"))
     .map((p) => p.slice(0, -"/package.json".length));
   const wsDirs = patterns ? matchWorkspaces(patterns, pkgDirs).sort() : [];
-  const pkgs: Pkg[] = [];
+  const pkgs: Array<Pkg> = [];
   for (const dir of wsDirs) {
     const text = await files.read(`${dir}/package.json`);
     const pkg = text === null ? null : parsePkg(dir, text);
@@ -355,7 +355,7 @@ function parsePkg(dir: string, text: string): Pkg | null {
   };
 }
 
-function workspacesField(text: string): string[] | undefined {
+function workspacesField(text: string): Array<string> | undefined {
   try {
     const ws = (JSON.parse(text) as { workspaces?: unknown }).workspaces;
     const list = Array.isArray(ws) ? ws : ws && typeof ws === "object" ? (ws as { packages?: unknown }).packages : undefined;
@@ -384,7 +384,7 @@ export function normaliseRepoUrl(url: string): string | null {
 // ── Apps ─────────────────────────────────────────────────────────────────────
 
 /** The apps, main app first; the packages past the cap; and those with no name to filter on. */
-function findApps(root: Pkg, pkgs: Pkg[], pm: PackageManager): { apps: App[]; left: Pkg[]; unnamed: Pkg[] } {
+function findApps(root: Pkg, pkgs: Array<Pkg>, pm: PackageManager): { apps: Array<App>; left: Array<Pkg>; unnamed: Array<Pkg> } {
   const hasDev = (p: Pkg) => p.scripts.dev !== undefined && !TASK_RUNNER.test(p.scripts.dev);
   let candidates = pkgs.filter(hasDev);
   const inApps = candidates.filter((p) => p.dir.startsWith("apps/"));
@@ -399,7 +399,7 @@ function findApps(root: Pkg, pkgs: Pkg[], pm: PackageManager): { apps: App[]; le
   return { apps: sorted.slice(0, MAX_APPS).map((p, i) => app(p, pm, portVar(i))), left: sorted.slice(MAX_APPS), unnamed };
 }
 
-function framework(dev: string): { fw: Framework; args: string[] } | undefined {
+function framework(dev: string): { fw: Framework; args: Array<string> } | undefined {
   if (/&&|\|\||;|\||[<>`]|\$\(/.test(dev)) {return undefined;}
   const words = dev.trim().split(/\s+/);
   const [a, b] = words;
@@ -437,8 +437,8 @@ const FORMS: Record<Framework, (port: string) => string> = {
 const OWN_FLAGS = new Set(["--host", "--hostname", "-H", "--port", "-p", "--strictPort", "--strict-port", "--ci"]);
 const BARE_FLAGS = new Set(["--strictPort", "--strict-port", "--ci"]);
 
-function droppedArgs(args: string[]): string[] {
-  const dropped: string[] = [];
+function droppedArgs(args: Array<string>): Array<string> {
+  const dropped: Array<string> = [];
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]!;
     const name = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
@@ -511,7 +511,7 @@ function commandName(pkg: Pkg, taken: Set<string>): string {
 }
 
 /** The task runner that isn't turbo, when one drives the repo: the draft notes it and guesses no build. */
-function taskRunner(list: string[], root: Pkg): string | undefined {
+function taskRunner(list: Array<string>, root: Pkg): string | undefined {
   if (list.includes("nx.json")) {return "nx (nx.json)";}
   const vp = root.deps.has("vite-plus") || Object.values(root.scripts).some((s) => /^vp\s/.test(s));
   if (vp) {return "vite-plus (vp)";}

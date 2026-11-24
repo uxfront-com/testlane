@@ -21,7 +21,7 @@ export interface GhClient {
    * Delegate to `gh pr diff`, inheriting stdio so gh pages normally (§9.7).
    * `io` overrides that, as `testlane mcp` does to capture the diff.
    */
-  prDiff(repo: string, n: number, args: string[], io?: PassthroughOptions): Promise<number>; // passthrough exit code
+  prDiff(repo: string, n: number, args: Array<string>, io?: PassthroughOptions): Promise<number>; // passthrough exit code
 }
 
 const PR_FIELDS = "headRefName,isCrossRepository,headRepositoryOwner,state,title,author,url,statusCheckRollup";
@@ -37,7 +37,7 @@ interface StatusCheck {
  * failure → fail; any still-running → pending; all conclusive & clean → pass;
  * empty/absent → null (no marker).
  */
-function rollupCi(rollup: StatusCheck[] | undefined): "pass" | "fail" | "pending" | null {
+function rollupCi(rollup: Array<StatusCheck> | undefined): "pass" | "fail" | "pending" | null {
   if (!rollup || rollup.length === 0) {return null;}
   let pending = false;
   for (const c of rollup) {
@@ -82,7 +82,7 @@ export class RealGhClient implements GhClient {
         title?: string;
         author?: { login?: string } | null;
         url?: string;
-        statusCheckRollup?: StatusCheck[];
+        statusCheckRollup?: Array<StatusCheck>;
       };
       return {
         headRefName: raw.headRefName ?? "",
@@ -99,7 +99,7 @@ export class RealGhClient implements GhClient {
     }
   }
 
-  async prDiff(repo: string, n: number, args: string[], io: PassthroughOptions = {}): Promise<number> {
+  async prDiff(repo: string, n: number, args: Array<string>, io: PassthroughOptions = {}): Promise<number> {
     return passthrough(["gh", "pr", "diff", String(n), "--repo", repo, ...args], io);
   }
 }

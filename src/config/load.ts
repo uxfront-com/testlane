@@ -30,8 +30,8 @@ export interface ConfigIssue {
 }
 
 export class ConfigValidationError extends TestlaneError {
-  readonly issues: ConfigIssue[];
-  constructor(issues: ConfigIssue[], opts: { hint?: string } = {}) {
+  readonly issues: Array<ConfigIssue>;
+  constructor(issues: Array<ConfigIssue>, opts: { hint?: string } = {}) {
     const body = issues.map((i) => `${i.file}: ${i.path}: ${i.message}`).join("\n");
     super("E_CONFIG", body, { hint: opts.hint });
     this.issues = issues;
@@ -39,7 +39,7 @@ export class ConfigValidationError extends TestlaneError {
   }
 }
 
-function zodIssues(file: string, err: z.ZodError): ConfigIssue[] {
+function zodIssues(file: string, err: z.ZodError): Array<ConfigIssue> {
   return err.issues.map((issue) => ({
     file,
     path: issue.path.length ? issue.path.join(".") : "(root)",
@@ -50,7 +50,7 @@ function zodIssues(file: string, err: z.ZodError): ConfigIssue[] {
 // ── Discovery ───────────────────────────────────────────────────────────────
 
 /** List project names (config files without `.toml`, excluding reserved). */
-export function listProjectNames(configDir: string): string[] {
+export function listProjectNames(configDir: string): Array<string> {
   if (!existsSync(configDir)) {return [];}
   return readdirSync(configDir)
     .filter((f) => f.endsWith(".toml"))
@@ -81,7 +81,7 @@ export function projectExists(configDir: string, name: string): boolean {
 export function loadDefaults(configDir: string): Defaults {
   const file = join(configDir, "defaults.toml");
   if (!existsSync(file)) {return {};}
-  const issues: ConfigIssue[] = [];
+  const issues: Array<ConfigIssue> = [];
   const raw = parseTomlFile(file, "defaults.toml", issues);
   if (issues.length) {throw new ConfigValidationError(issues);}
   const parsed = RawDefaultsSchema.safeParse(raw);
@@ -93,7 +93,7 @@ export function loadDefaults(configDir: string): Defaults {
   };
 }
 
-function parseTomlFile(file: string, label: string, issues: ConfigIssue[]): unknown {
+function parseTomlFile(file: string, label: string, issues: Array<ConfigIssue>): unknown {
   let text: string;
   try {
     text = readFileSync(file, "utf8");
@@ -169,7 +169,7 @@ export function loadProjectWithSources(
     });
   }
 
-  const issues: ConfigIssue[] = [];
+  const issues: Array<ConfigIssue> = [];
   const raw = parseTomlFile(file, label, issues);
   if (issues.length) {throw new ConfigValidationError(issues);}
 
@@ -355,8 +355,8 @@ export interface ValidateOptions {
 }
 
 /** Validate every project (and defaults) for `config validate`; returns all issues. */
-export function validateAll(configDir: string, opts: ValidateOptions = {}): ConfigIssue[] {
-  const issues: ConfigIssue[] = [];
+export function validateAll(configDir: string, opts: ValidateOptions = {}): Array<ConfigIssue> {
+  const issues: Array<ConfigIssue> = [];
   let defaults: Defaults = {};
   try {
     defaults = loadDefaults(configDir);

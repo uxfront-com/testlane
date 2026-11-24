@@ -56,7 +56,7 @@ export function commandName(project: ProjectConfig, name: string | undefined, ve
 
 export interface BuiltCommand {
   wc: WorkspaceContext;
-  argv: string[];
+  argv: Array<string>;
   cwd: string;
   extra: { commandEnv?: Record<string, string>; flagEnv: Record<string, string> };
 }
@@ -71,7 +71,7 @@ export function buildCommand(
   ws: Workspace,
   dataDir: string,
   name: string,
-  passthroughArgs: string[],
+  passthroughArgs: Array<string>,
   flagEnv: Record<string, string>,
   portFlag?: string,
 ): BuiltCommand {
@@ -176,7 +176,7 @@ function parsePort(value: string | undefined): number | undefined {
   return n;
 }
 
-export function parseEnvFlags(items: string[]): Record<string, string> {
+export function parseEnvFlags(items: Array<string>): Record<string, string> {
   const out: Record<string, string> = {};
   for (const item of items) {
     const eq = item.indexOf("=");
@@ -194,7 +194,7 @@ export function printDryRun(
   wc: WorkspaceContext,
   project: ProjectConfig,
   extra: { commandEnv?: Record<string, string>; flagEnv?: Record<string, string> },
-  argv: string[],
+  argv: Array<string>,
 ): void {
   const vars = templateVars(wc);
   const layered: Record<string, string> = { ...testlaneEnv(wc) };

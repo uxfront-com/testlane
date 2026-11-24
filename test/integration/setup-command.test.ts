@@ -24,7 +24,7 @@ interface RunResult {
 }
 
 /** Run main() in-process with output captured; gh is never spawned. */
-async function run(argv: string[]): Promise<RunResult> {
+async function run(argv: Array<string>): Promise<RunResult> {
   let out = "";
   let err = "";
   const origOut = process.stdout.write.bind(process.stdout);

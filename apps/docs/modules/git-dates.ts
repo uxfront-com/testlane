@@ -5,14 +5,14 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 
 /** Runs git in a directory and returns what it printed, trimmed. */
-export type Git = (args: string[]) => Promise<string>;
+export type Git = (args: Array<string>) => Promise<string>;
 
 /** The source file of the homepage, whose date is the date of `/`. */
 export const HOMEPAGE_SOURCE = "app/pages/index.vue";
 
 /** What `readGitDates` found: a date per file, or why there are none. */
 export type GitDates =
-	| { dates: Record<string, string>; undated: string[] }
+	| { dates: Record<string, string>; undated: Array<string> }
 	| { error: string };
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -24,7 +24,7 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
  * the history first, and gives no dates at all if it can't. A file with no
  * commit, like a new one not yet committed, is listed in `undated`.
  */
-export async function readGitDates(files: string[], git: Git): Promise<GitDates> {
+export async function readGitDates(files: Array<string>, git: Git): Promise<GitDates> {
 	let shallow: string;
 	try {
 		shallow = await git(["rev-parse", "--is-shallow-repository"]);
@@ -43,7 +43,7 @@ export async function readGitDates(files: string[], git: Git): Promise<GitDates>
 	}
 
 	const dates: Record<string, string> = {};
-	const undated: string[] = [];
+	const undated: Array<string> = [];
 	try {
 		await Promise.all(
 			files.map(async (file) => {

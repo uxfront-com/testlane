@@ -16,7 +16,7 @@ export interface Workspace {
   branch?: string;
   path: string;
   adopted: boolean;
-  ports: number[];
+  ports: Array<number>;
   createdAt: string;
   lastUsedAt: string;
   setupHash?: string;

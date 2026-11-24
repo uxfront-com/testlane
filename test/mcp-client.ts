@@ -33,8 +33,8 @@ export interface ToolAnswer {
 
 export class McpClient {
   /** Every line the server wrote to stdout, as written. */
-  readonly stdoutLines: string[] = [];
-  readonly received: Received[] = [];
+  readonly stdoutLines: Array<string> = [];
+  readonly received: Array<Received> = [];
   stderr = "";
   readonly exited: Promise<number | null>;
   private readonly child: ChildProcess;
@@ -42,7 +42,7 @@ export class McpClient {
   private nextId = 1;
   private readonly waiting = new Map<string, (r: Received) => void>();
 
-  constructor(env: Record<string, string>, preArgs: string[] = []) {
+  constructor(env: Record<string, string>, preArgs: Array<string> = []) {
     this.child = spawn(process.execPath, [builtCli, ...preArgs, "mcp"], {
       env: { ...(process.env as Record<string, string>), NO_COLOR: "1", TESTLANE_DEBUG: "0", ...env },
       stdio: ["pipe", "pipe", "pipe"],
@@ -138,7 +138,7 @@ export class McpClient {
   }
 
   /** The progress notifications that carried `token`. */
-  progress(token: string | number): Received[] {
+  progress(token: string | number): Array<Received> {
     return this.received.filter(
       (r) => r.msg.method === "notifications/progress" && r.msg.params?.progressToken === token,
     );

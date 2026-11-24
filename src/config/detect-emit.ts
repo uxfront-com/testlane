@@ -23,7 +23,7 @@ export interface Draft {
   /** The draft parsed back, under TOML key names. */
   config: Record<string, unknown>;
   /** The findings the text holds, in its order. */
-  findings: Finding[];
+  findings: Array<Finding>;
 }
 
 // Characters a terminal or a TOML reader would act on: C0, DEL, C1 and the bidi controls.
@@ -48,7 +48,7 @@ const keyPart = (k: string): string => (BARE_KEY.test(k) ? k : tomlText(k));
 
 /** A key the repo file may not set (`repo`, `setup.seed_from`, …). */
 function userOnly(key: string): boolean {
-  return (USER_ONLY_KEYS as readonly string[]).includes(key);
+  return (USER_ONLY_KEYS as ReadonlyArray<string>).includes(key);
 }
 
 /** The test hook criterion 6 uses: changes the text before validation. */
@@ -61,11 +61,11 @@ export function setDraftTransform(fn: ((text: string) => string) | null): void {
  * Write the findings as TOML and validate it. A draft that doesn't validate is
  * a bug in the detector, never printed: E_INTERNAL with every issue.
  */
-export function renderDraft(all: Finding[], opts: DraftOptions): Draft {
+export function renderDraft(all: Array<Finding>, opts: DraftOptions): Draft {
   const findings = all.filter((f) => f.key === null || !(opts.repoFile && userOnly(f.key)));
   const keys = new Set(findings.filter((f) => f.key !== null).map((f) => f.key!));
-  const lines: string[] = [];
-  const used: Finding[] = [];
+  const lines: Array<string> = [];
+  const used: Array<Finding> = [];
 
   const noteLine = (f: Finding): void => {
     lines.push(`# note: ${printableLine(f.reason)}`);
@@ -119,7 +119,7 @@ export function renderDraft(all: Finding[], opts: DraftOptions): Draft {
   section("setup", "setup");
   section("env", "env");
 
-  const commands: string[] = [];
+  const commands: Array<string> = [];
   for (const f of findings) {
     const m = f.key?.match(/^commands\.([^.]+)\./);
     if (m && !commands.includes(m[1]!)) {commands.push(m[1]!);}

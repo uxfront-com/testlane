@@ -146,7 +146,7 @@ export class McpServer {
     switch (method) {
       case "initialize": {
         const asked = params.protocolVersion;
-        const protocolVersion = (PROTOCOL_VERSIONS as readonly unknown[]).includes(asked)
+        const protocolVersion = (PROTOCOL_VERSIONS as ReadonlyArray<unknown>).includes(asked)
           ? (asked as string)
           : PROTOCOL_VERSIONS[0];
         this.reply(id, {

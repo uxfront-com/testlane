@@ -8,6 +8,6 @@ export function shellQuote(arg: string): string {
 }
 
 /** Join an argv array into a copy-pasteable, shell-quoted command line. */
-export function shellJoin(argv: string[]): string {
+export function shellJoin(argv: Array<string>): string {
   return argv.map(shellQuote).join(" ");
 }

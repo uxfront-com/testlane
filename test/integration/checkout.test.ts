@@ -55,7 +55,7 @@ describe("§17.2 scenario 2 — second checkout reuses without fetching", () => 
     expect(first.code).toBe(0);
     const path1 = first.stdout.trim();
 
-    const recorded: string[][] = [];
+    const recorded: Array<Array<string>> = [];
     setProcRecorder((argv) => recorded.push(argv));
     const second = await env.run(["n8n", "feature-x", "checkout"]);
     setProcRecorder(null);

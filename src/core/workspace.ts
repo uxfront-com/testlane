@@ -60,7 +60,7 @@ export function dataDirFor(project: ProjectConfig, slug: string): string {
   return join(project.worktreesPath, ".data", slug);
 }
 
-function gitEnv(ctx: Ctx, project: ProjectConfig, planned?: string[][]): GitEnv {
+function gitEnv(ctx: Ctx, project: ProjectConfig, planned?: Array<Array<string>>): GitEnv {
   return { repoPath: project.repoPath, dryRun: ctx.flags.dryRun, log: ctx.log, planned, signal: ctx.signal };
 }
 
@@ -297,7 +297,7 @@ async function refetch(ctx: Ctx, project: ProjectConfig, ws: Workspace): Promise
   else if (ws.kind === "pr" && ws.number !== undefined) {await refetchPr(g, ws.path, ws.number);}
 }
 
-async function allocateFor(project: ProjectConfig, slug: string, existing: Record<string, Workspace>): Promise<number[]> {
+async function allocateFor(project: ProjectConfig, slug: string, existing: Record<string, Workspace>): Promise<Array<number>> {
   const reserved = new Set<number>();
   for (const w of Object.values(existing)) {for (const p of w.ports) {reserved.add(p);}}
   return await allocatePorts({
@@ -325,7 +325,7 @@ function dryRunPlan(ctx: Ctx, project: ProjectConfig, refSpec: RefSpec): EnsureR
   const slug = slugFor(spec);
   const dir = join(project.worktreesPath, slug);
   const dataDir = dataDirFor(project, slug);
-  const lines: string[] = [];
+  const lines: Array<string> = [];
 
   const freshRepo = !isInitialized(project.repoPath);
   if (freshRepo) {
@@ -378,7 +378,7 @@ function dryRunPlan(ctx: Ctx, project: ProjectConfig, refSpec: RefSpec): EnsureR
 }
 
 /** The deterministic-first port block for a slug, used only for dry-run display (§8.5). */
-function deterministicPorts(project: ProjectConfig, slug: string): number[] {
+function deterministicPorts(project: ProjectConfig, slug: string): Array<number> {
   const base = project.basePort + (fnv1a32(slug) % 100) * project.ports;
   return Array.from({ length: project.ports }, (_, i) => base + i);
 }

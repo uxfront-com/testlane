@@ -25,7 +25,7 @@ let tmp: string;
 let origin: ReturnType<typeof makeFixtureOrigin>;
 let env: Harness;
 /** PIDs (and so process groups) a test started; killed in afterEach. */
-let started: number[];
+let started: Array<number>;
 
 function makeLifeEnv(extraToml = ""): Harness {
   const toml = [
@@ -98,7 +98,7 @@ interface Started {
   reused: boolean;
 }
 
-async function startJson(args: string[]): Promise<Started> {
+async function startJson(args: Array<string>): Promise<Started> {
   const r = await env.run([PROJECT, ...args, "--json"]);
   expect(r.code, r.stderr).toBe(0);
   const out = JSON.parse(r.stdout) as Started;
@@ -154,7 +154,7 @@ beforeAll(() => {
   writeFileSync(join(builtDir, "package.json"), '{"type":"module"}\n');
 }, 120_000);
 
-function spawnBuilt(argv: string[]) {
+function spawnBuilt(argv: Array<string>) {
   const child = spawn("node", [builtCli, ...argv], {
     env: { ...process.env, TESTLANE_CONFIG_DIR: env.configDir, XDG_STATE_HOME: env.stateHome, NO_COLOR: "1" },
     stdio: ["ignore", "pipe", "pipe"],
@@ -313,7 +313,7 @@ describe("start", () => {
   it("P1-C3 — a port someone else already serves is refused instead of reported ready", async () => {
     const co = await env.run([PROJECT, "main", "checkout", "--json"]);
     expect(co.code).toBe(0);
-    const port = (JSON.parse(co.stdout) as { ports: number[] }).ports[0]!;
+    const port = (JSON.parse(co.stdout) as { ports: Array<number> }).ports[0]!;
     const squatter = spawn("node", ["-e", `require('net').createServer().listen(${port},'127.0.0.1')`], {
       stdio: "ignore",
     });
