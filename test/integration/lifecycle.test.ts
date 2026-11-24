@@ -85,7 +85,10 @@ afterEach(() => {
 
 const dataDir = (slug: string) => join(env.worktreesPath(PROJECT), ".data", slug);
 const lines = (file: string) => (existsSync(file) ? readFileSync(file, "utf8").trim().split("\n").filter(Boolean) : []);
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms: number) =>
+  new Promise((r) => {
+    setTimeout(r, ms);
+  });
 
 interface Started {
   project: string;

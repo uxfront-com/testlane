@@ -68,7 +68,10 @@ interface Call {
 }
 
 const isId = (v: unknown): v is Id => typeof v === "string" || (typeof v === "number" && Number.isFinite(v));
-const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+const sleep = (ms: number) =>
+  new Promise<void>((r) => {
+    setTimeout(r, ms);
+  });
 
 /**
  * Serve until the input ends or `stop()` is called. In-flight calls are then
@@ -82,7 +85,9 @@ export class McpServer {
 
   async serve(): Promise<void> {
     const rl = createInterface({ input: this.opts.input, crlfDelay: Infinity });
-    const ended = new Promise<void>((resolve) => rl.once("close", resolve));
+    const ended = new Promise<void>((resolve) => {
+      rl.once("close", resolve);
+    });
     this.stopInput = () => rl.close();
     rl.on("line", (line) => this.onLine(line));
     await ended;
@@ -223,9 +228,16 @@ export class McpServer {
     const timeoutS = timeoutOf(args);
     const deadline = tool.long && timeoutS !== undefined ? setTimeout(() => this.abort(call, "timeout"), timeoutS * 1000) : undefined;
     // A stopped call sends no more progress.
-    const stopped = new Promise<void>((r) =>
-      call.controller.signal.addEventListener("abort", () => (progress?.stop(), r()), { once: true }),
-    );
+    const stopped = new Promise<void>((r) => {
+      call.controller.signal.addEventListener(
+        "abort",
+        () => {
+          progress?.stop();
+          r();
+        },
+        { once: true },
+      );
+    });
 
     let stderrSoFar = "";
     const work = runTool(tool, args, {

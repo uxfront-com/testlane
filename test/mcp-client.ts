@@ -50,7 +50,9 @@ export class McpClient {
       env: { ...(process.env as Record<string, string>), NO_COLOR: "1", TESTLANE_DEBUG: "0", ...env },
       stdio: ["pipe", "pipe", "pipe"],
     });
-    this.exited = new Promise((resolve) => this.child.once("exit", (code) => resolve(code)));
+    this.exited = new Promise((resolve) => {
+      this.child.once("exit", (code) => resolve(code));
+    });
     this.child.stdout!.setEncoding("utf8");
     this.child.stderr!.setEncoding("utf8");
     this.child.stderr!.on("data", (chunk: string) => {
@@ -102,7 +104,9 @@ export class McpClient {
 
   /** Wait for the response to `id`, sent some other way. */
   expect(id: string | number | null): Promise<Received> {
-    return new Promise((resolve) => this.waiting.set(JSON.stringify(id), resolve));
+    return new Promise((resolve) => {
+      this.waiting.set(JSON.stringify(id), resolve);
+    });
   }
 
   notify(method: string, params?: Record<string, unknown>): void {

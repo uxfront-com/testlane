@@ -247,7 +247,9 @@ export async function passthrough(argv: Array<string>, opts: PassthroughOptions 
 /** SIGTERM one child, then SIGKILL it after `graceMs` if it is still there. */
 async function stopChild(child: ReturnType<typeof spawn>, graceMs: number): Promise<void> {
   if (child.exitCode !== null || child.signalCode !== null) {return;}
-  const exited = new Promise<void>((r) => child.once("exit", () => r()));
+  const exited = new Promise<void>((r) => {
+    child.once("exit", () => r());
+  });
   child.kill("SIGTERM");
   const timer = setTimeout(() => child.kill("SIGKILL"), graceMs);
   await exited;
@@ -290,7 +292,9 @@ async function waitGroupGone(pgid: number, ms: number): Promise<boolean> {
   const deadline = Date.now() + ms;
   while (groupAlive(pgid)) {
     if (Date.now() >= deadline) {return false;}
-    await new Promise((r) => setTimeout(r, GROUP_POLL_MS));
+    await new Promise((r) => {
+      setTimeout(r, GROUP_POLL_MS);
+    });
   }
   return true;
 }

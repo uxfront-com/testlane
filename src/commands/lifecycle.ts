@@ -264,7 +264,9 @@ export async function logs(input: WorkspaceInput): Promise<number> {
   process.once("SIGTERM", onSignal);
   try {
     while (!interrupted) {
-      await new Promise((r) => setTimeout(r, 200));
+      await new Promise((r) => {
+        setTimeout(r, 200);
+      });
       if (!existsSync(file)) {continue;}
       offset = await copyFrom(file, offset, out);
     }
@@ -286,7 +288,9 @@ async function copyFrom(file: string, offset: number, out: Sink): Promise<number
       if (n === 0) {return pos;}
       pos += n;
       if (!out.write(Buffer.from(buf.subarray(0, n)))) {
-        await new Promise<void>((r) => out.once("drain", () => r()));
+        await new Promise<void>((r) => {
+          out.once("drain", () => r());
+        });
       }
     }
   } finally {

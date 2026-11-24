@@ -72,7 +72,9 @@ async function refreshPrMeta(ctx: Ctx, project: ProjectConfig, rows: Array<Row>)
   );
   if (stale.length === 0) {return fresh;}
 
-  const budget = new Promise<void>((res) => setTimeout(res, REFRESH_BUDGET_MS));
+  const budget = new Promise<void>((res) => {
+    setTimeout(res, REFRESH_BUDGET_MS);
+  });
   const work = Promise.all(
     stale.map(async (r) => {
       const meta = await ctx.gh.prView(repo, r.number!);

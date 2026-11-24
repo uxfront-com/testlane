@@ -25,7 +25,10 @@ export const startLockFile = (dataDir: string) => join(dataDir, "start.lock");
 // The group helpers live beside the spawn code; `stop` and `start` reach them here.
 export { STOP_GRACE_MS, groupAlive, stopGroup } from "../lib/proc.ts";
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms: number) =>
+  new Promise((r) => {
+    setTimeout(r, ms);
+  });
 
 /** The recorded entry, or null when there is none or it can't be read. */
 export function readEntry(dataDir: string): ProcessEntry | null {

@@ -159,7 +159,10 @@ function alive(pid: number): boolean {
   }
 }
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms: number) =>
+  new Promise((r) => {
+    setTimeout(r, ms);
+  });
 
 /** Every stdout line is one JSON-RPC 2.0 message. */
 function expectOnlyProtocol(c: McpClient): void {
