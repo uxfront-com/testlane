@@ -181,6 +181,6 @@ export function globMatch(glob: string, dir: string): boolean {
 /** Directories matched by an include pattern and by no `!` pattern. `.` (the root) is never matched. */
 export function matchWorkspaces(patterns: Array<string>, dirs: Array<string>): Array<string> {
   const include = patterns.filter((p) => !p.startsWith("!") && normalizePattern(p) !== ".");
-  const exclude = patterns.filter((p) => p.startsWith("!")).map((p) => p.slice(1));
+  const exclude = patterns.flatMap((p) => (p.startsWith("!") ? [p.slice(1)] : []));
   return dirs.filter((d) => include.some((p) => globMatch(p, d)) && !exclude.some((p) => globMatch(p, d)));
 }

@@ -158,7 +158,7 @@ export async function detect(files: RepoFiles, opts: DetectOptions = {}): Promis
     pmReason = "no lockfile and no packageManager";
   }
   const lockfile = locks.find(([, m]) => m === pm)?.[0];
-  const others = locks.filter(([, m]) => m !== pm).map(([f]) => f);
+  const others = locks.flatMap(([f, m]) => (m === pm ? [] : [f]));
   if (others.length) {
     const how = others.map((f) => `${f} (${LOCKFILES.find(([l]) => l === f)![1]})`).join(", ");
     note(`${how} also present; this draft installs with ${pm}`, "setup.run");

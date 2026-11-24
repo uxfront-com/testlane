@@ -25,7 +25,7 @@ async function config(files: Record<string, string>): Promise<Record<string, any
   return parseToml((await draft(files)).text) as Record<string, any>;
 }
 
-const notes = (fs: Array<Finding>): Array<string> => fs.filter((f) => f.kind === "note").map((f) => f.reason);
+const notes = (fs: Array<Finding>): Array<string> => fs.flatMap((f) => (f.kind === "note" ? [f.reason] : []));
 const find = (fs: Array<Finding>, key: string): Finding | undefined => fs.find((f) => f.key === key);
 
 /** A root package.json plus extra files. */

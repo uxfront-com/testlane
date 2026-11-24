@@ -10,7 +10,6 @@ export default defineConfig({
     // Baseline for 0.2.0: each rule that fails here today is off, and the commits that follow
     // turn them on one by one.
     "no-promise-executor-return": "off",
-    "quality/no-array-filter-map": "off",
     "quality/no-conditional-empty-object-spread": "off",
     "quality/no-known-value-widening": "off",
     "quality/no-object-parameters": "off",

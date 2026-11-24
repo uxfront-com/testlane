@@ -63,7 +63,7 @@ export function setDraftTransform(fn: ((text: string) => string) | null): void {
  */
 export function renderDraft(all: Array<Finding>, opts: DraftOptions): Draft {
   const findings = all.filter((f) => f.key === null || !(opts.repoFile && userOnly(f.key)));
-  const keys = new Set(findings.filter((f) => f.key !== null).map((f) => f.key!));
+  const keys = new Set(findings.flatMap((f) => (f.key === null ? [] : [f.key])));
   const lines: Array<string> = [];
   const used: Array<Finding> = [];
 
