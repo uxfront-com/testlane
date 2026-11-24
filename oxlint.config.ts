@@ -10,7 +10,6 @@ export default defineConfig({
     // Baseline for 0.2.0: each rule that fails here today is off, and the commits that follow
     // turn them on one by one.
     "quality/no-known-value-widening": "off",
-    "quality/no-unsafe-dictionary-type": "off",
     "typescript/no-non-null-assertion": "off",
   },
   overrides: [
@@ -20,6 +19,25 @@ export default defineConfig({
         // Test helpers live in the describe block whose tests use them, and blocks define their
         // own helper of the same name (originMain, repoState). The rule stays on in src/.
         "unicorn/consistent-function-scoping": "off",
+      },
+    },
+    {
+      files: [
+        "src/commands/config.ts",
+        "src/config/detect-emit.ts",
+        "src/config/detect.ts",
+        "src/core/trust.ts",
+        "src/mcp/**",
+        "test/**",
+        "apps/docs/app/data/schema.ts",
+        "apps/docs/test/**",
+      ],
+      rules: {
+        // These files read untrusted JSON and TOML (MCP requests, package.json, config files and
+        // drafts, the CLI's own --json output in tests) as Record<string, unknown>, then check
+        // each field before they use it. That type is the boundary: it promises nothing about
+        // a value until a check narrows it. The rule stays on everywhere else.
+        "quality/no-unsafe-dictionary-type": "off",
       },
     },
     {
