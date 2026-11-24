@@ -22,7 +22,7 @@ function ctxWith(configDirPath: string): Ctx {
 }
 
 /** Capture stdout across a single completions() call. */
-async function emit(args: string[]): Promise<{ code: number; out: string }> {
+async function emit(args: Array<string>): Promise<{ code: number; out: string }> {
   let out = "";
   const orig = process.stdout.write.bind(process.stdout);
   process.stdout.write = ((chunk: string | Uint8Array) => {

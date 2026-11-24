@@ -1,23 +1,21 @@
 // Config discovery, TOML parse, defaults merge, aggregate error reporting (§5).
 
 import { parse as parseToml } from "smol-toml";
-import { z } from "zod";
+import type { TomlTable } from "smol-toml";
+import type { z } from "zod";
 import { isAbsolute, join, relative, sep } from "node:path";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { TestlaneError } from "../lib/errors.ts";
 import { resolvePath } from "../lib/paths.ts";
 import { printableLine } from "../lib/printable.ts";
 import { fnv1a32 } from "../lib/hash.ts";
-import {
-  RawDefaultsSchema,
-  RawProjectSchema,
-  type Defaults,
-  type ProjectConfig,
-  type RawRepo,
-} from "./schema.ts";
+import { RawDefaultsSchema, RawProjectSchema } from './schema.ts';
+import type { Defaults, ProjectConfig, RawRepo } from './schema.ts';
 import { DEFAULT_COMMAND_VERBS } from "../cli/verbs.ts";
-import { mergeRaw, parseRepoConfig, repoLabel, type KeySource } from "./repo.ts";
-import { readRepoApproval, type RepoApproval } from "../core/state.ts";
+import { mergeRaw, parseRepoConfig, repoLabel } from './repo.ts';
+import type { KeySource } from './repo.ts';
+import { readRepoApproval } from '../core/state.ts';
+import type { RepoApproval } from '../core/state.ts';
 import { sha256Hex } from "../lib/hash.ts";
 
 const PROJECT_NAME_RE = /^[a-z0-9][a-z0-9._-]*$/;
@@ -30,8 +28,8 @@ export interface ConfigIssue {
 }
 
 export class ConfigValidationError extends TestlaneError {
-  readonly issues: ConfigIssue[];
-  constructor(issues: ConfigIssue[], opts: { hint?: string } = {}) {
+  readonly issues: Array<ConfigIssue>;
+  constructor(issues: Array<ConfigIssue>, opts: { hint?: string } = {}) {
     const body = issues.map((i) => `${i.file}: ${i.path}: ${i.message}`).join("\n");
     super("E_CONFIG", body, { hint: opts.hint });
     this.issues = issues;
@@ -39,7 +37,7 @@ export class ConfigValidationError extends TestlaneError {
   }
 }
 
-function zodIssues(file: string, err: z.ZodError): ConfigIssue[] {
+function zodIssues(file: string, err: z.ZodError): Array<ConfigIssue> {
   return err.issues.map((issue) => ({
     file,
     path: issue.path.length ? issue.path.join(".") : "(root)",
@@ -50,8 +48,8 @@ function zodIssues(file: string, err: z.ZodError): ConfigIssue[] {
 // ── Discovery ───────────────────────────────────────────────────────────────
 
 /** List project names (config files without `.toml`, excluding reserved). */
-export function listProjectNames(configDir: string): string[] {
-  if (!existsSync(configDir)) return [];
+export function listProjectNames(configDir: string): Array<string> {
+  if (!existsSync(configDir)) {return [];}
   return readdirSync(configDir)
     .filter((f) => f.endsWith(".toml"))
     .map((f) => f.slice(0, -".toml".length))
@@ -72,7 +70,7 @@ export function isValidProjectName(name: string): boolean {
 }
 
 export function projectExists(configDir: string, name: string): boolean {
-  if (!isValidProjectName(name)) return false;
+  if (!isValidProjectName(name)) {return false;}
   return existsSync(projectFilePath(configDir, name));
 }
 
@@ -80,12 +78,12 @@ export function projectExists(configDir: string, name: string): boolean {
 
 export function loadDefaults(configDir: string): Defaults {
   const file = join(configDir, "defaults.toml");
-  if (!existsSync(file)) return {};
-  const issues: ConfigIssue[] = [];
+  if (!existsSync(file)) {return {};}
+  const issues: Array<ConfigIssue> = [];
   const raw = parseTomlFile(file, "defaults.toml", issues);
-  if (issues.length) throw new ConfigValidationError(issues);
+  if (issues.length) {throw new ConfigValidationError(issues);}
   const parsed = RawDefaultsSchema.safeParse(raw);
-  if (!parsed.success) throw new ConfigValidationError(zodIssues("defaults.toml", parsed.error));
+  if (!parsed.success) {throw new ConfigValidationError(zodIssues("defaults.toml", parsed.error));}
   return {
     root: parsed.data.root,
     editor: parsed.data.editor,
@@ -93,18 +91,18 @@ export function loadDefaults(configDir: string): Defaults {
   };
 }
 
-function parseTomlFile(file: string, label: string, issues: ConfigIssue[]): unknown {
+function parseTomlFile(file: string, label: string, issues: Array<ConfigIssue>): TomlTable {
   let text: string;
   try {
     text = readFileSync(file, "utf8");
-  } catch (e) {
-    issues.push({ file: label, path: "(root)", message: `cannot read file: ${(e as Error).message}` });
+  } catch (error) {
+    issues.push({ file: label, path: "(root)", message: `cannot read file: ${(error as Error).message}` });
     return {};
   }
   try {
     return parseToml(text);
-  } catch (e) {
-    issues.push({ file: label, path: "(root)", message: `TOML parse error: ${(e as Error).message}` });
+  } catch (error) {
+    issues.push({ file: label, path: "(root)", message: `TOML parse error: ${(error as Error).message}` });
     return {};
   }
 }
@@ -169,9 +167,9 @@ export function loadProjectWithSources(
     });
   }
 
-  const issues: ConfigIssue[] = [];
+  const issues: Array<ConfigIssue> = [];
   const raw = parseTomlFile(file, label, issues);
-  if (issues.length) throw new ConfigValidationError(issues);
+  if (issues.length) {throw new ConfigValidationError(issues);}
 
   const parsed = RawProjectSchema.safeParse(raw);
   if (!parsed.success) {
@@ -230,7 +228,7 @@ export function loadProjectWithSources(
     });
   }
 
-  if (issues.length) throw new ConfigValidationError(issues);
+  if (issues.length) {throw new ConfigValidationError(issues);}
 
   const commands: ProjectConfig["commands"] = {};
   for (const [cname, c] of Object.entries(p.commands ?? {})) {
@@ -298,12 +296,12 @@ export interface SnapshotRead {
  * asks again as on first use (§5.7).
  */
 export function readSnapshot(name: string, approval: RepoApproval | undefined): SnapshotRead {
-  if (!approval) return {};
+  if (!approval) {return {};}
   try {
     return { approval, layer: snapshotLayer(name, approval) };
-  } catch (e) {
-    if (e instanceof ConfigValidationError) return { approval, error: e };
-    throw e;
+  } catch (error) {
+    if (error instanceof ConfigValidationError) {return { approval, error };}
+    throw error;
   }
 }
 
@@ -328,19 +326,19 @@ export function loadEffectiveProjectWithSources(
   let loaded: LoadedProject;
   try {
     loaded = loadProjectWithSources(configDir, name, defaults, snap.layer);
-  } catch (e) {
+  } catch (error) {
     // With no approved repo file, a user `default_command` may name one of its
     // commands that isn't approved yet (§5.7): point at the way to approve it.
     const label = `${name}.toml`;
     if (
       !snap.layer &&
-      e instanceof ConfigValidationError &&
-      !e.hint &&
-      e.issues.some((i) => i.file === label && i.path === "default_command")
+      error instanceof ConfigValidationError &&
+      !error.hint &&
+      error.issues.some((i) => i.file === label && i.path === "default_command")
     ) {
-      throw new ConfigValidationError(e.issues, { hint: `testlane config trust ${name}` });
+      throw new ConfigValidationError(error.issues, { hint: `testlane config trust ${name}` });
     }
-    throw e;
+    throw error;
   }
   return {
     ...loaded,
@@ -355,27 +353,27 @@ export interface ValidateOptions {
 }
 
 /** Validate every project (and defaults) for `config validate`; returns all issues. */
-export function validateAll(configDir: string, opts: ValidateOptions = {}): ConfigIssue[] {
-  const issues: ConfigIssue[] = [];
+export function validateAll(configDir: string, opts: ValidateOptions = {}): Array<ConfigIssue> {
+  const issues: Array<ConfigIssue> = [];
   let defaults: Defaults = {};
   try {
     defaults = loadDefaults(configDir);
-  } catch (e) {
-    if (e instanceof ConfigValidationError) issues.push(...e.issues);
-    else throw e;
+  } catch (error) {
+    if (error instanceof ConfigValidationError) {issues.push(...error.issues);}
+    else {throw error;}
   }
   for (const name of listProjectNames(configDir)) {
     try {
       if (opts.snapshots) {
         const loaded = loadEffectiveProjectWithSources(configDir, name, defaults);
-        if (loaded.snapshotError) issues.push(...loaded.snapshotError.issues);
+        if (loaded.snapshotError) {issues.push(...loaded.snapshotError.issues);}
       } else {
         loadProject(configDir, name, defaults);
       }
-    } catch (e) {
-      if (e instanceof ConfigValidationError) issues.push(...e.issues);
-      else if (e instanceof TestlaneError) issues.push({ file: `${name}.toml`, path: "(root)", message: e.message });
-      else throw e;
+    } catch (error) {
+      if (error instanceof ConfigValidationError) {issues.push(...error.issues);}
+      else if (error instanceof TestlaneError) {issues.push({ file: `${name}.toml`, path: "(root)", message: error.message });}
+      else {throw error;}
     }
   }
   return issues;

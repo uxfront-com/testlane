@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { parse, type ParseDeps } from "../../src/cli/parse.ts";
+import { parse } from '../../src/cli/parse.ts';
+import type { ParseDeps } from '../../src/cli/parse.ts';
 import { TOP_LEVEL_VERBS } from "../../src/cli/verbs.ts";
 import { parseUrlInput } from "../../src/core/resolve.ts";
 
@@ -18,15 +19,15 @@ const deps: ParseDeps = {
   },
 };
 
-const p = (argv: string[]) => parse(argv, deps);
+const p = (argv: Array<string>) => parse(argv, deps);
 
 describe("parse — §4.4 canonical examples", () => {
   it("bare PR → default_command (code)", () => {
     const r = p(["n8n", "19234"]);
     expect(r.kind).toBe("workspace");
-    if (r.kind !== "workspace") return;
+    if (r.kind !== "workspace") {return;}
     expect(r.project).toBe("n8n");
-    expect(r.ref).toEqual({ kind: "pr", number: 19234 });
+    expect(r.ref).toEqual({ kind: "pr", number: 19_234 });
     expect(r.verb).toBe("code");
   });
 
@@ -38,8 +39,8 @@ describe("parse — §4.4 canonical examples", () => {
   it("pr/<n> run dev", () => {
     const r = p(["n8n", "pr/19234", "run", "dev"]);
     expect(r.kind).toBe("workspace");
-    if (r.kind !== "workspace") return;
-    expect(r.ref).toEqual({ kind: "pr", number: 19234 });
+    if (r.kind !== "workspace") {return;}
+    expect(r.ref).toEqual({ kind: "pr", number: 19_234 });
     expect(r.verb).toBe("run");
     expect(r.args).toEqual(["dev"]);
   });
@@ -47,15 +48,15 @@ describe("parse — §4.4 canonical examples", () => {
   it("#<n> shell", () => {
     const r = p(["n8n", "#19234", "shell"]);
     expect(r.kind).toBe("workspace");
-    if (r.kind !== "workspace") return;
-    expect(r.ref).toEqual({ kind: "pr", number: 19234 });
+    if (r.kind !== "workspace") {return;}
+    expect(r.ref).toEqual({ kind: "pr", number: 19_234 });
     expect(r.verb).toBe("shell");
   });
 
   it("branch checkout", () => {
     const r = p(["n8n", "ai/fix-canvas-drag", "checkout"]);
     expect(r.kind).toBe("workspace");
-    if (r.kind !== "workspace") return;
+    if (r.kind !== "workspace") {return;}
     expect(r.ref).toEqual({ kind: "branch", name: "ai/fix-canvas-drag" });
     expect(r.verb).toBe("checkout");
   });
@@ -63,7 +64,7 @@ describe("parse — §4.4 canonical examples", () => {
   it("command-name sugar → run", () => {
     const r = p(["n8n", "ai/fix-canvas-drag", "dev"]);
     expect(r.kind).toBe("workspace");
-    if (r.kind !== "workspace") return;
+    if (r.kind !== "workspace") {return;}
     expect(r.verb).toBe("run");
     expect(r.commandName).toBe("dev");
     expect(r.args).toEqual(["dev"]);
@@ -72,7 +73,7 @@ describe("parse — §4.4 canonical examples", () => {
   it("last-used ref '-'", () => {
     const r = p(["n8n", "-", "run", "test"]);
     expect(r.kind).toBe("workspace");
-    if (r.kind !== "workspace") return;
+    if (r.kind !== "workspace") {return;}
     expect(r.ref).toEqual({ kind: "last" });
     expect(r.verb).toBe("run");
     expect(r.args).toEqual(["test"]);
@@ -81,23 +82,23 @@ describe("parse — §4.4 canonical examples", () => {
   it("adopt path ref", () => {
     const r = p(["n8n", "~/agents/wt-3", "run", "test"]);
     expect(r.kind).toBe("workspace");
-    if (r.kind !== "workspace") return;
+    if (r.kind !== "workspace") {return;}
     expect(r.ref).toEqual({ kind: "path", path: "~/agents/wt-3" });
   });
 
   it("URL form — PR", () => {
     const r = p(["https://github.com/n8n-io/n8n/pull/19234", "code"]);
     expect(r.kind).toBe("workspace");
-    if (r.kind !== "workspace") return;
+    if (r.kind !== "workspace") {return;}
     expect(r.project).toBe("n8n");
-    expect(r.ref).toEqual({ kind: "pr", number: 19234 });
+    expect(r.ref).toEqual({ kind: "pr", number: 19_234 });
     expect(r.verb).toBe("code");
   });
 
   it("URL form — tree/branch", () => {
     const r = p(["https://github.com/n8n-io/n8n/tree/ai/fix-canvas-drag", "diff"]);
     expect(r.kind).toBe("workspace");
-    if (r.kind !== "workspace") return;
+    if (r.kind !== "workspace") {return;}
     expect(r.ref).toEqual({ kind: "branch", name: "ai/fix-canvas-drag" });
     expect(r.verb).toBe("diff");
   });
@@ -105,7 +106,7 @@ describe("parse — §4.4 canonical examples", () => {
   it("exec with passthrough", () => {
     const r = p(["n8n", "19234", "exec", "--", "pnpm", "why", "lodash"]);
     expect(r.kind).toBe("workspace");
-    if (r.kind !== "workspace") return;
+    if (r.kind !== "workspace") {return;}
     expect(r.verb).toBe("exec");
     expect(r.passthrough).toEqual(["pnpm", "why", "lodash"]);
   });
@@ -113,7 +114,7 @@ describe("parse — §4.4 canonical examples", () => {
   it("run dev with passthrough appended", () => {
     const r = p(["n8n", "19234", "run", "dev", "--", "--host", "0.0.0.0"]);
     expect(r.kind).toBe("workspace");
-    if (r.kind !== "workspace") return;
+    if (r.kind !== "workspace") {return;}
     expect(r.verb).toBe("run");
     expect(r.args).toEqual(["dev"]);
     expect(r.passthrough).toEqual(["--host", "0.0.0.0"]);
@@ -122,7 +123,7 @@ describe("parse — §4.4 canonical examples", () => {
   it("list --json", () => {
     const r = p(["n8n", "list", "--json"]);
     expect(r.kind).toBe("project");
-    if (r.kind !== "project") return;
+    if (r.kind !== "project") {return;}
     expect(r.verb).toBe("list");
     expect(r.global.json).toBe(true);
   });
@@ -130,14 +131,14 @@ describe("parse — §4.4 canonical examples", () => {
   it("bare project → list", () => {
     const r = p(["n8n"]);
     expect(r.kind).toBe("project");
-    if (r.kind !== "project") return;
+    if (r.kind !== "project") {return;}
     expect(r.verb).toBe("list");
   });
 
   it("sync --fresh", () => {
     const r = p(["n8n", "19234", "sync", "--fresh"]);
     expect(r.kind === "workspace" && r.verb).toBe("sync");
-    if (r.kind === "workspace") expect(r.args).toEqual(["--fresh"]);
+    if (r.kind === "workspace") {expect(r.args).toEqual(["--fresh"]);}
   });
 
   it("top-level projects / doctor", () => {
@@ -149,7 +150,7 @@ describe("parse — §4.4 canonical examples", () => {
   it("config edit n8n", () => {
     const r = p(["config", "edit", "n8n"]);
     expect(r.kind).toBe("top");
-    if (r.kind !== "top") return;
+    if (r.kind !== "top") {return;}
     expect(r.verb).toBe("config");
     expect(r.args).toEqual(["edit", "n8n"]);
   });
@@ -169,7 +170,7 @@ describe("parse — global flags & disambiguators", () => {
   it("--branch forces a numeric branch name", () => {
     const r = p(["n8n", "--branch", "1234", "code"]);
     expect(r.kind).toBe("workspace");
-    if (r.kind !== "workspace") return;
+    if (r.kind !== "workspace") {return;}
     expect(r.ref).toEqual({ kind: "branch", name: "1234" });
     expect(r.verb).toBe("code");
   });
@@ -206,7 +207,7 @@ describe("parse — top-level verbs precede project lookup (UXF-265)", () => {
     // of main(). Keeps the two lists in step.
     const dispatchSource = readFileSync(new URL("../../src/main.ts", import.meta.url), "utf8");
     for (const verb of PROMISED_VERBS) {
-      if (verb === "help" || verb === "version") continue; // handled inline, no command module
+      if (verb === "help" || verb === "version") {continue;} // handled inline, no command module
       expect(dispatchSource).toContain(`case "${verb}":`);
     }
   });
@@ -221,12 +222,12 @@ describe("parse — top-level verbs precede project lookup (UXF-265)", () => {
 describe("parse — start, stop, logs and ps", () => {
   // "start" and "ps" are configured commands here too: the built-in verbs win.
   const withCommands: ParseDeps = { ...deps, projectCommandNames: () => ["dev", "start", "logs", "ps"] };
-  const q = (argv: string[]) => parse(argv, withCommands);
+  const q = (argv: Array<string>) => parse(argv, withCommands);
 
   it("P1-C8 — start is a workspace verb and passes --port through for start to reject", () => {
     const r = q(["n8n", "main", "start", "dev", "--port", "1"]);
     expect(r.kind === "workspace" && r.verb).toBe("start");
-    if (r.kind !== "workspace") return;
+    if (r.kind !== "workspace") {return;}
     expect(r.commandName).toBeUndefined();
     expect(r.args).toEqual(["dev", "--port", "1"]);
   });
@@ -234,7 +235,7 @@ describe("parse — start, stop, logs and ps", () => {
   it.each(["stop", "logs"])("P1-C9 — %s is a workspace verb, not the configured command", (verb) => {
     const r = q(["n8n", "pr/7", verb]);
     expect(r.kind === "workspace" && r.verb).toBe(verb);
-    if (r.kind !== "workspace") return;
+    if (r.kind !== "workspace") {return;}
     expect(r.commandName).toBeUndefined();
   });
 
@@ -247,7 +248,7 @@ describe("parse — start, stop, logs and ps", () => {
   it("P1-C9 — run <name> still reaches a configured command named like a verb", () => {
     const r = q(["n8n", "main", "run", "start"]);
     expect(r.kind === "workspace" && r.verb).toBe("run");
-    if (r.kind !== "workspace") return;
+    if (r.kind !== "workspace") {return;}
     expect(r.args).toEqual(["start"]);
   });
 });

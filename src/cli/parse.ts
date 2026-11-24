@@ -2,25 +2,20 @@
 
 import { usage, resolveError, configError } from "../lib/errors.ts";
 import type { GlobalFlags } from "../config/schema.ts";
-import {
-  isProjectVerb,
-  isTopLevelVerb,
-  isWorkspaceVerb,
-  type ProjectVerb,
-  type TopLevelVerb,
-  type WorkspaceVerb,
-} from "./verbs.ts";
-import { parseRef, refFromDisambiguator, type RefSpec } from "../core/resolve.ts";
+import { isProjectVerb, isTopLevelVerb, isWorkspaceVerb } from './verbs.ts';
+import type { ProjectVerb, TopLevelVerb, WorkspaceVerb } from './verbs.ts';
+import { parseRef, refFromDisambiguator } from '../core/resolve.ts';
+import type { RefSpec } from '../core/resolve.ts';
 
 export type ParseResult =
-  | { kind: "top"; verb: TopLevelVerb; args: string[]; global: GlobalFlags }
+  | { kind: "top"; verb: TopLevelVerb; args: Array<string>; global: GlobalFlags }
   | {
       kind: "project";
       project: string;
       verb: ProjectVerb;
       /** True when `list` was reached via bare `testlane <project>` (enables the TTY picker, §4.3/M2). */
       defaulted?: boolean;
-      args: string[];
+      args: Array<string>;
       global: GlobalFlags;
     }
   | {
@@ -30,8 +25,8 @@ export type ParseResult =
       verb: WorkspaceVerb;
       /** Set when the verb was reached via command-name sugar (§4.3 step 5). */
       commandName?: string;
-      args: string[];
-      passthrough: string[];
+      args: Array<string>;
+      passthrough: Array<string>;
       global: GlobalFlags;
     };
 
@@ -39,9 +34,9 @@ export interface ParseDeps {
   projectExists(name: string): boolean;
   /** Match a URL to a configured project, extracting an embedded ref if present. */
   resolveUrlProject(url: string): { project: string; ref?: RefSpec } | null;
-  projectCommandNames(project: string): string[];
+  projectCommandNames(project: string): Array<string>;
   projectDefaultCommand(project: string): string;
-  knownProjects(): string[];
+  knownProjects(): Array<string>;
 }
 
 type Disambiguator = { kind: "pr" | "branch" | "path"; value: string };
@@ -59,13 +54,13 @@ function emptyGlobals(): GlobalFlags {
 interface Extracted {
   global: GlobalFlags;
   disambiguator?: Disambiguator;
-  rest: string[];
+  rest: Array<string>;
 }
 
 /** Pull global flags + ref disambiguators out of the pre-`--` tokens (§4.5). */
-function extractFlags(pre: string[]): Extracted {
+function extractFlags(pre: Array<string>): Extracted {
   const global = emptyGlobals();
-  const rest: string[] = [];
+  const rest: Array<string> = [];
   let disambiguator: Disambiguator | undefined;
 
   for (let i = 0; i < pre.length; i++) {
@@ -75,9 +70,9 @@ function extractFlags(pre: string[]): Extracted {
     const inlineVal = tok.startsWith("--") && eq !== -1 ? tok.slice(eq + 1) : undefined;
 
     const takeValue = (): string => {
-      if (inlineVal !== undefined) return inlineVal;
+      if (inlineVal !== undefined) {return inlineVal;}
       const next = pre[i + 1];
-      if (next === undefined) throw usage(`flag ${name} requires a value`);
+      if (next === undefined) {throw usage(`flag ${name} requires a value`);}
       i += 1;
       return next;
     };
@@ -110,7 +105,7 @@ function extractFlags(pre: string[]): Extracted {
       case "--pr":
       case "--branch":
       case "--path": {
-        if (disambiguator) throw usage("only one ref disambiguator (--pr/--branch/--path) may be given");
+        if (disambiguator) {throw usage("only one ref disambiguator (--pr/--branch/--path) may be given");}
         const kind = name.slice(2) as Disambiguator["kind"];
         disambiguator = { kind, value: takeValue() };
         break;
@@ -127,7 +122,7 @@ function extractFlags(pre: string[]): Extracted {
   return { global, disambiguator, rest };
 }
 
-export function parse(argv: string[], deps: ParseDeps): ParseResult {
+export function parse(argv: Array<string>, deps: ParseDeps): ParseResult {
   // 1. Tokenize: first bare `--` ends Testlane parsing.
   const dashIdx = argv.indexOf("--");
   const pre = dashIdx === -1 ? argv : argv.slice(0, dashIdx);
@@ -138,21 +133,21 @@ export function parse(argv: string[], deps: ParseDeps): ParseResult {
 
   // Nothing but flags → show help.
   if (rest.length === 0) {
-    if (disambiguator) throw usage("ref disambiguators are only valid for workspace commands");
+    if (disambiguator) {throw usage("ref disambiguators are only valid for workspace commands");}
     return { kind: "top", verb: "help", args: [], global };
   }
 
   const p0 = rest[0]!;
-  if (isFlag(p0)) throw usage(`unexpected flag '${p0}' before a command`);
+  if (isFlag(p0)) {throw usage(`unexpected flag '${p0}' before a command`);}
 
   // 3a. Top-level verb.
   if (isTopLevelVerb(p0)) {
-    if (disambiguator) throw usage("ref disambiguators are only valid for workspace commands");
+    if (disambiguator) {throw usage("ref disambiguators are only valid for workspace commands");}
     return { kind: "top", verb: p0, args: rest.slice(1), global };
   }
 
   // 3b. URL form.
-  if (/^https?:\/\//.test(p0) || /^git@/.test(p0)) {
+  if (/^https?:\/\//.test(p0) || p0.startsWith("git@")) {
     const match = deps.resolveUrlProject(p0);
     if (!match) {
       throw resolveError(`no configured project matches URL '${p0}'`, `configured projects: ${deps.knownProjects().join(", ") || "(none)"}`);
@@ -165,7 +160,7 @@ export function parse(argv: string[], deps: ParseDeps): ParseResult {
       ref = match.ref;
     } else {
       const next = rest[idx];
-      if (next === undefined) throw usage(`URL '${p0}' has no ref; provide one (e.g. a PR number or branch)`);
+      if (next === undefined) {throw usage(`URL '${p0}' has no ref; provide one (e.g. a PR number or branch)`);}
       ref = parseRef(next);
       idx += 1;
     }
@@ -206,9 +201,9 @@ export function parse(argv: string[], deps: ParseDeps): ParseResult {
 function classifyWorkspace(
   project: string,
   ref: RefSpec,
-  rest: string[],
+  rest: Array<string>,
   idx: number,
-  passthrough: string[],
+  passthrough: Array<string>,
   global: GlobalFlags,
   deps: ParseDeps,
 ): ParseResult {
@@ -258,7 +253,7 @@ function classifyWorkspace(
 }
 
 // Levenshtein-based nearest name (edit distance ≤ 2), for project suggestions.
-function nearest(input: string, candidates: string[]): string | undefined {
+function nearest(input: string, candidates: Array<string>): string | undefined {
   let best: string | undefined;
   let bestDist = 3;
   for (const c of candidates) {
@@ -274,16 +269,16 @@ function nearest(input: string, candidates: string[]): string | undefined {
 function levenshtein(a: string, b: string): number {
   const m = a.length;
   const n = b.length;
-  const prev = new Array<number>(n + 1);
-  const curr = new Array<number>(n + 1);
-  for (let j = 0; j <= n; j++) prev[j] = j;
+  const prev = Array.from({ length: n + 1 }, () => 0);
+  const curr = Array.from({ length: n + 1 }, () => 0);
+  for (let j = 0; j <= n; j++) {prev[j] = j;}
   for (let i = 1; i <= m; i++) {
     curr[0] = i;
     for (let j = 1; j <= n; j++) {
       const cost = a[i - 1] === b[j - 1] ? 0 : 1;
       curr[j] = Math.min(prev[j]! + 1, curr[j - 1]! + 1, prev[j - 1]! + cost);
     }
-    for (let j = 0; j <= n; j++) prev[j] = curr[j]!;
+    for (let j = 0; j <= n; j++) {prev[j] = curr[j]!;}
   }
   return prev[n]!;
 }

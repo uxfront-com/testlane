@@ -39,7 +39,7 @@ export function absoluteLinks(markdown: string, siteUrl: string) {
 				fence = fence ? undefined : marker;
 				return line;
 			}
-			return fence ? line : line.replace(/\]\(\/(?!\/)/g, `](${siteUrl}/`);
+			return fence ? line : line.replaceAll(/\]\(\/(?!\/)/g, `](${siteUrl}/`);
 		})
 		.join("\n");
 }

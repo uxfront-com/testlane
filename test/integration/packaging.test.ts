@@ -25,7 +25,7 @@ const PROMISED_VERBS = ["setup", "projects", "doctor", "config", "completions", 
 // dist/ is built once for the whole run, in test/global-setup.ts.
 
 /** Run the built CLI against a config dir that does not exist yet. */
-function runBuilt(argv: string[]): { code: number; stdout: string; stderr: string } {
+function runBuilt(argv: Array<string>): { code: number; stdout: string; stderr: string } {
   const tmp = mkdtempSync(join(tmpdir(), "testlane-packaging-"));
   try {
     const res = spawnSync("node", [builtCli, "--config-dir", join(tmp, "config"), ...argv], {

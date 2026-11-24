@@ -3,7 +3,8 @@
 
 import { afterEach, describe, expect, it } from "vitest";
 import { parse as parseToml } from "smol-toml";
-import { detect, isPathArgument, memoryFiles, normaliseRepoUrl, type Finding } from "../../src/config/detect.ts";
+import { detect, isPathArgument, memoryFiles, normaliseRepoUrl } from '../../src/config/detect.ts';
+import type { Finding } from '../../src/config/detect.ts';
 import { renderDraft, setDraftTransform, tomlText } from "../../src/config/detect-emit.ts";
 import { globMatch, matchWorkspaces, parseWorkspaceYaml } from "../../src/config/detect-parse.ts";
 import { RawProjectSchema, RawRepoSchema } from "../../src/config/schema.ts";
@@ -12,7 +13,7 @@ import { FIXTURES, F1_PNPM_TURBO, F2_SINGLE_NUXT, F3_NPM_ROOT_PNPM_DOCS, F4_MANY
 const REPO = { value: "git@github.com:acme/app.git", reason: "app.toml" };
 const json = (v: unknown): string => JSON.stringify(v);
 
-async function findings(files: Record<string, string>, opts: Parameters<typeof detect>[1] = { repo: REPO }): Promise<Finding[]> {
+async function findings(files: Record<string, string>, opts: Parameters<typeof detect>[1] = { repo: REPO }): Promise<Array<Finding>> {
   return detect(memoryFiles(files), opts);
 }
 
@@ -24,8 +25,8 @@ async function config(files: Record<string, string>): Promise<Record<string, any
   return parseToml((await draft(files)).text) as Record<string, any>;
 }
 
-const notes = (fs: Finding[]): string[] => fs.filter((f) => f.kind === "note").map((f) => f.reason);
-const find = (fs: Finding[], key: string): Finding | undefined => fs.find((f) => f.key === key);
+const notes = (fs: Array<Finding>): Array<string> => fs.flatMap((f) => (f.kind === "note" ? [f.reason] : []));
+const find = (fs: Array<Finding>, key: string): Finding | undefined => fs.find((f) => f.key === key);
 
 /** A root package.json plus extra files. */
 function repo(pkg: Record<string, unknown>, files: Record<string, string> = {}): Record<string, string> {
@@ -142,8 +143,8 @@ describe("fixture drafts", () => {
       for (const repoFile of [false, true]) {
         const { text } = await draft(files, repoFile);
         for (const line of text.split("\n")) {
-          if (line === "" || /^\[.+\]$/.test(line) || line.startsWith("# note: ")) continue;
-          expect(line).toMatch(/  # (detected|guess): \S/);
+          if (line === "" || /^\[.+\]$/.test(line) || line.startsWith("# note: ")) {continue;}
+          expect(line).toMatch(/ {2}# (detected|guess): \S/);
         }
         const parsed = parseToml(text);
         expect((repoFile ? RawRepoSchema : RawProjectSchema).safeParse(parsed).success).toBe(true);
@@ -368,7 +369,7 @@ describe("rules 4–6: apps", () => {
     const base = { packageManager: `${pm}@2.0.0`, workspaces: ["apps/*"] };
     const k = await config(repo(base, two("nuxt dev", { nuxt: "4" })));
     expect(k.commands.dev.run).toBe(wsKnown);
-    if (pm === "bun") expect(k.commands.dev.cwd).toBe("apps/web");
+    if (pm === "bun") {expect(k.commands.dev.cwd).toBe("apps/web");}
     const u = await config(repo(base, two("node server.js", {})));
     expect(u.commands.dev).toEqual({ run: wsUnknown, env: { PORT: "{port}" } });
     const rk = await config(repo({ packageManager: `${pm}@2.0.0`, scripts: { dev: "nuxt dev" }, dependencies: { nuxt: "4" } }));
@@ -379,8 +380,8 @@ describe("rules 4–6: apps", () => {
 
   it("an unknown dev server: both lines are guesses, PORT is set", async () => {
     const { text } = await draft(repo({ ...PNPM, scripts: { dev: "node server.js" } }));
-    expect(text).toMatch(/^run = "pnpm run dev"  # guess: /m);
-    expect(text).toMatch(/^PORT = "\{port\}"  # guess: /m);
+    expect(text).toMatch(/^run = "pnpm run dev" {2}# guess: /m);
+    expect(text).toMatch(/^PORT = "\{port\}" {2}# guess: /m);
     expect(text).not.toContain("node server.js");
   });
 
@@ -413,7 +414,7 @@ describe("rules 4–6: apps", () => {
 
   it("more than 10 apps: keeps 10 and notes the rest", async () => {
     const files: Record<string, string> = { "pnpm-workspace.yaml": ws("apps/*") };
-    for (let i = 10; i < 22; i++) files[`apps/a${i}/package.json`] = pkg(`a${i}`, "vite", { vite: "1" });
+    for (let i = 10; i < 22; i++) {files[`apps/a${i}/package.json`] = pkg(`a${i}`, "vite", { vite: "1" });}
     const fs = await findings(repo(PNPM, files));
     expect(find(fs, "ports")!.value).toBe(10);
     expect(notes(fs)).toContain("more than 10 apps; skipped apps/a20, apps/a21");
@@ -526,14 +527,14 @@ describe("rule 11: escaping and validation", () => {
     const evil = "web\u001b[2J\nx";
     const d = await draft(repo(PNPM, { "pnpm-workspace.yaml": ws("apps/*"), "apps/web/package.json": pkg(evil, "node s.js") }));
     expect(d.text).not.toContain("\u001b");
-    expect(d.text).toContain("\\u001b");
+    expect(d.text).toContain(String.raw`\u001b`);
     const parsed = parseToml(d.text) as any;
     expect(RawProjectSchema.safeParse(parsed).success).toBe(true);
     expect(parsed.commands.dev.run).toBe(`pnpm --filter 'web\u001b[2J\nx' run dev`);
   });
 
   it("tomlText escapes controls, quotes and backslashes", () => {
-    expect(tomlText('a"b\\c\u0007‮')).toBe('"a\\"b\\\\c\\u0007\\u202e"');
+    expect(tomlText('a"b\\c\u0007‮')).toBe(String.raw`"a\"b\\c\u0007\u202e"`);
   });
 
   it("a draft that doesn't validate is E_INTERNAL, never returned", async () => {

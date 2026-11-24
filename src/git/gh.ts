@@ -1,6 +1,7 @@
 // GitHub CLI client — graceful absence (§7.3, §15.2). Never invoked in tests.
 
-import { capture, passthrough, type PassthroughOptions } from "../lib/proc.ts";
+import { capture, passthrough } from '../lib/proc.ts';
+import type { PassthroughOptions } from '../lib/proc.ts';
 
 export interface PrMeta {
   headRefName: string;
@@ -21,7 +22,7 @@ export interface GhClient {
    * Delegate to `gh pr diff`, inheriting stdio so gh pages normally (§9.7).
    * `io` overrides that, as `testlane mcp` does to capture the diff.
    */
-  prDiff(repo: string, n: number, args: string[], io?: PassthroughOptions): Promise<number>; // passthrough exit code
+  prDiff(repo: string, n: number, args: Array<string>, io?: PassthroughOptions): Promise<number>; // passthrough exit code
 }
 
 const PR_FIELDS = "headRefName,isCrossRepository,headRepositoryOwner,state,title,author,url,statusCheckRollup";
@@ -37,8 +38,8 @@ interface StatusCheck {
  * failure → fail; any still-running → pending; all conclusive & clean → pass;
  * empty/absent → null (no marker).
  */
-function rollupCi(rollup: StatusCheck[] | undefined): "pass" | "fail" | "pending" | null {
-  if (!rollup || rollup.length === 0) return null;
+function rollupCi(rollup: Array<StatusCheck> | undefined): "pass" | "fail" | "pending" | null {
+  if (!rollup || rollup.length === 0) {return null;}
   let pending = false;
   for (const c of rollup) {
     const verdict = (c.conclusion || c.state || "").toUpperCase();
@@ -57,7 +58,7 @@ export class RealGhClient implements GhClient {
   private cachedAvailable: boolean | undefined;
 
   async available(): Promise<boolean> {
-    if (this.cachedAvailable !== undefined) return this.cachedAvailable;
+    if (this.cachedAvailable !== undefined) {return this.cachedAvailable;}
     try {
       const res = await capture(["gh", "auth", "status"], { allowFailure: true });
       this.cachedAvailable = res.code === 0;
@@ -73,7 +74,7 @@ export class RealGhClient implements GhClient {
         ["gh", "pr", "view", String(n), "--repo", repo, "--json", PR_FIELDS],
         { allowFailure: true },
       );
-      if (res.code !== 0) return null;
+      if (res.code !== 0) {return null;}
       const raw = JSON.parse(res.stdout) as {
         headRefName?: string;
         isCrossRepository?: boolean;
@@ -82,7 +83,7 @@ export class RealGhClient implements GhClient {
         title?: string;
         author?: { login?: string } | null;
         url?: string;
-        statusCheckRollup?: StatusCheck[];
+        statusCheckRollup?: Array<StatusCheck>;
       };
       return {
         headRefName: raw.headRefName ?? "",
@@ -99,7 +100,7 @@ export class RealGhClient implements GhClient {
     }
   }
 
-  async prDiff(repo: string, n: number, args: string[], io: PassthroughOptions = {}): Promise<number> {
+  async prDiff(repo: string, n: number, args: Array<string>, io: PassthroughOptions = {}): Promise<number> {
     return passthrough(["gh", "pr", "diff", String(n), "--repo", repo, ...args], io);
   }
 }

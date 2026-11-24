@@ -33,7 +33,7 @@ const route = useRoute()
 const { locale, isEnabled, t } = useDocusI18n()
 const { isOpen } = useAssistant()
 const appConfig = useAppConfig()
-const navigation = inject<Ref<ContentNavigationItem[]>>('navigation')
+const navigation = inject<Ref<Array<ContentNavigationItem>>>('navigation')
 const collectionName = computed(() => isEnabled.value ? `docs_${locale.value}` : 'docs')
 
 const [{ data: page }, { data: surround }] = await Promise.all([

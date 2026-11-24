@@ -15,7 +15,8 @@ import { printableBlock, printableLine } from "../lib/printable.ts";
 import { loadProject, readSnapshot } from "../config/load.ts";
 import { parseRepoConfig, REPO_FILE, repoLabel } from "../config/repo.ts";
 import type { Ctx, ProjectConfig, RawRepo } from "../config/schema.ts";
-import { detectDefaultBranch, isInitialized, readBlob, symbolicHead, treeEntry, type GitEnv } from "../git/repo.ts";
+import { detectDefaultBranch, isInitialized, readBlob, symbolicHead, treeEntry } from '../git/repo.ts';
+import type { GitEnv } from '../git/repo.ts';
 import type { RepoApproval, State } from "./state.ts";
 
 /** Terminal access, injectable so tests can drive the TTY branch. */
@@ -68,9 +69,9 @@ export interface TrustResult {
 
 /** The approval, if `state.repoConfig` is well-formed; a hand-mangled one counts as none. */
 export function validApproval(rc: unknown): RepoApproval | undefined {
-  if (!rc || typeof rc !== "object") return undefined;
+  if (!rc || typeof rc !== "object") {return undefined;}
   const r = rc as Record<string, unknown>;
-  if (typeof r.sha256 !== "string" || typeof r.blob !== "string" || typeof r.content !== "string") return undefined;
+  if (typeof r.sha256 !== "string" || typeof r.blob !== "string" || typeof r.content !== "string") {return undefined;}
   return rc as RepoApproval;
 }
 
@@ -98,9 +99,9 @@ export async function repoConfigBranch(
   project: ProjectConfig,
   detect?: () => Promise<string | undefined>,
 ): Promise<string | undefined> {
-  if (project.defaultBranch) return project.defaultBranch;
+  if (project.defaultBranch) {return project.defaultBranch;}
   const head = await symbolicHead(project.repoPath);
-  if (head) return head;
+  if (head) {return head;}
   return detect ? await detect() : undefined;
 }
 
@@ -122,7 +123,7 @@ export async function readRepoTip(repoPath: string, branch: string, project: str
   } catch {
     return { kind: "no-ref" };
   }
-  if (!entry) return { kind: "no-file" };
+  if (!entry) {return { kind: "no-file" };}
   if (entry.type !== "blob" || (entry.mode !== "100644" && entry.mode !== "100755")) {
     throw configError(`${repoLabel(project)} on origin/${branch} is not a regular file`, "commit it as a plain file");
   }
@@ -148,15 +149,15 @@ export async function trustGate(
   const g: GitEnv = { repoPath: project.repoPath, dryRun: false, log: ctx.log };
 
   const branch = await repoConfigBranch(project, () => detectDefaultBranch(g));
-  if (!branch) return { outcome: "no-ref", stateChanged: false };
+  if (!branch) {return { outcome: "no-ref", stateChanged: false };}
   const tip = await readRepoTip(project.repoPath, branch, name);
   const approval = usableApproval(ctx, name, state);
 
-  if (tip.kind === "no-ref") return { outcome: "no-ref", branch, stateChanged: false };
+  if (tip.kind === "no-ref") {return { outcome: "no-ref", branch, stateChanged: false };}
 
   if (tip.kind === "no-file") {
     if (state.repoConfig === undefined) {
-      if (opts.explicit) ctx.log.step(`no ${REPO_FILE} on origin/${branch}`);
+      if (opts.explicit) {ctx.log.step(`no ${REPO_FILE} on origin/${branch}`);}
       return { outcome: "no-file", branch, stateChanged: false };
     }
     delete state.repoConfig;
@@ -165,7 +166,7 @@ export async function trustGate(
   }
 
   if (approval && approval.blob === tip.blob) {
-    if (opts.explicit) ctx.log.step(`${label} is already trusted (sha256 ${approval.sha256.slice(0, 12)})`);
+    if (opts.explicit) {ctx.log.step(`${label} is already trusted (sha256 ${approval.sha256.slice(0, 12)})`);}
     return { outcome: "trusted", branch, stateChanged: false };
   }
 
@@ -187,7 +188,7 @@ export async function trustGate(
   const yesFlag = approvable && ctx.flags.yes;
   const canAsk = approvable && io.isTTY();
   if (!yesFlag && !canAsk) {
-    if (opts.explicit) await show(io, label, branch, approval, content, layer);
+    if (opts.explicit) {await show(io, label, branch, approval, content, layer);}
     throw configError(
       first ? `${label} is not trusted` : `${label} changed since you trusted it`,
       opts.untrustedHint ?? (opts.explicit ? "re-run on a terminal, or pass --yes" : `testlane config trust ${name}`),
@@ -219,7 +220,7 @@ export async function trustGate(
 export function settleProject(ctx: Ctx, project: ProjectConfig, state: State): void {
   const { layer } = readSnapshot(project.name, validApproval(state.repoConfig));
   const fresh = loadProject(ctx.configDir, project.name, ctx.defaults, layer);
-  if (!fresh.defaultBranch && project.defaultBranch) fresh.defaultBranch = project.defaultBranch;
+  if (!fresh.defaultBranch && project.defaultBranch) {fresh.defaultBranch = project.defaultBranch;}
   Object.assign(project, fresh);
 }
 
@@ -228,7 +229,7 @@ export function settleProject(ctx: Ctx, project: ProjectConfig, state: State): v
  * isn't initialized (an adopted path), then the project is re-settled.
  */
 export async function runTrustGate(ctx: Ctx, project: ProjectConfig, state: State, io?: TrustIO): Promise<TrustResult> {
-  if (!isInitialized(project.repoPath)) return { outcome: "no-ref", stateChanged: false };
+  if (!isInitialized(project.repoPath)) {return { outcome: "no-ref", stateChanged: false };}
   const result = await trustGate(ctx, project, state, { io });
   settleProject(ctx, project, state);
   return result;
@@ -262,15 +263,15 @@ async function show(
 export function summary(label: string, branch: string, layer: RawRepo): string {
   const rows: Array<[string, string]> = [];
   const line = printableLine;
-  if (layer.setup?.run !== undefined) rows.push(["setup.run", line(layer.setup.run)]);
+  if (layer.setup?.run !== undefined) {rows.push(["setup.run", line(layer.setup.run)]);}
   for (const [cname, c] of Object.entries(layer.commands ?? {})) {
     const run = line(c.run);
     rows.push([`commands.${cname}.run`, c.cwd !== undefined ? `${run}   (cwd: ${line(c.cwd)})` : run]);
   }
   for (const [hook, run] of Object.entries(layer.hooks ?? {})) {
-    if (run !== undefined) rows.push([`hooks.${hook}`, line(run)]);
+    if (run !== undefined) {rows.push([`hooks.${hook}`, line(run)]);}
   }
-  if (rows.length === 0) return `${label} on origin/${branch} defines no commands, hooks or setup.\n`;
+  if (rows.length === 0) {return `${label} on origin/${branch} defines no commands, hooks or setup.\n`;}
   const width = Math.max(...rows.map(([k]) => k.length));
   const lines = rows.map(([k, v]) => `  ${k.padEnd(width)}  ${v}`);
   return `${label} on origin/${branch} would run:\n${lines.join("\n")}\n`;
@@ -291,7 +292,7 @@ export async function unifiedDiff(before: string, after: string, afterName: stri
       { cwd: dir, allowFailure: true },
     );
     // Exit 1 means "the files differ"; anything else is git failing.
-    if (res.code > 1) throw configError(`cannot diff ${REPO_FILE}: ${res.stderr.trim()}`);
+    if (res.code > 1) {throw configError(`cannot diff ${REPO_FILE}: ${res.stderr.trim()}`);}
     return res.stdout;
   } finally {
     rmSync(dir, { recursive: true, force: true });

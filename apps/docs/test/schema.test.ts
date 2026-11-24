@@ -11,7 +11,7 @@ import {
 import { GROUP_ENTRY_PAGES } from "../redirects";
 
 describe("homeGraph", () => {
-	const graph = homeGraph("What Testlane does.")["@graph"] as Record<string, unknown>[];
+	const graph = homeGraph("What Testlane does.")["@graph"] as Array<Record<string, unknown>>;
 	const byType = (type: string) => graph.filter((node) => node["@type"] === type);
 
 	it("describes the site, Testlane as software and UXFront as its publisher", () => {

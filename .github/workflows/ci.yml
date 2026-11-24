@@ -65,29 +65,58 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: Set up pnpm
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
       - name: Set up Node ${{ matrix.name }}
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ matrix.node-version }}
           node-version-file: ${{ matrix.node-version-file }}
-          cache: npm
+          cache: pnpm
 
+      # The CLI only, as the `docs build` job installs apps/docs only.
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile --filter @uxfront/testlane
 
       - name: Typecheck
-        run: npm run typecheck
+        run: pnpm run typecheck
 
       - name: Build
-        run: npm run build
+        run: pnpm run build
 
       - name: Test
-        run: npm test
+        run: pnpm test
 
-  # `apps/docs` is a pnpm workspace package that the `test` job above never
-  # touches — it runs `npm ci` and the root scripts only. A consumer upgrade of
-  # `@uxfront/layer-docs` could break the CSS entry point or add mandatory peer
-  # dependencies and still collect a full set of green ticks (UXF-281).
+  # oxlint with the shared uxfront config (oxlint.config.ts), over the whole
+  # repository, apps/docs included. Errors fail the job, and warnings are only
+  # reported. `--format=github` turns each finding into an annotation on the PR.
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      # oxlint needs only the root's dev dependencies, even for apps/docs.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --filter @uxfront/testlane
+
+      - name: Lint
+        run: pnpm run lint --format=github
+
+  # The `test` job above runs the root scripts only, never apps/docs' build or
+  # tests. A consumer upgrade of `@uxfront/layer-docs` could break the CSS entry
+  # point or add mandatory peer dependencies and still collect a full set of
+  # green ticks (UXF-281).
   #
   # The job ALWAYS runs and filters inside itself, rather than filtering the
   # workflow with `on.pull_request.paths`. A workflow skipped by a path filter
@@ -126,10 +155,6 @@ jobs:
       - name: Set up pnpm
         if: steps.filter.outputs.changed == 'true'
         uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
-        with:
-          # The root package.json carries no `packageManager` field, because the
-          # root CLI package installs with npm. So pin the version here instead.
-          version: 10.33.4
 
       # .node-version names the Node line the docs image ships on (the
       # `node:<line>-slim` images in apps/docs/Dockerfile), so keep the two in step.

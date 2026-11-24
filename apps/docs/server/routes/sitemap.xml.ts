@@ -24,7 +24,7 @@ interface DocsPage {
 */
 export default defineEventHandler(async (event) => {
 	const { siteUrl } = useRuntimeConfig(event).public;
-	const pages = (await queryCollection(event, "docs" as never).all()) as DocsPage[];
+	const pages = (await queryCollection(event, "docs" as never).all()) as Array<DocsPage>;
 
 	const urls = [
 		{ loc: "/", lastmod: GIT_DATES["app/pages/index.vue"] },
@@ -61,5 +61,5 @@ const XML_ENTITIES: Record<string, string> = {
 };
 
 function escapeXml(value: string) {
-	return value.replace(/[&<>"']/g, (char) => XML_ENTITIES[char]!);
+	return value.replaceAll(/[&<>"']/g, (char) => XML_ENTITIES[char]!);
 }

@@ -6,8 +6,10 @@ import type { Ctx, ProjectConfig } from "../config/schema.ts";
 import { resolveError } from "../lib/errors.ts";
 import { resolvePath } from "../lib/paths.ts";
 import { shellJoin } from "../lib/shell.ts";
-import { collisionSlug, parseRef, slug as slugFor, type RefSpec } from "./resolve.ts";
-import { acquireLock, loadState, saveState, type Workspace } from "./state.ts";
+import { collisionSlug, parseRef, slug as slugFor } from './resolve.ts';
+import type { RefSpec } from './resolve.ts';
+import { acquireLock, loadState, saveState } from './state.ts';
+import type { Workspace } from './state.ts';
 import { allocatePorts, tcpPortFree } from "./ports.ts";
 import {
   addBranchWorktreeArgv,
@@ -18,22 +20,8 @@ import {
   addCommitWorktree,
   isGitWorktree,
 } from "../git/worktree.ts";
-import {
-  bareCloneArgv,
-  detectDefaultBranch,
-  fetchBranch,
-  fetchBranchArgv,
-  fetchCommit,
-  fetchPr,
-  refetchPr,
-  initConfigArgvs,
-  initFetchArgv,
-  initPrimaryRepo,
-  isInitialized,
-  wireForkPushBack,
-  wirePrPushBack,
-  type GitEnv,
-} from "../git/repo.ts";
+import { bareCloneArgv, detectDefaultBranch, fetchBranch, fetchBranchArgv, fetchCommit, fetchPr, refetchPr, initConfigArgvs, initFetchArgv, initPrimaryRepo, isInitialized, wireForkPushBack, wirePrPushBack } from '../git/repo.ts';
+import type { GitEnv } from '../git/repo.ts';
 import { wsContext } from "./env.ts";
 import { runHook } from "./hooks.ts";
 import { runSetup } from "./setup.ts";
@@ -60,15 +48,15 @@ export function dataDirFor(project: ProjectConfig, slug: string): string {
   return join(project.worktreesPath, ".data", slug);
 }
 
-function gitEnv(ctx: Ctx, project: ProjectConfig, planned?: string[][]): GitEnv {
+function gitEnv(ctx: Ctx, project: ProjectConfig, planned?: Array<Array<string>>): GitEnv {
   return { repoPath: project.repoPath, dryRun: ctx.flags.dryRun, log: ctx.log, planned, signal: ctx.signal };
 }
 
 /** Resolve a `last` ref against saved state; other kinds pass through. */
 export function resolveLast(project: ProjectConfig, spec: RefSpec): RefSpec {
-  if (spec.kind !== "last") return spec;
+  if (spec.kind !== "last") {return spec;}
   const state = loadState(project.name);
-  if (!state.lastRef) throw resolveError(`no last-used ref for '${project.name}'`);
+  if (!state.lastRef) {throw resolveError(`no last-used ref for '${project.name}'`);}
   return parseRef(state.lastRef);
 }
 
@@ -102,13 +90,13 @@ export async function ensureWorkspace(
     // so a later failure in this run can't lose it.
     const gate = async (): Promise<void> => {
       const result = await runTrustGate(ctx, project, state);
-      if (result.stateChanged) saveState(project.name, state);
+      if (result.stateChanged) {saveState(project.name, state);}
     };
 
     if (existing && existsSync(existing.path)) {
       ws = existing;
       ctx.log.step("worktree ready (reused)");
-      if (opts.fetch) await refetch(ctx, project, ws);
+      if (opts.fetch) {await refetch(ctx, project, ws);}
       await gate();
     } else {
       ws = await materialize(ctx, project, spec, slug, state.workspaces, gate);
@@ -157,8 +145,8 @@ async function materialize(
 
   if (spec.kind === "path") {
     const abs = resolvePath(spec.path);
-    if (!existsSync(abs)) throw resolveError(`path does not exist: ${abs}`);
-    if (!(await isGitWorktree(abs))) throw resolveError(`not a git working tree: ${abs}`);
+    if (!existsSync(abs)) {throw resolveError(`path does not exist: ${abs}`);}
+    if (!(await isGitWorktree(abs))) {throw resolveError(`not a git working tree: ${abs}`);}
     await beforeAdd();
     const slug = baseSlug;
     const ports = await allocateFor(project, slug, existing);
@@ -181,7 +169,7 @@ async function materialize(
     await initPrimaryRepo(g, project.repo);
     if (!project.defaultBranch) {
       const detected = await detectDefaultBranch(g);
-      if (detected) project.defaultBranch = detected;
+      if (detected) {project.defaultBranch = detected;}
     }
   }
   mkdirSync(project.worktreesPath, { recursive: true });
@@ -250,9 +238,9 @@ async function wirePr(ctx: Ctx, project: ProjectConfig, n: number, ws: Workspace
     return;
   }
   const repo = ghRepoSlug(project.repo);
-  if (!repo) return;
+  if (!repo) {return;}
   const meta = await ctx.gh.prView(repo, n);
-  if (!meta) return;
+  if (!meta) {return;}
 
   ws.pr = {
     title: meta.title,
@@ -284,22 +272,22 @@ async function wirePr(ctx: Ctx, project: ProjectConfig, n: number, ws: Workspace
  */
 export function forkCloneUrl(baseRepo: string, owner: string): string | null {
   const ssh = baseRepo.match(/^(git@[^:]+:)([^/]+)\/(.+)$/);
-  if (ssh) return `${ssh[1]}${owner}/${ssh[3]}`;
+  if (ssh) {return `${ssh[1]}${owner}/${ssh[3]}`;}
   const https = baseRepo.match(/^(https?:\/\/[^/]+\/)([^/]+)\/(.+)$/);
-  if (https) return `${https[1]}${owner}/${https[3]}`;
+  if (https) {return `${https[1]}${owner}/${https[3]}`;}
   return null;
 }
 
 /** Re-fetch on the fast path when `--fetch` is passed (§8.1). */
 async function refetch(ctx: Ctx, project: ProjectConfig, ws: Workspace): Promise<void> {
   const g = gitEnv(ctx, project);
-  if (ws.kind === "branch" && ws.branch) await fetchBranch(g, ws.branch);
-  else if (ws.kind === "pr" && ws.number !== undefined) await refetchPr(g, ws.path, ws.number);
+  if (ws.kind === "branch" && ws.branch) {await fetchBranch(g, ws.branch);}
+  else if (ws.kind === "pr" && ws.number !== undefined) {await refetchPr(g, ws.path, ws.number);}
 }
 
-async function allocateFor(project: ProjectConfig, slug: string, existing: Record<string, Workspace>): Promise<number[]> {
+async function allocateFor(project: ProjectConfig, slug: string, existing: Record<string, Workspace>): Promise<Array<number>> {
   const reserved = new Set<number>();
-  for (const w of Object.values(existing)) for (const p of w.ports) reserved.add(p);
+  for (const w of Object.values(existing)) {for (const p of w.ports) {reserved.add(p);}}
   return await allocatePorts({
     slug,
     basePort: project.basePort,
@@ -312,9 +300,9 @@ async function allocateFor(project: ProjectConfig, slug: string, existing: Recor
 /** Extract `owner/name` from a clone URL for gh (§7.3). */
 export function ghRepoSlug(repo: string): string | null {
   const ssh = repo.match(/^git@[^:]+:(.+?)(?:\.git)?$/);
-  if (ssh) return ssh[1]!;
+  if (ssh) {return ssh[1]!;}
   const https = repo.match(/^https?:\/\/[^/]+\/(.+?)(?:\.git)?$/);
-  if (https) return https[1]!;
+  if (https) {return https[1]!;}
   return null;
 }
 
@@ -325,19 +313,18 @@ function dryRunPlan(ctx: Ctx, project: ProjectConfig, refSpec: RefSpec): EnsureR
   const slug = slugFor(spec);
   const dir = join(project.worktreesPath, slug);
   const dataDir = dataDirFor(project, slug);
-  const lines: string[] = [];
+  const lines: Array<string> = [];
 
   const freshRepo = !isInitialized(project.repoPath);
   if (freshRepo) {
     lines.push(shellJoin(bareCloneArgv(project.repo, project.repoPath)));
-    for (const argv of initConfigArgvs(project.repoPath)) lines.push(shellJoin(argv));
+    for (const argv of initConfigArgvs(project.repoPath)) {lines.push(shellJoin(argv));}
     lines.push(shellJoin(initFetchArgv(project.repoPath)));
   }
   lines.push(`mkdir -p ${project.worktreesPath}`);
 
   if (spec.kind === "branch") {
-    lines.push(shellJoin(fetchBranchArgv(project.repoPath, spec.name)));
-    lines.push(shellJoin(addBranchWorktreeArgv(project.repoPath, dir, spec.name)));
+    lines.push(shellJoin(fetchBranchArgv(project.repoPath, spec.name)), shellJoin(addBranchWorktreeArgv(project.repoPath, dir, spec.name)));
   } else if (spec.kind === "pr") {
     lines.push(
       shellJoin([
@@ -349,15 +336,14 @@ function dryRunPlan(ctx: Ctx, project: ProjectConfig, refSpec: RefSpec): EnsureR
         `+refs/pull/${spec.number}/head:refs/heads/pr/${spec.number}`,
         "--no-tags",
       ]),
+      shellJoin(addPrWorktreeArgv(project.repoPath, dir, spec.number)),
     );
-    lines.push(shellJoin(addPrWorktreeArgv(project.repoPath, dir, spec.number)));
   } else if (spec.kind === "commit") {
-    lines.push(shellJoin(["git", "-C", project.repoPath, "fetch", "origin", spec.sha, "--no-tags"]));
-    lines.push(shellJoin(addCommitWorktreeArgv(project.repoPath, dir, spec.sha)));
+    lines.push(shellJoin(["git", "-C", project.repoPath, "fetch", "origin", spec.sha, "--no-tags"]), shellJoin(addCommitWorktreeArgv(project.repoPath, dir, spec.sha)));
   }
   lines.push(`mkdir -p ${dataDir}`);
 
-  for (const line of lines) process.stdout.write(`${line}\n`);
+  for (const line of lines) {process.stdout.write(`${line}\n`);}
 
   const now = new Date().toISOString();
   const ws: Workspace = {
@@ -378,7 +364,7 @@ function dryRunPlan(ctx: Ctx, project: ProjectConfig, refSpec: RefSpec): EnsureR
 }
 
 /** The deterministic-first port block for a slug, used only for dry-run display (§8.5). */
-function deterministicPorts(project: ProjectConfig, slug: string): number[] {
+function deterministicPorts(project: ProjectConfig, slug: string): Array<number> {
   const base = project.basePort + (fnv1a32(slug) % 100) * project.ports;
   return Array.from({ length: project.ports }, (_, i) => base + i);
 }

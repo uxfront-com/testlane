@@ -16,7 +16,7 @@ describe("parseRef — §6.1 table", () => {
   it("absolute path", () => expect(parseRef("/tmp/x")).toEqual({ kind: "path", path: "/tmp/x" }));
   it("./ path", () => expect(parseRef("./x")).toEqual({ kind: "path", path: "./x" }));
   it("~ path", () => expect(parseRef("~/x")).toEqual({ kind: "path", path: "~/x" }));
-  it("bare number → pr", () => expect(parseRef("19234")).toEqual({ kind: "pr", number: 19234 }));
+  it("bare number → pr", () => expect(parseRef("19234")).toEqual({ kind: "pr", number: 19_234 }));
   it("#number → pr", () => expect(parseRef("#42")).toEqual({ kind: "pr", number: 42 }));
   it("pr/<n> → pr", () => expect(parseRef("pr/7")).toEqual({ kind: "pr", number: 7 }));
   it("PR/<n> case-insensitive", () => expect(parseRef("PR/7")).toEqual({ kind: "pr", number: 7 }));
@@ -56,7 +56,7 @@ describe("isValidBranchName", () => {
 });
 
 describe("slug — §6.3 sanitization / truncation / collision", () => {
-  it("pr slug", () => expect(slug({ kind: "pr", number: 19234 })).toBe("pr-19234"));
+  it("pr slug", () => expect(slug({ kind: "pr", number: 19_234 })).toBe("pr-19234"));
   it("commit slug (first 10)", () =>
     expect(slug({ kind: "commit", sha: "0123456789abcdef" + "0".repeat(24) })).toBe("sha-0123456789"));
   it("branch slug sanitizes", () =>
@@ -89,7 +89,7 @@ describe("URL normalization & extraction — §4.3", () => {
   });
   it("extracts PR from /pull/<n>", () => {
     const u = parseUrlInput("https://github.com/n8n-io/n8n/pull/19234");
-    expect(u?.ref).toEqual({ kind: "pr", number: 19234 });
+    expect(u?.ref).toEqual({ kind: "pr", number: 19_234 });
   });
   it("extracts branch from /tree/<branch>", () => {
     const u = parseUrlInput("https://github.com/n8n-io/n8n/tree/ai/fix-canvas-drag");
@@ -127,8 +127,8 @@ describe("branch disambiguator: no refspec through a branch name", () => {
       expect(() => refFromDisambiguator("branch", bad), bad).toThrow(/--branch expects a branch name/);
       try {
         refFromDisambiguator("branch", bad);
-      } catch (e) {
-        expect((e as { errCode?: string }).errCode, bad).toBe("E_RESOLVE");
+      } catch (error) {
+        expect((error as { errCode?: string }).errCode, bad).toBe("E_RESOLVE");
       }
     }
   });
@@ -173,6 +173,6 @@ describe("branch disambiguator: HEAD is not a branch name", () => {
       expect(isValidBranchName(bad), bad).toBe(false);
       expect(() => refFromDisambiguator("branch", bad), bad).toThrow(/--branch expects a branch name/);
     }
-    for (const ok of ["HEADS", "heads", "feature/HEAD", "HEAD-x"]) expect(isValidBranchName(ok), ok).toBe(true);
+    for (const ok of ["HEADS", "heads", "feature/HEAD", "HEAD-x"]) {expect(isValidBranchName(ok), ok).toBe(true);}
   });
 });

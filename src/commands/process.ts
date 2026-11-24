@@ -7,7 +7,8 @@ import { passthrough } from "../lib/proc.ts";
 import { shellJoin, shellQuote } from "../lib/shell.ts";
 import { interpolate } from "../lib/template.ts";
 import { ensureWorkspace } from "../core/workspace.ts";
-import { composeEnv, templateVars, testlaneEnv, wsContext, type WorkspaceContext } from "../core/env.ts";
+import { composeEnv, templateVars, testlaneEnv, wsContext } from '../core/env.ts';
+import type { WorkspaceContext } from '../core/env.ts';
 import type { ProjectConfig } from "../config/schema.ts";
 import type { Workspace } from "../core/state.ts";
 import type { WorkspaceInput } from "./types.ts";
@@ -56,7 +57,7 @@ export function commandName(project: ProjectConfig, name: string | undefined, ve
 
 export interface BuiltCommand {
   wc: WorkspaceContext;
-  argv: string[];
+  argv: Array<string>;
   cwd: string;
   extra: { commandEnv?: Record<string, string>; flagEnv: Record<string, string> };
 }
@@ -71,7 +72,7 @@ export function buildCommand(
   ws: Workspace,
   dataDir: string,
   name: string,
-  passthroughArgs: string[],
+  passthroughArgs: Array<string>,
   flagEnv: Record<string, string>,
   portFlag?: string,
 ): BuiltCommand {
@@ -157,30 +158,30 @@ function wsContextWithPort(
   portFlag: string | undefined,
 ): WorkspaceContext {
   const override = parsePort(portFlag);
-  if (override === undefined) return wsContext(project, ws, dataDir);
+  if (override === undefined) {return wsContext(project, ws, dataDir);}
   return wsContext(project, { ...ws, ports: [override, ...ws.ports.slice(1)] }, dataDir);
 }
 
 function commandCwd(ws: Workspace, cwd: string | undefined, vars: Record<string, string>, name: string): string {
-  if (!cwd) return ws.path;
+  if (!cwd) {return ws.path;}
   const resolved = interpolate(cwd, vars, `commands.${name}.cwd`);
   return isAbsolute(resolved) ? resolved : join(ws.path, resolved);
 }
 
 function parsePort(value: string | undefined): number | undefined {
-  if (value === undefined) return undefined;
+  if (value === undefined) {return undefined;}
   const n = Number(value);
-  if (!Number.isInteger(n) || n < 1 || n > 65535) {
+  if (!Number.isInteger(n) || n < 1 || n > 65_535) {
     throw usage(`--port expects a port number (1–65535), got '${value}'`);
   }
   return n;
 }
 
-export function parseEnvFlags(items: string[]): Record<string, string> {
+export function parseEnvFlags(items: Array<string>): Record<string, string> {
   const out: Record<string, string> = {};
   for (const item of items) {
     const eq = item.indexOf("=");
-    if (eq <= 0) throw usage(`--env expects K=V, got '${item}'`);
+    if (eq <= 0) {throw usage(`--env expects K=V, got '${item}'`);}
     out[item.slice(0, eq)] = item.slice(eq + 1);
   }
   return out;
@@ -194,15 +195,15 @@ export function printDryRun(
   wc: WorkspaceContext,
   project: ProjectConfig,
   extra: { commandEnv?: Record<string, string>; flagEnv?: Record<string, string> },
-  argv: string[],
+  argv: Array<string>,
 ): void {
   const vars = templateVars(wc);
   const layered: Record<string, string> = { ...testlaneEnv(wc) };
-  for (const [k, v] of Object.entries(project.env)) layered[k] = interpolate(v, vars, `env.${k}`);
+  for (const [k, v] of Object.entries(project.env)) {layered[k] = interpolate(v, vars, `env.${k}`);}
   if (extra.commandEnv) {
-    for (const [k, v] of Object.entries(extra.commandEnv)) layered[k] = interpolate(v, vars, `command.env.${k}`);
+    for (const [k, v] of Object.entries(extra.commandEnv)) {layered[k] = interpolate(v, vars, `command.env.${k}`);}
   }
-  if (extra.flagEnv) Object.assign(layered, extra.flagEnv);
+  if (extra.flagEnv) {Object.assign(layered, extra.flagEnv);}
 
   for (const [k, v] of Object.entries(layered)) {
     process.stdout.write(`export ${k}=${shellQuote(v)}\n`);

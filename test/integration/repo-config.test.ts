@@ -7,7 +7,8 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { makeEnv, makeFixtureOrigin, type FixtureOrigin, type Harness } from "../fixtures.ts";
+import { makeEnv, makeFixtureOrigin } from '../fixtures.ts';
+import type { FixtureOrigin, Harness } from '../fixtures.ts';
 
 const MAIN_FILE = [
   `[commands.which]`,
@@ -263,7 +264,7 @@ describe("config show", () => {
     const human = await env.run(["config", "show", "app"]);
     expect(human.code).toBe(0);
     const lines = human.stdout.trimEnd().split("\n");
-    for (const line of lines) expect(line).toMatch(/  # (user|repo|default)$/);
+    for (const line of lines) {expect(line).toMatch(/ {2}# (user|repo|default)$/);}
     expect(lines.find((l) => l.startsWith("commands.which.run ="))).toMatch(/# repo$/);
     expect(lines.find((l) => l.startsWith("repo ="))).toMatch(/# user$/);
   });
@@ -338,7 +339,7 @@ describe("config add", () => {
   let plain: FixtureOrigin;
   const saved: Record<string, string | undefined> = {};
   const setEnv = (key: string, value: string) => {
-    if (!(key in saved)) saved[key] = process.env[key];
+    if (!(key in saved)) {saved[key] = process.env[key];}
     process.env[key] = value;
   };
 
@@ -362,8 +363,8 @@ describe("config add", () => {
 
   afterEach(() => {
     for (const [key, value] of Object.entries(saved)) {
-      if (value === undefined) delete process.env[key];
-      else process.env[key] = value;
+      if (value === undefined) {delete process.env[key];}
+      else {process.env[key] = value;}
       delete saved[key];
     }
   });
@@ -592,7 +593,7 @@ describe("unusable approvals and more gated paths", () => {
 describe("config add: names, leftovers and rollback", () => {
   const saved: Record<string, string | undefined> = {};
   const setEnv = (key: string, value: string) => {
-    if (!(key in saved)) saved[key] = process.env[key];
+    if (!(key in saved)) {saved[key] = process.env[key];}
     process.env[key] = value;
   };
   let plain: FixtureOrigin;
@@ -612,8 +613,8 @@ describe("config add: names, leftovers and rollback", () => {
 
   afterEach(() => {
     for (const [key, value] of Object.entries(saved)) {
-      if (value === undefined) delete process.env[key];
-      else process.env[key] = value;
+      if (value === undefined) {delete process.env[key];}
+      else {process.env[key] = value;}
       delete saved[key];
     }
   });
@@ -730,7 +731,7 @@ describe("integration review fixes", () => {
       expect(r.stderr).toContain("app:.testlane.toml");
       expect(r.stderr).not.toContain("\u001b");
       expect(r.stderr).not.toContain("\u0007");
-      expect(r.stderr).toContain("\\u001b");
+      expect(r.stderr).toContain(String.raw`\u001b`);
     }
     expect(parsed.stderr).toContain("TOML parse error");
     expect(state()?.repoConfig).toBeUndefined();

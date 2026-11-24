@@ -38,7 +38,7 @@ function canWriteDir(dir: string): boolean {
   let cur = dir;
   while (!existsSync(cur)) {
     const parent = dirname(cur);
-    if (parent === cur) return false;
+    if (parent === cur) {return false;}
     cur = parent;
   }
   try {
@@ -55,7 +55,7 @@ function canWriteDir(dir: string): boolean {
  * never find it and would warn on every healthy machine.
  */
 function resolveBinary(bin: string): string | null {
-  if (!bin.includes("/") && !bin.includes("\\")) return which(bin);
+  if (!bin.includes("/") && !bin.includes("\\")) {return which(bin);}
   return existsSync(bin) ? bin : null;
 }
 
@@ -66,10 +66,10 @@ function resolveBinary(bin: string): string | null {
  */
 function canonical(dir: string): string {
   let cur = dir;
-  const tail: string[] = [];
+  const tail: Array<string> = [];
   while (!existsSync(cur)) {
     const parent = dirname(cur);
-    if (parent === cur) return dir;
+    if (parent === cur) {return dir;}
     tail.unshift(basename(cur));
     cur = parent;
   }
@@ -82,7 +82,7 @@ function canonical(dir: string): string {
 
 export async function doctor(input: TopInput): Promise<number> {
   const { ctx } = input;
-  const checks: Check[] = [];
+  const checks: Array<Check> = [];
 
   // ── git version ────────────────────────────────────────────────────────────
   const git = await checkGitVersion();
@@ -142,13 +142,13 @@ async function checkProject(
   configDir: string,
   name: string,
   defaults: ReturnType<typeof loadDefaults>,
-  checks: Check[],
+  checks: Array<Check>,
 ): Promise<void> {
   let project: ProjectConfig;
   try {
     project = loadProject(configDir, name, defaults);
-  } catch (e) {
-    checks.push({ name: `project ${name}: config`, status: "fail", detail: issueDetail(e) });
+  } catch (error) {
+    checks.push({ name: `project ${name}: config`, status: "fail", detail: issueDetail(error) });
     return;
   }
   checks.push({ name: `project ${name}: config`, status: "ok", detail: "schema-valid" });
@@ -160,8 +160,8 @@ async function checkProject(
     const loaded = loadEffectiveProjectWithSources(configDir, name, defaults);
     project = loaded.project;
     snapshotError = loaded.snapshotError;
-  } catch (e) {
-    snapshotError = e;
+  } catch (error) {
+    snapshotError = error;
   }
   checks.push(await repoFileCheck(name, project, snapshotError));
 
@@ -232,8 +232,8 @@ async function checkProject(
   // state file parses
   try {
     loadState(name);
-  } catch (e) {
-    checks.push({ name: `project ${name}: state`, status: "fail", detail: String((e as Error).message) });
+  } catch (error) {
+    checks.push({ name: `project ${name}: state`, status: "fail", detail: String((error as Error).message) });
   }
 }
 
@@ -250,14 +250,14 @@ async function repoFileCheck(name: string, project: ProjectConfig, snapshotError
   if (snapshotError !== undefined) {
     return check("fail", `the stored approval is unusable (${issueDetail(snapshotError)}) — run \`testlane config trust ${name}\``);
   }
-  if (!isInitialized(project.repoPath)) return check("ok", "not cloned yet");
+  if (!isInitialized(project.repoPath)) {return check("ok", "not cloned yet");}
   const approval = readRepoApproval(name);
   const branch = await repoConfigBranch(project);
   let tip;
   try {
     tip = branch ? await readRepoTip(project.repoPath, branch, name) : { kind: "no-ref" as const };
-  } catch (e) {
-    return check("warn", issueDetail(e));
+  } catch (error) {
+    return check("warn", issueDetail(error));
   }
   const trustHint = `run \`testlane config trust ${name}\``;
   switch (tip.kind) {
@@ -268,8 +268,8 @@ async function repoFileCheck(name: string, project: ProjectConfig, snapshotError
         ? check("warn", `removed upstream from origin/${branch}, but an approval is stored; the next run drops it`)
         : check("ok", `no ${REPO_FILE} on origin/${branch}`);
     case "file":
-      if (!approval) return check("warn", `untrusted ${REPO_FILE} on origin/${branch} — ${trustHint}`);
-      if (approval.blob !== tip.blob) return check("warn", `${REPO_FILE} on origin/${branch} changed since approval — ${trustHint}`);
+      if (!approval) {return check("warn", `untrusted ${REPO_FILE} on origin/${branch} — ${trustHint}`);}
+      if (approval.blob !== tip.blob) {return check("warn", `${REPO_FILE} on origin/${branch} changed since approval — ${trustHint}`);}
       return check("ok", `trusted (sha256 ${approval.sha256.slice(0, 12)}, approved ${approval.approvedAt})`);
   }
 }
@@ -288,7 +288,7 @@ async function repoFileCheck(name: string, project: ProjectConfig, snapshotError
  * paths; a configured `worktrees_path` crossing a symlink (`/tmp` on macOS)
  * would otherwise mismatch every entry and warn permanently.
  */
-async function checkOrphans(name: string, repoPath: string, checks: Check[]): Promise<void> {
+async function checkOrphans(name: string, repoPath: string, checks: Array<Check>): Promise<void> {
   let tracked: Set<string>;
   try {
     const st = loadState(name);
@@ -303,9 +303,9 @@ async function checkOrphans(name: string, repoPath: string, checks: Check[]): Pr
   const gitSet = new Set(gitDirs);
   const untracked = gitDirs.filter((d) => !tracked.has(d));
   const missing = [...tracked].filter((d) => !gitSet.has(d) || !existsSync(d));
-  if (untracked.length === 0 && missing.length === 0) return;
-  const bits: string[] = [];
-  if (untracked.length) bits.push(`${untracked.length} git worktree(s) not in state`);
+  if (untracked.length === 0 && missing.length === 0) {return;}
+  const bits: Array<string> = [];
+  if (untracked.length) {bits.push(`${untracked.length} git worktree(s) not in state`);}
   if (missing.length) {
     bits.push(
       `${missing.length} state entr${missing.length === 1 ? "y" : "ies"} with no live worktree (deleted on disk or unknown to git)`,
@@ -327,15 +327,15 @@ function isReadable(path: string): boolean {
   }
 }
 
-function staleLocks(sdir: string): string[] {
-  if (!existsSync(sdir)) return [];
-  const out: string[] = [];
+function staleLocks(sdir: string): Array<string> {
+  if (!existsSync(sdir)) {return [];}
+  const out: Array<string> = [];
   for (const f of readdirSync(sdir)) {
-    if (!f.endsWith(".lock")) continue;
+    if (!f.endsWith(".lock")) {continue;}
     const p = join(sdir, f);
     try {
       const { pid } = JSON.parse(readFileSync(p, "utf8")) as { pid: number };
-      if (!pidAlive(pid)) out.push(f);
+      if (!pidAlive(pid)) {out.push(f);}
     } catch {
       out.push(f); // unreadable lock ⇒ stale
     }
@@ -347,12 +347,12 @@ function pidAlive(pid: number): boolean {
   try {
     process.kill(pid, 0);
     return true;
-  } catch (e) {
-    return (e as NodeJS.ErrnoException).code === "EPERM";
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === "EPERM";
   }
 }
 
-function report(out: Sink, json: boolean, checks: Check[]): number {
+function report(out: Sink, json: boolean, checks: Array<Check>): number {
   const failed = checks.some((c) => c.status === "fail");
   if (json) {
     out.write(JSON.stringify({ ok: !failed, checks }) + "\n");

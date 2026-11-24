@@ -7,7 +7,8 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { makeEnv, makeFixtureOrigin, fakeGh, type Harness } from "../fixtures.ts";
+import { makeEnv, makeFixtureOrigin, fakeGh } from '../fixtures.ts';
+import type { Harness } from '../fixtures.ts';
 import { setProcRecorder } from "../../src/lib/proc.ts";
 import type { GhClient } from "../../src/git/gh.ts";
 
@@ -159,8 +160,8 @@ describe("§17.2 scenario 12 — list --json shape & doctor fix hint", () => {
       expect(check?.detail).toContain(join(tmp, "no-such-shell"));
       expect(check?.detail).not.toContain("code");
     } finally {
-      if (prev === undefined) delete process.env.SHELL;
-      else process.env.SHELL = prev;
+      if (prev === undefined) {delete process.env.SHELL;}
+      else {process.env.SHELL = prev;}
     }
   });
 });
@@ -291,8 +292,8 @@ describe("§9.12 config add — seed a template when the project is absent", () 
     process.env.EDITOR = "true";
   });
   afterEach(() => {
-    if (prevEditor === undefined) delete process.env.EDITOR;
-    else process.env.EDITOR = prevEditor;
+    if (prevEditor === undefined) {delete process.env.EDITOR;}
+    else {process.env.EDITOR = prevEditor;}
   });
 
   it("AC1 — seeds the default template and warns for an absent file", async () => {

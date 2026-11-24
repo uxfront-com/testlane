@@ -67,9 +67,9 @@ describe("loadProject — invalid fixtures → aggregate errors", () => {
     try {
       loadProject(dir, "bad", {});
       throw new Error("expected throw");
-    } catch (e) {
-      expect(e).toBeInstanceOf(ConfigValidationError);
-      const err = e as ConfigValidationError;
+    } catch (error) {
+      expect(error).toBeInstanceOf(ConfigValidationError);
+      const err = error as ConfigValidationError;
       expect(err.errCode).toBe("E_CONFIG");
       expect(err.issues.some((i) => i.path === "repo")).toBe(true);
     }
@@ -85,8 +85,8 @@ describe("loadProject — invalid fixtures → aggregate errors", () => {
     try {
       loadProject(dir, "bad", {});
       throw new Error("expected throw");
-    } catch (e) {
-      const err = e as ConfigValidationError;
+    } catch (error) {
+      const err = error as ConfigValidationError;
       const paths = err.issues.map((i) => i.path);
       expect(paths).toContain("repo_path");
       expect(paths).toContain("worktrees_path");
@@ -98,8 +98,8 @@ describe("loadProject — invalid fixtures → aggregate errors", () => {
     try {
       loadProject(dir, "bad", {});
       throw new Error("expected throw");
-    } catch (e) {
-      const err = e as ConfigValidationError;
+    } catch (error) {
+      const err = error as ConfigValidationError;
       expect(err.issues.some((i) => i.path === "worktrees_path")).toBe(true);
     }
   });
@@ -112,8 +112,8 @@ describe("loadProject — invalid fixtures → aggregate errors", () => {
     try {
       loadProject(dir, "bad", {});
       throw new Error("expected throw");
-    } catch (e) {
-      const err = e as ConfigValidationError;
+    } catch (error) {
+      const err = error as ConfigValidationError;
       expect(err.issues.some((i) => i.path === "setup.seed_files.0")).toBe(true);
     }
   });
@@ -202,8 +202,8 @@ describe("defaultConfigDir — §5.1", () => {
       expect(defaultConfigDir()).toBe(join(homedir(), ".testlane"));
       expect(homedir()).toBe(dir);
     } finally {
-      if (prevHome === undefined) delete process.env.HOME;
-      else process.env.HOME = prevHome;
+      if (prevHome === undefined) {delete process.env.HOME;}
+      else {process.env.HOME = prevHome;}
     }
   });
 });

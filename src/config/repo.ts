@@ -2,7 +2,8 @@
 // under the user's project file. Pure — no git, no state, no filesystem.
 
 import { parse as parseToml } from "smol-toml";
-import { RawRepoSchema, USER_ONLY_MESSAGE, type RawProject, type RawRepo } from "./schema.ts";
+import { RawRepoSchema, USER_ONLY_MESSAGE } from './schema.ts';
+import type { RawProject, RawRepo } from './schema.ts';
 import { ConfigValidationError } from "./load.ts";
 import { printableLine, printableLines } from "../lib/printable.ts";
 
@@ -23,9 +24,9 @@ export function parseRepoConfig(project: string, text: string): RawRepo {
   let raw: unknown;
   try {
     raw = parseToml(text);
-  } catch (e) {
+  } catch (error) {
     // The parser quotes the file's lines, and nothing in it is approved yet (§5.7).
-    const message = printableLines(`TOML parse error: ${(e as Error).message}`);
+    const message = printableLines(`TOML parse error: ${(error as Error).message}`);
     throw new ConfigValidationError([{ file, path: "(root)", message }]);
   }
   const parsed = RawRepoSchema.safeParse(raw);
@@ -72,7 +73,7 @@ export function mergeRaw(user: RawProject, repo?: RawRepo): MergedRaw {
     return undefined;
   };
   const table = <T>(prefix: string, u?: Record<string, T>, r?: Record<string, T>): Record<string, T> | undefined => {
-    if (u === undefined && r === undefined) return undefined;
+    if (u === undefined && r === undefined) {return undefined;}
     const out: Record<string, T> = {};
     for (const [k, v] of Object.entries(r ?? {})) {
       out[k] = v;
@@ -88,7 +89,7 @@ export function mergeRaw(user: RawProject, repo?: RawRepo): MergedRaw {
   const raw: RawProject = { repo: user.repo };
   sources.repo = "user";
   const set = <K extends keyof RawProject>(key: K, value: RawProject[K] | undefined): void => {
-    if (value !== undefined) raw[key] = value;
+    if (value !== undefined) {raw[key] = value;}
   };
   set("repo_path", pick("repo_path", user.repo_path, undefined));
   set("worktrees_path", pick("worktrees_path", user.worktrees_path, undefined));
@@ -104,10 +105,10 @@ export function mergeRaw(user: RawProject, repo?: RawRepo): MergedRaw {
     const cacheKey = pick("setup.cache_key", user.setup?.cache_key, repo?.setup?.cache_key);
     const seedFiles = pick("setup.seed_files", user.setup?.seed_files, repo?.setup?.seed_files);
     const seedFrom = pick("setup.seed_from", user.setup?.seed_from, undefined);
-    if (run !== undefined) setup.run = run;
-    if (cacheKey !== undefined) setup.cache_key = cacheKey;
-    if (seedFiles !== undefined) setup.seed_files = seedFiles;
-    if (seedFrom !== undefined) setup.seed_from = seedFrom;
+    if (run !== undefined) {setup.run = run;}
+    if (cacheKey !== undefined) {setup.cache_key = cacheKey;}
+    if (seedFiles !== undefined) {setup.seed_files = seedFiles;}
+    if (seedFrom !== undefined) {setup.seed_from = seedFrom;}
     raw.setup = setup;
   }
 

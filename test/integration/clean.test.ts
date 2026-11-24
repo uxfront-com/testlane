@@ -5,7 +5,8 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { makeEnv, makeFixtureOrigin, type Harness } from "../fixtures.ts";
+import { makeEnv, makeFixtureOrigin } from '../fixtures.ts';
+import type { Harness } from '../fixtures.ts';
 import { setProcRecorder } from "../../src/lib/proc.ts";
 
 let tmp: string;
@@ -76,7 +77,7 @@ describe("§17.2 scenario 8 — adopted path ref", () => {
     // A real git working tree outside Testlane's worktrees.
     const adopted = join(tmp, "external");
     mkdirSync(adopted, { recursive: true });
-    const g = (args: string[]) =>
+    const g = (args: Array<string>) =>
       spawnSync("git", ["-C", adopted, "-c", "user.email=t@t.local", "-c", "user.name=t", ...args]);
     g(["init", "-b", "main"]);
     writeFileSync(join(adopted, "a.txt"), "x\n");
