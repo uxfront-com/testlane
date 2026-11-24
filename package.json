@@ -30,7 +30,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "dev": "npm run build && node dist/bin/testlane.js",
+    "dev": "pnpm run build && node dist/bin/testlane.js",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint",
@@ -41,8 +41,9 @@
     "changeset": "changeset",
     "version-packages": "changeset version",
     "release": "pnpm run guard:packaging && changeset publish",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "pnpm run build"
   },
+  "packageManager": "pnpm@11.25.0",
   "engines": {
     "node": ">=22"
   },
