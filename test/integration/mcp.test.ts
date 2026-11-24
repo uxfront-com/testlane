@@ -229,7 +229,7 @@ describe("tools/list", () => {
       annotations: { readOnlyHint?: boolean; destructiveHint?: boolean };
     }>;
     expect(tools.map((t) => t.name).sort()).toEqual([...TOOL_NAMES].sort());
-    const readOnly = ["projects", "doctor", "config_validate", "list", "ps", "info", "diff", "logs"];
+    const readOnly = new Set(["projects", "doctor", "config_validate", "list", "ps", "info", "diff", "logs"]);
     for (const t of tools) {
       expect(t.description.length, t.name).toBeGreaterThan(0);
       expect(t.inputSchema.type, t.name).toBe("object");
@@ -237,7 +237,7 @@ describe("tools/list", () => {
       for (const banned of ["argv", "args", "passthrough", "force", "exec", "yes"]) {
         expect(Object.keys(t.inputSchema.properties), t.name).not.toContain(banned);
       }
-      if (readOnly.includes(t.name)) {expect(t.annotations, t.name).toEqual({ readOnlyHint: true });}
+      if (readOnly.has(t.name)) {expect(t.annotations, t.name).toEqual({ readOnlyHint: true });}
       else if (t.name === "rm") {expect(t.annotations).toEqual({ readOnlyHint: false, destructiveHint: true });}
       else {expect(t.annotations, t.name).toEqual({ readOnlyHint: false, destructiveHint: false });}
     }

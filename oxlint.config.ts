@@ -22,7 +22,6 @@ export default defineConfig({
     "typescript/no-explicit-any": "off",
     "typescript/no-non-null-assertion": "off",
     "unicorn/consistent-function-scoping": "off",
-    "unicorn/prefer-set-has": "off",
     "unicorn/prefer-top-level-await": "off",
   },
   overrides: [
