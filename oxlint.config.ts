@@ -3,6 +3,43 @@ import { defineConfig } from "oxlint";
 
 export default defineConfig({
   extends: [vue],
+  // oxlint reads these two only from the root config, so they're restated here.
+  env: vue.env,
+  ignorePatterns: [...vue.ignorePatterns],
+  rules: {
+    // Baseline for 0.2.0: each rule that fails here today is off, and the commits that follow
+    // turn them on one by one.
+    "curly": "off",
+    "eqeqeq": "off",
+    "no-console": "off",
+    "no-promise-executor-return": "off",
+    "no-regex-spaces": "off",
+    "no-useless-assignment": "off",
+    "prefer-const": "off",
+    "import/consistent-type-specifier-style": "off",
+    "quality/no-array-filter-map": "off",
+    "quality/no-chained-type-assertions": "off",
+    "quality/no-conditional-empty-object-spread": "off",
+    "quality/no-known-value-widening": "off",
+    "quality/no-object-parameters": "off",
+    "quality/no-unknown-returns": "off",
+    "quality/no-unsafe-dictionary-type": "off",
+    "typescript/array-type": "off",
+    "typescript/no-explicit-any": "off",
+    "typescript/no-non-null-assertion": "off",
+    "unicorn/catch-error-name": "off",
+    "unicorn/consistent-function-scoping": "off",
+    "unicorn/no-hex-escape": "off",
+    "unicorn/numeric-separators-style": "off",
+    "unicorn/prefer-at": "off",
+    "unicorn/prefer-import-meta-properties": "off",
+    "unicorn/prefer-set-has": "off",
+    "unicorn/prefer-single-call": "off",
+    "unicorn/prefer-string-raw": "off",
+    "unicorn/prefer-string-replace-all": "off",
+    "unicorn/prefer-top-level-await": "off",
+    "unicorn/text-encoding-identifier-case": "off",
+  },
   overrides: [
     {
       files: [
