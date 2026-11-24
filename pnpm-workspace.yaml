@@ -18,6 +18,7 @@ allowBuilds:
 # version published less than 24 hours ago. List the exact fresh version here,
 # and drop the entry once it is older than a day.
 minimumReleaseAgeExclude:
+  - '@uxfront/layer-docs@0.9.1'
   - '@uxfront/typescript-config@0.2.0'
 
 catalog:
@@ -40,7 +41,7 @@ catalogs:
     vue-tsc: ^3.3.5
   # The uxfront homepage and docs kit.
   uxfront:
-    '@uxfront/layer-docs': ^0.8.4
+    '@uxfront/layer-docs': ^0.9.1
     '@uxfront/layer-ui': ^0.1.10
     '@uxfront/scene': ^0.5.0
     '@uxfront/ui': ^0.9.0
