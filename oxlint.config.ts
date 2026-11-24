@@ -10,7 +10,6 @@ export default defineConfig({
     // Baseline for 0.2.0: each rule that fails here today is off, and the commits that follow
     // turn them on one by one.
     "quality/no-known-value-widening": "off",
-    "typescript/no-non-null-assertion": "off",
   },
   overrides: [
     {
@@ -38,6 +37,16 @@ export default defineConfig({
         // each field before they use it. That type is the boundary: it promises nothing about
         // a value until a check narrows it. The rule stays on everywhere else.
         "quality/no-unsafe-dictionary-type": "off",
+      },
+    },
+    {
+      files: ["src/**", "test/**", "apps/docs/server/**"],
+      rules: {
+        // With noUncheckedIndexedAccess on, `!` marks a value the code has already checked in a
+        // way the types can't follow: an index inside its loop's bounds, a capture group of a
+        // regex that matched, the stdout of a child spawned with piped stdio, a field a filter
+        // kept. A runtime check there could never fail, and no test could reach it.
+        "typescript/no-non-null-assertion": "off",
       },
     },
     {
