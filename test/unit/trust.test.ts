@@ -292,6 +292,8 @@ describe("trust gate", () => {
   });
 
   it("a mangled stored approval counts as none", async () => {
+    // The test forges a stored approval of the wrong shape on purpose.
+    // oxlint-disable-next-line quality/no-chained-type-assertions
     state.repoConfig = { sha256: 1 } as unknown as State["repoConfig"];
     const io = fakeIO({ tty: true, answer: "y" });
     const r = await trustGate(ctx, project, state, { io });
