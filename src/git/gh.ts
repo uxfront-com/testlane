@@ -1,6 +1,7 @@
 // GitHub CLI client — graceful absence (§7.3, §15.2). Never invoked in tests.
 
-import { capture, passthrough, type PassthroughOptions } from "../lib/proc.ts";
+import { capture, passthrough } from '../lib/proc.ts';
+import type { PassthroughOptions } from '../lib/proc.ts';
 
 export interface PrMeta {
   headRefName: string;

@@ -6,10 +6,13 @@
 import { existsSync } from "node:fs";
 import { z } from "zod";
 import { TestlaneError, configError, usage } from "../lib/errors.ts";
-import { Logger, type LogLevel, type Sink } from "../lib/log.ts";
+import { Logger } from '../lib/log.ts';
+import type { LogLevel, Sink } from '../lib/log.ts';
 import { loadDefaults, loadEffectiveProject } from "../config/load.ts";
-import { parseRef, refFromDisambiguator, type RefSpec } from "../core/resolve.ts";
-import { RealGhClient, type GhClient } from "../git/gh.ts";
+import { parseRef, refFromDisambiguator } from '../core/resolve.ts';
+import type { RefSpec } from '../core/resolve.ts';
+import { RealGhClient } from '../git/gh.ts';
+import type { GhClient } from '../git/gh.ts';
 import type { Ctx, GlobalFlags } from "../config/schema.ts";
 import type { WorkspaceInput } from "../commands/types.ts";
 import { checkout } from "../commands/checkout.ts";

@@ -9,7 +9,8 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSyn
 import { get } from "node:http";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { makeEnv, makeFixtureOrigin, type Harness, type ProjectSpec } from "../fixtures.ts";
+import { makeEnv, makeFixtureOrigin } from '../fixtures.ts';
+import type { Harness, ProjectSpec } from '../fixtures.ts';
 import { builtCli, McpClient } from "../mcp-client.ts";
 import { fetchBranch } from "../../src/git/repo.ts";
 import { Logger } from "../../src/lib/log.ts";

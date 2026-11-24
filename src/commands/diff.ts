@@ -4,12 +4,14 @@
 import { existsSync } from "node:fs";
 import { ExitCode, resolveError } from "../lib/errors.ts";
 import { parseFlags } from "../cli/flags.ts";
-import { capture, passthrough, type PassthroughOptions } from "../lib/proc.ts";
+import { capture, passthrough } from '../lib/proc.ts';
+import type { PassthroughOptions } from '../lib/proc.ts';
 import { shellJoin } from "../lib/shell.ts";
 import { loadState } from "../core/state.ts";
 import { slug as slugFor } from "../core/resolve.ts";
 import { ghRepoSlug, resolveLast } from "../core/workspace.ts";
-import { stdoutOf, type Ctx, type ProjectConfig } from "../config/schema.ts";
+import { stdoutOf } from '../config/schema.ts';
+import type { Ctx, ProjectConfig } from '../config/schema.ts';
 import type { WorkspaceInput } from "./types.ts";
 
 export async function diff(input: WorkspaceInput): Promise<number> {

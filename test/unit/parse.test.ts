@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { parse, type ParseDeps } from "../../src/cli/parse.ts";
+import { parse } from '../../src/cli/parse.ts';
+import type { ParseDeps } from '../../src/cli/parse.ts';
 import { TOP_LEVEL_VERBS } from "../../src/cli/verbs.ts";
 import { parseUrlInput } from "../../src/core/resolve.ts";
 

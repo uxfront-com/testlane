@@ -10,14 +10,8 @@
  * steps out by the width of the content column, not the screen: in a row when
  * the column has room, stacked when it doesn't.
  */
-import {
-	PIPELINE_REFS,
-	PIPELINE_STEPS,
-	PIPELINE_SUBSTEPS,
-	PIPELINE_VERBS,
-	noteParts,
-	type PipelineVariant,
-} from "~/data/pipeline";
+import { PIPELINE_REFS, PIPELINE_STEPS, PIPELINE_SUBSTEPS, PIPELINE_VERBS, noteParts } from '~/data/pipeline';
+import type { PipelineVariant } from '~/data/pipeline';
 
 const props = withDefaults(defineProps<{ variant?: PipelineVariant }>(), {
 	variant: "compact",

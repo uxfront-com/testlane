@@ -1,11 +1,13 @@
 // Hook execution (§12). A hook is a bash -c string with composed env, cwd = worktree.
 
 import { interpolate } from "../lib/template.ts";
-import { passthrough, type PassthroughOptions } from "../lib/proc.ts";
+import { passthrough } from '../lib/proc.ts';
+import type { PassthroughOptions } from '../lib/proc.ts';
 import { shellJoin } from "../lib/shell.ts";
 import { setupError } from "../lib/errors.ts";
 import type { Ctx, ProjectConfig } from "../config/schema.ts";
-import { composeEnv, templateVars, type WorkspaceContext } from "./env.ts";
+import { composeEnv, templateVars } from './env.ts';
+import type { WorkspaceContext } from './env.ts';
 
 export type HookName = "post_checkout" | "pre_run" | "post_sync" | "pre_clean";
 

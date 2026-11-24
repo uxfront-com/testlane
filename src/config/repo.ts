@@ -2,7 +2,8 @@
 // under the user's project file. Pure — no git, no state, no filesystem.
 
 import { parse as parseToml } from "smol-toml";
-import { RawRepoSchema, USER_ONLY_MESSAGE, type RawProject, type RawRepo } from "./schema.ts";
+import { RawRepoSchema, USER_ONLY_MESSAGE } from './schema.ts';
+import type { RawProject, RawRepo } from './schema.ts';
 import { ConfigValidationError } from "./load.ts";
 import { printableLine, printableLines } from "../lib/printable.ts";
 

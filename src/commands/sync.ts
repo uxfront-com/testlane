@@ -9,7 +9,8 @@ import { dataDirFor, ensureWorkspace, resolveLast } from "../core/workspace.ts";
 import { disposeWorkspace } from "../core/remove.ts";
 import { wsContext } from "../core/env.ts";
 import { runHook } from "../core/hooks.ts";
-import { fetchBranch, fetchBranchArgv, fetchPrHead, type GitEnv } from "../git/repo.ts";
+import { fetchBranch, fetchBranchArgv, fetchPrHead } from '../git/repo.ts';
+import type { GitEnv } from '../git/repo.ts';
 import {
   cleanUntracked,
   diffCount,

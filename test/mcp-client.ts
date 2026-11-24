@@ -2,7 +2,8 @@
 // `testlane mcp` and speaks newline-delimited JSON-RPC 2.0 to it, keeping every
 // stdout line, so a test can check that nothing else ever reached stdout.
 
-import { spawn, type ChildProcess } from "node:child_process";
+import { spawn } from 'node:child_process';
+import type { ChildProcess } from 'node:child_process';
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 

@@ -6,8 +6,10 @@ import type { Ctx, ProjectConfig } from "../config/schema.ts";
 import { resolveError } from "../lib/errors.ts";
 import { resolvePath } from "../lib/paths.ts";
 import { shellJoin } from "../lib/shell.ts";
-import { collisionSlug, parseRef, slug as slugFor, type RefSpec } from "./resolve.ts";
-import { acquireLock, loadState, saveState, type Workspace } from "./state.ts";
+import { collisionSlug, parseRef, slug as slugFor } from './resolve.ts';
+import type { RefSpec } from './resolve.ts';
+import { acquireLock, loadState, saveState } from './state.ts';
+import type { Workspace } from './state.ts';
 import { allocatePorts, tcpPortFree } from "./ports.ts";
 import {
   addBranchWorktreeArgv,
@@ -18,22 +20,8 @@ import {
   addCommitWorktree,
   isGitWorktree,
 } from "../git/worktree.ts";
-import {
-  bareCloneArgv,
-  detectDefaultBranch,
-  fetchBranch,
-  fetchBranchArgv,
-  fetchCommit,
-  fetchPr,
-  refetchPr,
-  initConfigArgvs,
-  initFetchArgv,
-  initPrimaryRepo,
-  isInitialized,
-  wireForkPushBack,
-  wirePrPushBack,
-  type GitEnv,
-} from "../git/repo.ts";
+import { bareCloneArgv, detectDefaultBranch, fetchBranch, fetchBranchArgv, fetchCommit, fetchPr, refetchPr, initConfigArgvs, initFetchArgv, initPrimaryRepo, isInitialized, wireForkPushBack, wirePrPushBack } from '../git/repo.ts';
+import type { GitEnv } from '../git/repo.ts';
 import { wsContext } from "./env.ts";
 import { runHook } from "./hooks.ts";
 import { runSetup } from "./setup.ts";

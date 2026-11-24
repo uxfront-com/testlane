@@ -4,15 +4,18 @@
 import { existsSync } from "node:fs";
 import { ExitCode, usage } from "../lib/errors.ts";
 import { parseFlags } from "../cli/flags.ts";
-import { acquireLock, loadState, saveState, type State, type Workspace } from "../core/state.ts";
+import { acquireLock, loadState, saveState } from '../core/state.ts';
+import type { State, Workspace } from '../core/state.ts';
 import { disposeWorkspace, workspaceDiskBytes } from "../core/remove.ts";
 import { isDirty, mergedBranches } from "../git/worktree.ts";
-import { fetchBranch, type GitEnv } from "../git/repo.ts";
+import { fetchBranch } from '../git/repo.ts';
+import type { GitEnv } from '../git/repo.ts';
 import { ghRepoSlug } from "../core/workspace.ts";
 import { slug as slugFor } from "../core/resolve.ts";
 import { promptLine } from "../lib/prompt.ts";
 import type { ProjectInput, WorkspaceInput } from "./types.ts";
-import { stdoutOf, type Ctx, type ProjectConfig } from "../config/schema.ts";
+import { stdoutOf } from '../config/schema.ts';
+import type { Ctx, ProjectConfig } from '../config/schema.ts';
 
 interface PlanEntry {
   ws: Workspace;

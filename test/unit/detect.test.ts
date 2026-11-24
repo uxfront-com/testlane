@@ -3,7 +3,8 @@
 
 import { afterEach, describe, expect, it } from "vitest";
 import { parse as parseToml } from "smol-toml";
-import { detect, isPathArgument, memoryFiles, normaliseRepoUrl, type Finding } from "../../src/config/detect.ts";
+import { detect, isPathArgument, memoryFiles, normaliseRepoUrl } from '../../src/config/detect.ts';
+import type { Finding } from '../../src/config/detect.ts';
 import { renderDraft, setDraftTransform, tomlText } from "../../src/config/detect-emit.ts";
 import { globMatch, matchWorkspaces, parseWorkspaceYaml } from "../../src/config/detect-parse.ts";
 import { RawProjectSchema, RawRepoSchema } from "../../src/config/schema.ts";

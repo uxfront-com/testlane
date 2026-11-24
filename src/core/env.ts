@@ -1,6 +1,7 @@
 // TESTLANE_* export vars + env composition (§5.5, §11.2).
 
-import { interpolate, workspaceVars, type TemplateVars } from "../lib/template.ts";
+import { interpolate, workspaceVars } from '../lib/template.ts';
+import type { TemplateVars } from '../lib/template.ts';
 import type { ProjectConfig } from "../config/schema.ts";
 import type { Workspace } from "./state.ts";
 

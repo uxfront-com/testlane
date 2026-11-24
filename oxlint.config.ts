@@ -15,7 +15,6 @@ export default defineConfig({
     "no-regex-spaces": "off",
     "no-useless-assignment": "off",
     "prefer-const": "off",
-    "import/consistent-type-specifier-style": "off",
     "quality/no-array-filter-map": "off",
     "quality/no-chained-type-assertions": "off",
     "quality/no-conditional-empty-object-spread": "off",

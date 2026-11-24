@@ -7,7 +7,8 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpath
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import { parse as parseToml } from "smol-toml";
-import { makeEnv, makeFixtureOrigin, type FixtureOrigin, type Harness } from "../fixtures.ts";
+import { makeEnv, makeFixtureOrigin } from '../fixtures.ts';
+import type { FixtureOrigin, Harness } from '../fixtures.ts';
 import { setProcRecorder } from "../../src/lib/proc.ts";
 import { setDraftTransform } from "../../src/config/detect-emit.ts";
 import { gitFiles, localFiles } from "../../src/core/repo-files.ts";

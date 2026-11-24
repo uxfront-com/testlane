@@ -8,16 +8,13 @@ import { TestlaneError } from "../lib/errors.ts";
 import { resolvePath } from "../lib/paths.ts";
 import { printableLine } from "../lib/printable.ts";
 import { fnv1a32 } from "../lib/hash.ts";
-import {
-  RawDefaultsSchema,
-  RawProjectSchema,
-  type Defaults,
-  type ProjectConfig,
-  type RawRepo,
-} from "./schema.ts";
+import { RawDefaultsSchema, RawProjectSchema } from './schema.ts';
+import type { Defaults, ProjectConfig, RawRepo } from './schema.ts';
 import { DEFAULT_COMMAND_VERBS } from "../cli/verbs.ts";
-import { mergeRaw, parseRepoConfig, repoLabel, type KeySource } from "./repo.ts";
-import { readRepoApproval, type RepoApproval } from "../core/state.ts";
+import { mergeRaw, parseRepoConfig, repoLabel } from './repo.ts';
+import type { KeySource } from './repo.ts';
+import { readRepoApproval } from '../core/state.ts';
+import type { RepoApproval } from '../core/state.ts';
 import { sha256Hex } from "../lib/hash.ts";
 
 const PROJECT_NAME_RE = /^[a-z0-9][a-z0-9._-]*$/;

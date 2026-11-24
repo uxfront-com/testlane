@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { passthrough } from "../../src/lib/proc.ts";
-import { isTestlaneError, type TestlaneError } from "../../src/lib/errors.ts";
+import { isTestlaneError } from '../../src/lib/errors.ts';
+import type { TestlaneError } from '../../src/lib/errors.ts';
 
 const MISSING = "testlane-no-such-binary-zzz-9f55";
 

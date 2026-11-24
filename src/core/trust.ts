@@ -15,7 +15,8 @@ import { printableBlock, printableLine } from "../lib/printable.ts";
 import { loadProject, readSnapshot } from "../config/load.ts";
 import { parseRepoConfig, REPO_FILE, repoLabel } from "../config/repo.ts";
 import type { Ctx, ProjectConfig, RawRepo } from "../config/schema.ts";
-import { detectDefaultBranch, isInitialized, readBlob, symbolicHead, treeEntry, type GitEnv } from "../git/repo.ts";
+import { detectDefaultBranch, isInitialized, readBlob, symbolicHead, treeEntry } from '../git/repo.ts';
+import type { GitEnv } from '../git/repo.ts';
 import type { RepoApproval, State } from "./state.ts";
 
 /** Terminal access, injectable so tests can drive the TTY branch. */

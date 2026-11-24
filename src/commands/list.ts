@@ -4,13 +4,15 @@
 import { existsSync } from "node:fs";
 import { ExitCode, usage, resolveError } from "../lib/errors.ts";
 import { parseFlags } from "../cli/flags.ts";
-import { loadState, type Workspace } from "../core/state.ts";
+import { loadState } from '../core/state.ts';
+import type { Workspace } from '../core/state.ts';
 import { isDirty } from "../git/worktree.ts";
 import { workspaceDiskBytes } from "../core/remove.ts";
 import { ghRepoSlug } from "../core/workspace.ts";
 import { pad } from "../lib/table.ts";
 import { promptLine } from "../lib/prompt.ts";
-import { stdoutOf, type Ctx, type ProjectConfig } from "../config/schema.ts";
+import { stdoutOf } from '../config/schema.ts';
+import type { Ctx, ProjectConfig } from '../config/schema.ts';
 import type { ProjectInput, WorkspaceInput } from "./types.ts";
 import { slug as slugFor } from "../core/resolve.ts";
 

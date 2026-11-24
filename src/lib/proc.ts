@@ -2,7 +2,8 @@
 
 import { spawn } from "node:child_process";
 import { closeSync, openSync } from "node:fs";
-import { TestlaneError, abortedError, type ErrCode } from "./errors.ts";
+import { TestlaneError, abortedError } from './errors.ts';
+import type { ErrCode } from './errors.ts';
 import type { Sink } from "./log.ts";
 
 // Optional recorder: when set, every spawned argv is recorded before execution.

@@ -6,7 +6,8 @@ import { createInterface } from "node:readline";
 import { ABORT_GRACE_MS } from "../lib/proc.ts";
 import type { Sink } from "../lib/log.ts";
 import type { GhClient } from "../git/gh.ts";
-import { DEFAULT_TIMEOUT_S, findTool, runTool, toolList, type Tool, type ToolResult } from "./tools.ts";
+import { DEFAULT_TIMEOUT_S, findTool, runTool, toolList } from './tools.ts';
+import type { Tool, ToolResult } from './tools.ts';
 
 /** The protocol versions this server speaks, newest first. */
 export const PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"] as const;

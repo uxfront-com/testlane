@@ -6,14 +6,17 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { makeFixtureOrigin, type FixtureOrigin } from "../fixtures.ts";
+import { makeFixtureOrigin } from '../fixtures.ts';
+import type { FixtureOrigin } from '../fixtures.ts';
 import { loadProject } from "../../src/config/load.ts";
 import type { Ctx, ProjectConfig } from "../../src/config/schema.ts";
 import { initPrimaryRepo, fetchBranch } from "../../src/git/repo.ts";
 import { unavailableGh } from "../../src/git/gh.ts";
 import { Logger } from "../../src/lib/log.ts";
-import { STATE_VERSION, type State } from "../../src/core/state.ts";
-import { settleProject, trustGate, type TrustIO } from "../../src/core/trust.ts";
+import { STATE_VERSION } from '../../src/core/state.ts';
+import type { State } from '../../src/core/state.ts';
+import { settleProject, trustGate } from '../../src/core/trust.ts';
+import type { TrustIO } from '../../src/core/trust.ts';
 
 const V1 = [
   `[setup]`,

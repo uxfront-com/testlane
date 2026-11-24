@@ -10,8 +10,10 @@ import { detect } from "../config/detect.ts";
 import { renderDraft } from "../config/detect-emit.ts";
 import { acquireLock, loadState, saveState } from "../core/state.ts";
 import { gitFiles } from "../core/repo-files.ts";
-import { repoConfigBranch, trustGate, type TrustResult } from "../core/trust.ts";
-import { detectDefaultBranch, fetchBranch, initPrimaryRepo, isInitialized, originUrl, type GitEnv } from "../git/repo.ts";
+import { repoConfigBranch, trustGate } from '../core/trust.ts';
+import type { TrustResult } from '../core/trust.ts';
+import { detectDefaultBranch, fetchBranch, initPrimaryRepo, isInitialized, originUrl } from '../git/repo.ts';
+import type { GitEnv } from '../git/repo.ts';
 
 export interface CloneDetectOptions {
   /** The clone URL, as the project file writes it. */

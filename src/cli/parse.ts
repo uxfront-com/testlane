@@ -2,15 +2,10 @@
 
 import { usage, resolveError, configError } from "../lib/errors.ts";
 import type { GlobalFlags } from "../config/schema.ts";
-import {
-  isProjectVerb,
-  isTopLevelVerb,
-  isWorkspaceVerb,
-  type ProjectVerb,
-  type TopLevelVerb,
-  type WorkspaceVerb,
-} from "./verbs.ts";
-import { parseRef, refFromDisambiguator, type RefSpec } from "../core/resolve.ts";
+import { isProjectVerb, isTopLevelVerb, isWorkspaceVerb } from './verbs.ts';
+import type { ProjectVerb, TopLevelVerb, WorkspaceVerb } from './verbs.ts';
+import { parseRef, refFromDisambiguator } from '../core/resolve.ts';
+import type { RefSpec } from '../core/resolve.ts';
 
 export type ParseResult =
   | { kind: "top"; verb: TopLevelVerb; args: Array<string>; global: GlobalFlags }

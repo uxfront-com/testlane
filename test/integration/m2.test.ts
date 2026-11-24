@@ -7,7 +7,8 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { makeEnv, makeFixtureOrigin, fakeGh, type Harness } from "../fixtures.ts";
+import { makeEnv, makeFixtureOrigin, fakeGh } from '../fixtures.ts';
+import type { Harness } from '../fixtures.ts';
 import { setProcRecorder } from "../../src/lib/proc.ts";
 import type { GhClient } from "../../src/git/gh.ts";
 

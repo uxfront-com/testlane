@@ -26,23 +26,15 @@ import { detect, isPathArgument } from "../config/detect.ts";
 import { renderDraft } from "../config/detect-emit.ts";
 import { localFiles, gitFiles } from "../core/repo-files.ts";
 import { cloneTrustDetect } from "./clone-detect.ts";
-import { stdoutOf, type Ctx, type ProjectConfig } from "../config/schema.ts";
+import { stdoutOf } from '../config/schema.ts';
+import type { Ctx, ProjectConfig } from '../config/schema.ts';
 import { defaultProjectTemplate, tomlString } from "../lib/project-template.ts";
 import { resolveEditor } from "../core/editor.ts";
 import { parseUrlInput } from "../core/resolve.ts";
 import { acquireLock, loadState, saveState } from "../core/state.ts";
 import { readRepoTip, repoConfigBranch, trustGate, validApproval } from "../core/trust.ts";
-import {
-  bareCloneArgv,
-  detectDefaultBranch,
-  fetchBranch,
-  initConfigArgvs,
-  initFetchArgv,
-  initPrimaryRepo,
-  isInitialized,
-  refExists,
-  type GitEnv,
-} from "../git/repo.ts";
+import { bareCloneArgv, detectDefaultBranch, fetchBranch, initConfigArgvs, initFetchArgv, initPrimaryRepo, isInitialized, refExists } from '../git/repo.ts';
+import type { GitEnv } from '../git/repo.ts';
 import { appendDefaultsRoot, indent } from "./setup.ts";
 import type { TopInput } from "./types.ts";
 

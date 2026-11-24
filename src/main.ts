@@ -4,20 +4,18 @@ import { existsSync } from "node:fs";
 import { ExitCode, TestlaneError, isTestlaneError } from "./lib/errors.ts";
 import { Logger, colorEnabled } from "./lib/log.ts";
 import { defaultConfigDir } from "./lib/paths.ts";
-import { parse, type ParseDeps, type ParseResult } from "./cli/parse.ts";
+import { parse } from './cli/parse.ts';
+import type { ParseDeps, ParseResult } from './cli/parse.ts';
 import {
   listProjectNames,
   loadDefaults,
   loadEffectiveProject,
   projectExists,
 } from "./config/load.ts";
-import {
-  coordsEqual,
-  normalizeRepoUrl,
-  parseUrlInput,
-  type RefSpec,
-} from "./core/resolve.ts";
-import { RealGhClient, unavailableGh, type GhClient } from "./git/gh.ts";
+import { coordsEqual, normalizeRepoUrl, parseUrlInput } from './core/resolve.ts';
+import type { RefSpec } from './core/resolve.ts';
+import { RealGhClient, unavailableGh } from './git/gh.ts';
+import type { GhClient } from './git/gh.ts';
 import type { Ctx, Defaults, ProjectConfig } from "./config/schema.ts";
 import { isPathArgument } from "./config/detect.ts";
 

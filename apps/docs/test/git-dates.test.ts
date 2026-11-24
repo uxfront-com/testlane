@@ -3,7 +3,8 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { type Git, readGitDates } from "../modules/git-dates";
+import { readGitDates } from '../modules/git-dates';
+import type { Git } from '../modules/git-dates';
 
 /** A fake git that answers from a table, and records what it ran. */
 function fakeGit(answers: Record<string, string | Error>) {

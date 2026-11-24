@@ -12,24 +12,11 @@ import { composeEnv } from "../core/env.ts";
 import { slug as slugFor } from "../core/resolve.ts";
 import { acquireFileLock, loadState } from "../core/state.ts";
 import { dataDirFor, ensureWorkspace, resolveLast } from "../core/workspace.ts";
-import {
-  STOP_GRACE_MS,
-  isLive,
-  logFile,
-  portAccepts,
-  readEntry,
-  removeEntry,
-  startLockFile,
-  startTime,
-  stopGroup,
-  stopRecorded,
-  tailLines,
-  waitForPort,
-  writeEntry,
-  type ProcessEntry,
-} from "../core/supervise.ts";
+import { STOP_GRACE_MS, isLive, logFile, portAccepts, readEntry, removeEntry, startLockFile, startTime, stopGroup, stopRecorded, tailLines, waitForPort, writeEntry } from '../core/supervise.ts';
+import type { ProcessEntry } from '../core/supervise.ts';
 import { buildCommand, commandName, parseEnvFlags, printDryRun } from "./process.ts";
-import { stdoutOf, type Ctx, type ProjectConfig } from "../config/schema.ts";
+import { stdoutOf } from '../config/schema.ts';
+import type { Ctx, ProjectConfig } from '../config/schema.ts';
 import type { ProjectInput, WorkspaceInput } from "./types.ts";
 
 /** Default readiness wait for `start`, in seconds (§9.14). */
