@@ -1,6 +1,5 @@
 import { readdirSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
 	DOCS_ENTRY,
@@ -11,7 +10,7 @@ import {
 } from "../redirects";
 
 const contentRoot = resolve(
-	dirname(fileURLToPath(import.meta.url)),
+	import.meta.dirname,
 	"../content/docs",
 );
 

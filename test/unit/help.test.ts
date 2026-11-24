@@ -1,10 +1,9 @@
 import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { HELP, PKG_NAME, version } from "../../src/cli/help.ts";
 
-const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+const root = join(import.meta.dirname, "..", "..");
 const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as {
   name: string;
   version: string;

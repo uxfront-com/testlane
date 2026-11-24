@@ -2,7 +2,6 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 
 // Testlane's published package name. `version()` matches on it so it can tell its own
 // manifest apart from a parent workspace's package.json while walking up.
@@ -12,7 +11,7 @@ export function version(): string {
   // Walk up from this module until we find Testlane's own package.json. The relative
   // depth differs between source (src/cli/) and the compiled build (dist/src/cli/),
   // so resolve by identity rather than a fixed number of "..".
-  let dir = dirname(fileURLToPath(import.meta.url));
+  let dir = import.meta.dirname;
   for (let i = 0; i < 6; i++) {
     const file = join(dir, "package.json");
     if (existsSync(file)) {
