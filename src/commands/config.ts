@@ -240,13 +240,13 @@ function tomlView(p: ProjectConfig): Record<string, unknown> {
   if (p.setup.seedFrom !== undefined) {setup.seed_from = p.setup.seedFrom;}
   const commands: Record<string, Record<string, unknown>> = {};
   for (const [cname, c] of Object.entries(p.commands)) {
-    commands[cname] = { run: c.run, ...(c.cwd !== undefined && { cwd: c.cwd }), env: c.env };
+    commands[cname] = { run: c.run, ...(c.cwd !== undefined ? { cwd: c.cwd } : {}), env: c.env };
   }
   return {
     repo: p.repo,
     repo_path: p.repoPath,
     worktrees_path: p.worktreesPath,
-    ...(p.defaultBranch !== undefined && { default_branch: p.defaultBranch }),
+    ...(p.defaultBranch !== undefined ? { default_branch: p.defaultBranch } : {}),
     editor: p.editor,
     default_command: p.defaultCommand,
     ports: p.ports,
@@ -414,7 +414,7 @@ async function addUrl(ctx: Ctx, url: string, flags: { name?: string; root?: stri
     clearApproval: true,
     rollback,
     untrustedHint: `testlane config trust ${name}`,
-    ...(flags.detect && { detect: { repoReason: `config add ${repo}` } }),
+    ...(flags.detect ? { detect: { repoReason: `config add ${repo}` } } : {}),
   });
   if (result.outcome !== "no-file" && result.outcome !== "no-ref") {
     ctx.log.step(`next: testlane ${name} ${result.branch ?? "<branch|pr|path>"}`);
@@ -486,7 +486,7 @@ async function detectCmd(ctx: Ctx, arg: string | undefined, repoFile: boolean): 
     project = target;
   }
 
-  const findings = await detect(files, { ...(repo && { repo }), ...(project && { project }) });
+  const findings = await detect(files, { ...(repo ? { repo } : {}), ...(project ? { project } : {}) });
   const draft = renderDraft(findings, { source: label, repoFile });
   const out = stdoutOf(ctx);
   if (ctx.flags.json) {

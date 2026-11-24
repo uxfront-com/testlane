@@ -151,7 +151,7 @@ export async function setup(input: TopInput): Promise<number> {
       clearApproval: projectBefore === undefined,
       rollback,
       untrustedHint: `testlane config trust ${name}`,
-      detect: { repoReason: "setup --repo", ...(branch && { defaultBranch: branch }) },
+      detect: { repoReason: "setup --repo", ...(branch ? { defaultBranch: branch } : {}) },
     });
     if (draft !== undefined) {
       writeFileSync(projectFile, draft);

@@ -103,7 +103,7 @@ export async function detect(files: RepoFiles, opts: DetectOptions = {}): Promis
     out.push({ key: k, value, kind: confidence === "low" ? "guess" : "detected", confidence, reason });
   };
   const note = (reason: string, at?: string): void => {
-    out.push({ key: null, value: null, kind: "note", confidence: "high", reason, ...(at && { at }) });
+    out.push({ key: null, value: null, kind: "note", confidence: "high", reason, ...(at ? { at } : {}) });
   };
 
   const list = await files.list();
@@ -349,11 +349,11 @@ function parsePkg(dir: string, text: string): Pkg | null {
     typeof repo === "string" ? repo : repo && typeof repo === "object" ? (repo as { url?: unknown }).url : undefined;
   return {
     dir,
-    ...(typeof j.name === "string" && j.name !== "" && { name: j.name }),
+    ...(typeof j.name === "string" && j.name !== "" ? { name: j.name } : {}),
     scripts: stringEntries(j.scripts),
     deps,
-    ...(typeof j.packageManager === "string" && { packageManager: j.packageManager }),
-    ...(typeof repository === "string" && { repository }),
+    ...(typeof j.packageManager === "string" ? { packageManager: j.packageManager } : {}),
+    ...(typeof repository === "string" ? { repository } : {}),
   };
 }
 

@@ -89,7 +89,7 @@ export async function cloneTrustDetect(
     });
     const draft = renderDraft(findings, {
       source: `origin/${trust.branch}`,
-      ...(opts.detect.defaultBranch !== undefined && { defaultBranch: opts.detect.defaultBranch }),
+      ...(opts.detect.defaultBranch !== undefined ? { defaultBranch: opts.detect.defaultBranch } : {}),
     });
     return { trust, draft: draft.text };
   } finally {

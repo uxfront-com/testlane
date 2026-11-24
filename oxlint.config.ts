@@ -52,6 +52,24 @@ export default defineConfig({
       },
     },
     {
+      files: [
+        "src/commands/clone-detect.ts",
+        "src/commands/config.ts",
+        "src/commands/setup.ts",
+        "src/config/detect.ts",
+        "src/mcp/tools.ts",
+        "test/mcp-client.ts",
+        "test/unit/detect.test.ts",
+      ],
+      rules: {
+        // These files build each object as one literal that goes straight into a call, a return
+        // or JSON.stringify (a TOML view, a JSON schema, a JSON-RPC message), and leave out an
+        // optional field with a conditional spread. Separate statements would turn each literal
+        // into a mutable variable and an if, for no gain here. The rule stays on everywhere else.
+        "quality/no-conditional-empty-object-spread": "off",
+      },
+    },
+    {
       files: ["bin/testlane.ts", "apps/docs/scripts/**"],
       rules: {
         // Command-line entry points: the console is their output. The CLI writes through its
