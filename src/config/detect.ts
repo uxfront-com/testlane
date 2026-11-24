@@ -221,7 +221,7 @@ export async function detect(files: RepoFiles, opts: DetectOptions = {}): Promis
 
   // ── 7. Build before dev ────────────────────────────────────────────────────
   let setupRun = install;
-  let setupConfidence: Confidence = pmConfidence;
+  const setupConfidence: Confidence = pmConfidence;
   let setupReason = installReason;
   if (runner) {
     note(`${runner} runs this repo's tasks; the draft doesn't guess a build step before dev`, "setup.run");

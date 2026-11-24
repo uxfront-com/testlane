@@ -13,7 +13,6 @@ export default defineConfig({
     "no-console": "off",
     "no-promise-executor-return": "off",
     "no-useless-assignment": "off",
-    "prefer-const": "off",
     "quality/no-array-filter-map": "off",
     "quality/no-chained-type-assertions": "off",
     "quality/no-conditional-empty-object-spread": "off",
