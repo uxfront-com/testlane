@@ -140,8 +140,8 @@ export function validateDraft(text: string, repoFile: boolean): Record<string, u
   let parsed: Record<string, unknown>;
   try {
     parsed = parseToml(text) as Record<string, unknown>;
-  } catch (e) {
-    throw new TestlaneError("E_INTERNAL", `config detect wrote TOML that doesn't parse: ${printableLine((e as Error).message)}`);
+  } catch (error) {
+    throw new TestlaneError("E_INTERNAL", `config detect wrote TOML that doesn't parse: ${printableLine((error as Error).message)}`);
   }
   const result = (repoFile ? RawRepoSchema : RawProjectSchema).safeParse(parsed);
   if (!result.success) {

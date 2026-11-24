@@ -150,11 +150,11 @@ export async function start(input: WorkspaceInput): Promise<number> {
       );
     }
     throw setupError(`could not read the start time of pid ${child.pid} with ps`, "check that `ps` is on your PATH");
-  } catch (e) {
+  } catch (error) {
     // A start that never materialized the workspace (an unknown branch, say)
     // leaves no data dir behind for a workspace that doesn't exist.
     discard = freshDataDir && !loadState(project.name).workspaces[slug];
-    throw e;
+    throw error;
   } finally {
     lock.release();
     if (discard) {

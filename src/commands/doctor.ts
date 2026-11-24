@@ -147,8 +147,8 @@ async function checkProject(
   let project: ProjectConfig;
   try {
     project = loadProject(configDir, name, defaults);
-  } catch (e) {
-    checks.push({ name: `project ${name}: config`, status: "fail", detail: issueDetail(e) });
+  } catch (error) {
+    checks.push({ name: `project ${name}: config`, status: "fail", detail: issueDetail(error) });
     return;
   }
   checks.push({ name: `project ${name}: config`, status: "ok", detail: "schema-valid" });
@@ -160,8 +160,8 @@ async function checkProject(
     const loaded = loadEffectiveProjectWithSources(configDir, name, defaults);
     project = loaded.project;
     snapshotError = loaded.snapshotError;
-  } catch (e) {
-    snapshotError = e;
+  } catch (error) {
+    snapshotError = error;
   }
   checks.push(await repoFileCheck(name, project, snapshotError));
 
@@ -232,8 +232,8 @@ async function checkProject(
   // state file parses
   try {
     loadState(name);
-  } catch (e) {
-    checks.push({ name: `project ${name}: state`, status: "fail", detail: String((e as Error).message) });
+  } catch (error) {
+    checks.push({ name: `project ${name}: state`, status: "fail", detail: String((error as Error).message) });
   }
 }
 
@@ -256,8 +256,8 @@ async function repoFileCheck(name: string, project: ProjectConfig, snapshotError
   let tip;
   try {
     tip = branch ? await readRepoTip(project.repoPath, branch, name) : { kind: "no-ref" as const };
-  } catch (e) {
-    return check("warn", issueDetail(e));
+  } catch (error) {
+    return check("warn", issueDetail(error));
   }
   const trustHint = `run \`testlane config trust ${name}\``;
   switch (tip.kind) {
@@ -347,8 +347,8 @@ function pidAlive(pid: number): boolean {
   try {
     process.kill(pid, 0);
     return true;
-  } catch (e) {
-    return (e as NodeJS.ErrnoException).code === "EPERM";
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === "EPERM";
   }
 }
 

@@ -61,8 +61,8 @@ export async function main(argv: Array<string>, opts: MainOptions = {}): Promise
     const ctx: Ctx = { configDir, defaults, flags, log, gh };
 
     return await dispatch(result, ctx, defaults);
-  } catch (e) {
-    return formatError(e, debug);
+  } catch (error) {
+    return formatError(error, debug);
   }
 }
 

@@ -265,23 +265,23 @@ export function groupAlive(pgid: number): boolean {
   try {
     process.kill(-pgid, 0);
     return true;
-  } catch (e) {
-    return (e as NodeJS.ErrnoException).code === "EPERM";
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === "EPERM";
   }
 }
 
 function signalGroup(pgid: number, signal: NodeJS.Signals): void {
   try {
     process.kill(-pgid, signal);
-  } catch (e) {
-    const code = (e as NodeJS.ErrnoException).code;
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
     if (code === "ESRCH") {return;} // already gone
     if (code === "EPERM") {
       throw new TestlaneError("E_SETUP", `not permitted to signal process group ${pgid}`, {
         hint: "it belongs to another user; stop it as that user",
       });
     }
-    throw e;
+    throw error;
   }
 }
 

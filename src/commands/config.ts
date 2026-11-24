@@ -158,8 +158,8 @@ function validate(input: TopInput, project?: string): number {
     try {
       const loaded = loadEffectiveProjectWithSources(ctx.configDir, project, loadDefaults(ctx.configDir));
       if (loaded.snapshotError) {throw loaded.snapshotError;}
-    } catch (e) {
-      process.stderr.write(`${(e as Error).message}\n`);
+    } catch (error) {
+      process.stderr.write(`${(error as Error).message}\n`);
       return ExitCode.CONFIG;
     }
     ctx.log.step(`${project}: ok`);
@@ -401,9 +401,9 @@ async function addUrl(ctx: Ctx, url: string, flags: { name?: string; root?: stri
   try {
     // `wx`: a concurrent `config add` of the same name loses here, not silently.
     writeFileSync(projectFile, projectToml, { flag: "wx" });
-  } catch (e) {
-    if ((e as NodeJS.ErrnoException).code === "EEXIST") {throw configError(`project '${name}' already exists`);}
-    throw e;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "EEXIST") {throw configError(`project '${name}' already exists`);}
+    throw error;
   }
   ctx.log.step(`wrote ${projectFile}`);
 

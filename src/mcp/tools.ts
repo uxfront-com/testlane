@@ -443,7 +443,7 @@ export async function runTool(tool: Tool, rawArgs: unknown, opts: CallOptions): 
       noTrustApproval: true,
     };
     return await tool.run(parsed.data, { ctx, err });
-  } catch (e) {
-    return errorResult(e, err.text());
+  } catch (error) {
+    return errorResult(error, err.text());
   }
 }

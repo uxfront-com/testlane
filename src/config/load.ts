@@ -94,14 +94,14 @@ function parseTomlFile(file: string, label: string, issues: Array<ConfigIssue>):
   let text: string;
   try {
     text = readFileSync(file, "utf8");
-  } catch (e) {
-    issues.push({ file: label, path: "(root)", message: `cannot read file: ${(e as Error).message}` });
+  } catch (error) {
+    issues.push({ file: label, path: "(root)", message: `cannot read file: ${(error as Error).message}` });
     return {};
   }
   try {
     return parseToml(text);
-  } catch (e) {
-    issues.push({ file: label, path: "(root)", message: `TOML parse error: ${(e as Error).message}` });
+  } catch (error) {
+    issues.push({ file: label, path: "(root)", message: `TOML parse error: ${(error as Error).message}` });
     return {};
   }
 }
@@ -298,9 +298,9 @@ export function readSnapshot(name: string, approval: RepoApproval | undefined): 
   if (!approval) {return {};}
   try {
     return { approval, layer: snapshotLayer(name, approval) };
-  } catch (e) {
-    if (e instanceof ConfigValidationError) {return { approval, error: e };}
-    throw e;
+  } catch (error) {
+    if (error instanceof ConfigValidationError) {return { approval, error };}
+    throw error;
   }
 }
 
@@ -325,19 +325,19 @@ export function loadEffectiveProjectWithSources(
   let loaded: LoadedProject;
   try {
     loaded = loadProjectWithSources(configDir, name, defaults, snap.layer);
-  } catch (e) {
+  } catch (error) {
     // With no approved repo file, a user `default_command` may name one of its
     // commands that isn't approved yet (§5.7): point at the way to approve it.
     const label = `${name}.toml`;
     if (
       !snap.layer &&
-      e instanceof ConfigValidationError &&
-      !e.hint &&
-      e.issues.some((i) => i.file === label && i.path === "default_command")
+      error instanceof ConfigValidationError &&
+      !error.hint &&
+      error.issues.some((i) => i.file === label && i.path === "default_command")
     ) {
-      throw new ConfigValidationError(e.issues, { hint: `testlane config trust ${name}` });
+      throw new ConfigValidationError(error.issues, { hint: `testlane config trust ${name}` });
     }
-    throw e;
+    throw error;
   }
   return {
     ...loaded,
@@ -357,9 +357,9 @@ export function validateAll(configDir: string, opts: ValidateOptions = {}): Arra
   let defaults: Defaults = {};
   try {
     defaults = loadDefaults(configDir);
-  } catch (e) {
-    if (e instanceof ConfigValidationError) {issues.push(...e.issues);}
-    else {throw e;}
+  } catch (error) {
+    if (error instanceof ConfigValidationError) {issues.push(...error.issues);}
+    else {throw error;}
   }
   for (const name of listProjectNames(configDir)) {
     try {
@@ -369,10 +369,10 @@ export function validateAll(configDir: string, opts: ValidateOptions = {}): Arra
       } else {
         loadProject(configDir, name, defaults);
       }
-    } catch (e) {
-      if (e instanceof ConfigValidationError) {issues.push(...e.issues);}
-      else if (e instanceof TestlaneError) {issues.push({ file: `${name}.toml`, path: "(root)", message: e.message });}
-      else {throw e;}
+    } catch (error) {
+      if (error instanceof ConfigValidationError) {issues.push(...error.issues);}
+      else if (error instanceof TestlaneError) {issues.push({ file: `${name}.toml`, path: "(root)", message: error.message });}
+      else {throw error;}
     }
   }
   return issues;

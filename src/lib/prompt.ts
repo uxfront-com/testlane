@@ -16,11 +16,11 @@ export function promptLine(message: string, out: NodeJS.WritableStream = process
     let bytes = 0;
     try {
       bytes = readSync(0, buf, 0, buf.length, null);
-    } catch (e) {
-      const code = (e as NodeJS.ErrnoException).code;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
       if (code === "EAGAIN") {continue;} // stdin not ready yet; retry
       if (code === "EOF") {break;}
-      throw e;
+      throw error;
     }
     if (bytes === 0) {break;} // EOF
     readAny = true;

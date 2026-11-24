@@ -127,8 +127,8 @@ describe("branch disambiguator: no refspec through a branch name", () => {
       expect(() => refFromDisambiguator("branch", bad), bad).toThrow(/--branch expects a branch name/);
       try {
         refFromDisambiguator("branch", bad);
-      } catch (e) {
-        expect((e as { errCode?: string }).errCode, bad).toBe("E_RESOLVE");
+      } catch (error) {
+        expect((error as { errCode?: string }).errCode, bad).toBe("E_RESOLVE");
       }
     }
   });

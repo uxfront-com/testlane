@@ -46,12 +46,12 @@ export async function cloneTrustDetect(
     if (!isInitialized(project.repoPath)) {
       try {
         await initPrimaryRepo(g, opts.repo);
-      } catch (e) {
+      } catch (error) {
         // repo_path didn't exist before this run.
         rmSync(project.repoPath, { recursive: true, force: true });
         opts.rollback();
-        if (e instanceof TestlaneError && e.errCode === "E_GIT") {throw e;}
-        throw new TestlaneError("E_GIT", `cloning ${opts.repo} failed: ${(e as Error).message}`);
+        if (error instanceof TestlaneError && error.errCode === "E_GIT") {throw error;}
+        throw new TestlaneError("E_GIT", `cloning ${opts.repo} failed: ${(error as Error).message}`);
       }
     } else {
       // An existing clone (a `setup --force` re-run). It must be a clone of this

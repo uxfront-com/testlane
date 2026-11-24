@@ -24,7 +24,6 @@ export default defineConfig({
     "quality/no-unsafe-dictionary-type": "off",
     "typescript/no-explicit-any": "off",
     "typescript/no-non-null-assertion": "off",
-    "unicorn/catch-error-name": "off",
     "unicorn/consistent-function-scoping": "off",
     "unicorn/no-hex-escape": "off",
     "unicorn/numeric-separators-style": "off",

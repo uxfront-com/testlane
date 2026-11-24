@@ -22,9 +22,9 @@ const write = (name: string, body: string) => writeFileSync(join(dir, name), bod
 function issuesOf(fn: () => unknown): ConfigValidationError {
   try {
     fn();
-  } catch (e) {
-    if (e instanceof ConfigValidationError) {return e;}
-    throw e;
+  } catch (error) {
+    if (error instanceof ConfigValidationError) {return error;}
+    throw error;
   }
   throw new Error("expected a ConfigValidationError");
 }

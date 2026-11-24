@@ -24,9 +24,9 @@ export function parseRepoConfig(project: string, text: string): RawRepo {
   let raw: unknown;
   try {
     raw = parseToml(text);
-  } catch (e) {
+  } catch (error) {
     // The parser quotes the file's lines, and nothing in it is approved yet (§5.7).
-    const message = printableLines(`TOML parse error: ${(e as Error).message}`);
+    const message = printableLines(`TOML parse error: ${(error as Error).message}`);
     throw new ConfigValidationError([{ file, path: "(root)", message }]);
   }
   const parsed = RawRepoSchema.safeParse(raw);

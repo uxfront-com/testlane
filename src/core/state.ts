@@ -70,8 +70,8 @@ export function loadState(project: string): State {
   let parsed: State;
   try {
     parsed = JSON.parse(readFileSync(file, "utf8")) as State;
-  } catch (e) {
-    throw new TestlaneError("E_CONFIG", `state file ${file} is corrupt: ${(e as Error).message}`, {
+  } catch (error) {
+    throw new TestlaneError("E_CONFIG", `state file ${file} is corrupt: ${(error as Error).message}`, {
       hint: "remove or repair the file",
     });
   }
@@ -129,9 +129,9 @@ export function pidAlive(pid: number): boolean {
   try {
     process.kill(pid, 0);
     return true;
-  } catch (e) {
+  } catch (error) {
     // ESRCH → dead; EPERM → alive but not ours.
-    return (e as NodeJS.ErrnoException).code === "EPERM";
+    return (error as NodeJS.ErrnoException).code === "EPERM";
   }
 }
 
@@ -194,8 +194,8 @@ export async function acquireFileLock(file: string, opts: FileLockOptions): Prom
       writeSync(fd, JSON.stringify(contents));
       closeSync(fd);
       return { release: () => rmSync(file, { force: true }) };
-    } catch (e) {
-      if ((e as NodeJS.ErrnoException).code !== "EEXIST") {throw e;}
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") {throw error;}
 
       const holder = readLock(file);
       if (holder && !pidAlive(holder.pid)) {
