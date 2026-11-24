@@ -30,7 +30,8 @@ An empty changeset satisfies the check and releases nothing.
 
 ## How a release happens
 
-Releases run on `main` through `.github/workflows/changesets.yml`.
+Releases run on `main` through `.github/workflows/changesets.yml`, which calls
+the shared release workflow in `uxfront-com/.github`.
 
 1. Your PR merges with a changeset in `.changeset/`. The workflow opens or
    updates a **"Version Packages"** PR that consumes every pending changeset,
@@ -42,7 +43,8 @@ Releases run on `main` through `.github/workflows/changesets.yml`.
    release.
 
 Nobody pushes a release tag by hand. `changeset version` creates the version
-commit, and `changeset publish` creates the tag and the GitHub release.
+commit, and the shared workflow's publish job creates the tag and the GitHub
+release.
 
 > [!WARNING]
 > **Merging is publishing.** Any merge to `main` that leaves `.changeset/`
@@ -65,8 +67,9 @@ that reads like a missing package.
 
 ## The packaging gate
 
-`pnpm release` runs `pnpm run guard:packaging` before `changeset publish`. That
-guard builds the CLI and asserts that every promised verb still resolves from
-the built entrypoint. `1.0.0` shipped without `dist/src/commands/setup.js` and
+The `build` input in `changesets.yml` ends with `pnpm run guard:packaging`, which
+runs in the shared workflow's pack job before anything reaches npm. That guard
+builds the CLI and asserts that every promised verb still resolves from the
+built entrypoint. `1.0.0` shipped without `dist/src/commands/setup.js` and
 `testlane setup` failed for everyone who installed it; this guard is why that cannot
-reach the registry again. Do not move it out of the `release` script.
+reach the registry again. Keep it in the `build` input.
