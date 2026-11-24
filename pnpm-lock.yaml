@@ -42,8 +42,8 @@ catalogs:
       version: 3.3.8
   uxfront:
     '@uxfront/layer-docs':
-      specifier: ^0.9.0
-      version: 0.9.0
+      specifier: ^0.9.1
+      version: 0.9.1
     '@uxfront/layer-ui':
       specifier: ^0.1.10
       version: 0.1.10
@@ -94,7 +94,7 @@ importers:
         version: 3.16.1(@nuxt/schema@4.6.4)(better-sqlite3@12.11.1)(confbox@0.3.2)(dotenv@17.4.2)(esbuild@0.28.1)(giget@3.3.0)(magic-string@1.4.5)(magicast@0.5.5)(mlly@1.8.2)(oxc-parser@0.143.0)(rolldown@1.2.19)(rollup@4.62.2)(valibot@1.4.2(typescript@6.0.3))(vite@8.3.8(@types/node@22.20.5)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.49.0)(yaml@2.9.0))
       '@uxfront/layer-docs':
         specifier: catalog:uxfront
-        version: 0.9.0(8c2c4f2b45f837c6cb278f5632a8b911)
+        version: 0.9.1(8c2c4f2b45f837c6cb278f5632a8b911)
       '@uxfront/layer-ui':
         specifier: catalog:uxfront
         version: 0.1.10(d39e4bf78a6b24fbfc3267ac63e26d7d)
@@ -3504,8 +3504,8 @@ packages:
   '@unocss/core@66.10.0':
     resolution: {integrity: sha512-d3IMOBqbAdkq4zWiV469o1Q4qizdKbD/wkbvLaq7W6qf1aDrZ/dqg29aWMj23Nb48NVDNhsQAPUhQre/IZ04mQ==}
 
-  '@uxfront/layer-docs@0.9.0':
-    resolution: {integrity: sha512-KyA3+A9CllSWbSkIk4QSzQeeZWEtSG8f8e1LyT2aQ3rQlonN1c6EkCYisPNAUkoCMbX+EIUgLoqc1+IpXF4A0w==}
+  '@uxfront/layer-docs@0.9.1':
+    resolution: {integrity: sha512-TyEvRbEBE4ipKQBNlp+RLoTwsBq6bR5xtvQWdSS5cY+VBH8EN/4WLz2cNbF5qwitF2z3M0ed31wHppWH/YptZA==}
     peerDependencies:
       nuxt: ^4.5.0
       vue: ^3.5.0
@@ -11702,7 +11702,7 @@ snapshots:
   '@unocss/core@66.10.0':
     optional: true
 
-  '@uxfront/layer-docs@0.9.0(8c2c4f2b45f837c6cb278f5632a8b911)':
+  '@uxfront/layer-docs@0.9.1(8c2c4f2b45f837c6cb278f5632a8b911)':
     dependencies:
       '@nuxt/kit': 4.6.4(@nuxt/schema@4.6.4)(confbox@0.3.2)(dotenv@17.4.2)(giget@3.3.0)(jiti@2.7.0)(magic-string@1.4.5)(mlly@1.8.2)(oxc-parser@0.143.0)(rolldown@1.2.19)(unplugin@3.3.0(esbuild@0.28.1)(rolldown@1.2.19)(rollup@4.62.2)(vite@8.3.8(@types/node@22.20.5)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.49.0)(yaml@2.9.0)))
       '@uxfront/ui': 0.9.1(vue@3.5.43(typescript@6.0.3))
