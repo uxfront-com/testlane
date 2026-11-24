@@ -27,6 +27,8 @@ export interface Received {
 
 export interface ToolAnswer {
   /** The text block, parsed as JSON. */
+  // Each tool answers with its own JSON shape, and tests read it as they would in a test file.
+  // oxlint-disable-next-line typescript/no-explicit-any
   value: any;
   isError: boolean;
   at: number;

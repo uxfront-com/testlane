@@ -18,7 +18,6 @@ export default defineConfig({
     "quality/no-object-parameters": "off",
     "quality/no-unknown-returns": "off",
     "quality/no-unsafe-dictionary-type": "off",
-    "typescript/no-explicit-any": "off",
     "typescript/no-non-null-assertion": "off",
     "unicorn/consistent-function-scoping": "off",
   },
