@@ -493,7 +493,7 @@ export function checkDist(dist, { now = new Date() } = {}) {
 	// Every page in the sitemap, and every indexable page left out of it.
 	const titles = new Map();
 	const descriptions = new Map();
-	for (const url of [...new Set([...sitemap.keys(), ...indexable.keys()])]) {
+	for (const url of new Set([...sitemap.keys(), ...indexable.keys()])) {
 		const html = indexable.get(url);
 		const name = url.slice(SITE_URL.length) || "/";
 		if (!html) {

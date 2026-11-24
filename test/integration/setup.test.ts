@@ -1,7 +1,7 @@
 // §17.2 scenarios 5, 6, 9 — setup.run cache, seeding, and env composition.
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { makeEnv, makeFixtureOrigin, type Harness } from "../fixtures.ts";

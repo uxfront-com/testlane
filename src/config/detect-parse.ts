@@ -12,7 +12,7 @@ export interface WorkspaceYaml {
   skippedLines: string[];
 }
 
-const TOP_KEY = /^(?:"([^"]*)"|'([^']*)'|([^\s#:'"\-][^:#]*?))\s*:(.*)$/;
+const TOP_KEY = /^(?:"([^"]*)"|'([^']*)'|([^\s#:'"-][^:#]*?))\s*:(.*)$/;
 
 /** Strip a `# comment` that follows whitespace (or starts the text). Quotes hide `#`. */
 function stripComment(text: string): string {
@@ -69,8 +69,8 @@ function rawScalar(text: string): string | null {
   if (sq) return sq[1]!.replace(/''/g, "'");
   // A plain scalar can't start with an indicator or hold a flow character. A
   // leading `!` is pnpm's exclusion, not a YAML tag, when the rest is a path.
-  if (/^[\[\]{}&*|>%@`"'?:-]/.test(t)) return null;
-  if (/[\[\]{},]|:\s|\s#/.test(t)) return null;
+  if (/^[[\]{}&*|>%@`"'?:-]/.test(t)) return null;
+  if (/[[\]{},]|:\s|\s#/.test(t)) return null;
   return t;
 }
 
