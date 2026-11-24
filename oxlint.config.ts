@@ -5,9 +5,6 @@ export default defineConfig({
   extends: [vue],
   overrides: [
     {
-      // These files find control characters on purpose: they escape them before a terminal or a
-      // TOML file sees them, reject them in ref names and clone URLs (as git does), and test that
-      // none reach the output. The rule stays on everywhere else.
       files: [
         "src/commands/config.ts",
         "src/config/detect-emit.ts",
@@ -15,6 +12,9 @@ export default defineConfig({
         "test/unit/trust.test.ts",
       ],
       rules: {
+        // These files find control characters on purpose: they escape them before a terminal or
+        // a TOML file sees them, reject them in ref names and clone URLs as git does, and test
+        // that none reach the output. The rule stays on everywhere else.
         "no-control-regex": "off",
       },
     },
