@@ -9,7 +9,6 @@ export default defineConfig({
   rules: {
     // Baseline for 0.2.0: each rule that fails here today is off, and the commits that follow
     // turn them on one by one.
-    "no-console": "off",
     "no-promise-executor-return": "off",
     "quality/no-array-filter-map": "off",
     "quality/no-conditional-empty-object-spread": "off",
@@ -21,6 +20,14 @@ export default defineConfig({
     "unicorn/consistent-function-scoping": "off",
   },
   overrides: [
+    {
+      files: ["bin/testlane.ts", "apps/docs/scripts/**"],
+      rules: {
+        // Command-line entry points: the console is their output. The CLI writes through its
+        // own streams everywhere else, so the rule stays on there.
+        "no-console": "off",
+      },
+    },
     {
       files: [
         "src/commands/config.ts",
