@@ -237,6 +237,12 @@ async function selectByFilters(
   return selected;
 }
 
+/** Whether a PR state from gh or the cache is closed or merged. */
+const isClosed = (state: string) => {
+  const s = state.toUpperCase();
+  return s === "CLOSED" || s === "MERGED";
+};
+
 /**
  * Slugs whose upstream PR is closed or merged (§9.9). Prefers gh's authoritative
  * state, then a cached `ws.pr.state`, and finally falls back to the git-only
@@ -246,11 +252,6 @@ async function closedSlugs(ctx: Ctx, project: ProjectConfig, all: Array<Workspac
   const slugs = new Set<string>();
   const prs = all.filter((w) => w.kind === "pr" && w.number !== undefined);
   if (prs.length === 0) {return slugs;}
-
-  const isClosed = (state: string) => {
-    const s = state.toUpperCase();
-    return s === "CLOSED" || s === "MERGED";
-  };
 
   if (await ctx.gh.available()) {
     const repo = ghRepoSlug(project.repo);

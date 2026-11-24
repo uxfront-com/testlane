@@ -322,6 +322,15 @@ export async function detect(files: RepoFiles, opts: DetectOptions = {}): Promis
 
 // ── Packages ─────────────────────────────────────────────────────────────────
 
+/** The string-valued entries of a package.json object field, like `scripts`. */
+const stringEntries = (v: unknown): Record<string, string> => {
+  const out: Record<string, string> = {};
+  if (v && typeof v === "object" && !Array.isArray(v)) {
+    for (const [k, s] of Object.entries(v)) {if (typeof s === "string") {out[k] = s;}}
+  }
+  return out;
+};
+
 function parsePkg(dir: string, text: string): Pkg | null {
   let json: unknown;
   try {
@@ -331,16 +340,9 @@ function parsePkg(dir: string, text: string): Pkg | null {
   }
   if (!json || typeof json !== "object" || Array.isArray(json)) {return null;}
   const j = json as Record<string, unknown>;
-  const strings = (v: unknown): Record<string, string> => {
-    const out: Record<string, string> = {};
-    if (v && typeof v === "object" && !Array.isArray(v)) {
-      for (const [k, s] of Object.entries(v)) {if (typeof s === "string") {out[k] = s;}}
-    }
-    return out;
-  };
   const deps = new Set<string>();
   for (const field of ["dependencies", "devDependencies"]) {
-    for (const k of Object.keys(strings(j[field]))) {deps.add(k);}
+    for (const k of Object.keys(stringEntries(j[field]))) {deps.add(k);}
   }
   const repo = j.repository;
   const repository =
@@ -348,7 +350,7 @@ function parsePkg(dir: string, text: string): Pkg | null {
   return {
     dir,
     ...(typeof j.name === "string" && j.name !== "" && { name: j.name }),
-    scripts: strings(j.scripts),
+    scripts: stringEntries(j.scripts),
     deps,
     ...(typeof j.packageManager === "string" && { packageManager: j.packageManager }),
     ...(typeof repository === "string" && { repository }),
@@ -495,16 +497,18 @@ function app(pkg: Pkg, pm: PackageManager, port: string): App {
   return { pkg, command, confidence: "low", reason: `${where(pkg)} has a dev script of an unknown server`, dropped: [] };
 }
 
+/** Lower-case, with anything but letters, digits, `:`, `_` and `-` replaced by `-`. */
+const commandSlug = (s: string): string =>
+  s
+    .toLowerCase()
+    .replaceAll(/[^a-z0-9:_-]/g, "-")
+    .replace(/^[^a-z0-9]+/, "");
+
 /** A command name from a package name; on a clash, from its directory. */
 function commandName(pkg: Pkg, taken: Set<string>): string {
-  const clean = (s: string): string =>
-    s
-      .toLowerCase()
-      .replaceAll(/[^a-z0-9:_-]/g, "-")
-      .replace(/^[^a-z0-9]+/, "");
-  const fromName = pkg.name ? clean(pkg.name.replace(/^@[^/]+\//, "")) : "";
+  const fromName = pkg.name ? commandSlug(pkg.name.replace(/^@[^/]+\//, "")) : "";
   if (fromName && !taken.has(fromName)) {return fromName;}
-  const fromDir = clean(pkg.dir === "" ? "root" : pkg.dir);
+  const fromDir = commandSlug(pkg.dir === "" ? "root" : pkg.dir);
   let candidate = fromDir || "app";
   for (let n = 2; taken.has(candidate); n++) {candidate = `${fromDir || "app"}-${n}`;}
   return candidate;

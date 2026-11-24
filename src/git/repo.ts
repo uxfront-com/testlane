@@ -391,19 +391,21 @@ export async function treeEntry(repoPath: string, ref: string, path: string): Pr
 /** Largest repo file Testlane reads, in bytes (§5.7). */
 export const MAX_BLOB_BYTES = 1024 * 1024;
 
+/** Runs git and keeps its output as bytes. */
+const gitBytes = (argv: Array<string>) => captureBytes(argv, { env: env() });
+
 /**
  * Read a blob's raw bytes. A partial clone fetches it from origin on demand.
  * Throws E_CONFIG for a blob over `MAX_BLOB_BYTES`, E_GIT on any git failure.
  */
 export async function readBlob(repoPath: string, id: string, label: string): Promise<Buffer> {
-  const run = (argv: Array<string>) => captureBytes(argv, { env: env() });
-  const size = await run(["git", "-C", repoPath, "cat-file", "-s", id]);
+  const size = await gitBytes(["git", "-C", repoPath, "cat-file", "-s", id]);
   if (size.code !== 0) {throw new TestlaneError("E_GIT", `cannot read ${label}: ${size.stderr.trim()}`);}
   const bytes = Number(size.stdout.toString("utf8").trim());
   if (!Number.isFinite(bytes) || bytes > MAX_BLOB_BYTES) {
     throw new TestlaneError("E_CONFIG", `${label} is larger than ${MAX_BLOB_BYTES} bytes`);
   }
-  const blob = await run(["git", "-C", repoPath, "cat-file", "blob", id]);
+  const blob = await gitBytes(["git", "-C", repoPath, "cat-file", "blob", id]);
   if (blob.code !== 0) {throw new TestlaneError("E_GIT", `cannot read ${label}: ${blob.stderr.trim()}`);}
   return blob.stdout;
 }

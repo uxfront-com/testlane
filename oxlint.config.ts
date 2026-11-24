@@ -12,9 +12,16 @@ export default defineConfig({
     "quality/no-known-value-widening": "off",
     "quality/no-unsafe-dictionary-type": "off",
     "typescript/no-non-null-assertion": "off",
-    "unicorn/consistent-function-scoping": "off",
   },
   overrides: [
+    {
+      files: ["test/**", "apps/docs/test/**"],
+      rules: {
+        // Test helpers live in the describe block whose tests use them, and blocks define their
+        // own helper of the same name (originMain, repoState). The rule stays on in src/.
+        "unicorn/consistent-function-scoping": "off",
+      },
+    },
     {
       files: ["bin/testlane.ts", "apps/docs/scripts/**"],
       rules: {
