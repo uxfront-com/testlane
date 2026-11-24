@@ -30,7 +30,7 @@ export async function allocatePorts(opts: AllocateOptions): Promise<number[]> {
   for (let step = 0; step < WINDOW; step++) {
     const offset = (startOffset + step * stride) % (WINDOW * stride);
     const base = windowStart + offset;
-    if (base + ports > windowEnd) continue;
+    if (base + ports > windowEnd) {continue;}
     const block = Array.from({ length: ports }, (_, i) => base + i);
     let ok = true;
     for (const p of block) {
@@ -39,7 +39,7 @@ export async function allocatePorts(opts: AllocateOptions): Promise<number[]> {
         break;
       }
     }
-    if (ok) return block;
+    if (ok) {return block;}
   }
 
   // Window exhausted — fall back to the deterministic candidate and let the

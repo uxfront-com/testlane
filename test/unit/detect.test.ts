@@ -142,7 +142,7 @@ describe("fixture drafts", () => {
       for (const repoFile of [false, true]) {
         const { text } = await draft(files, repoFile);
         for (const line of text.split("\n")) {
-          if (line === "" || /^\[.+\]$/.test(line) || line.startsWith("# note: ")) continue;
+          if (line === "" || /^\[.+\]$/.test(line) || line.startsWith("# note: ")) {continue;}
           expect(line).toMatch(/  # (detected|guess): \S/);
         }
         const parsed = parseToml(text);
@@ -368,7 +368,7 @@ describe("rules 4–6: apps", () => {
     const base = { packageManager: `${pm}@2.0.0`, workspaces: ["apps/*"] };
     const k = await config(repo(base, two("nuxt dev", { nuxt: "4" })));
     expect(k.commands.dev.run).toBe(wsKnown);
-    if (pm === "bun") expect(k.commands.dev.cwd).toBe("apps/web");
+    if (pm === "bun") {expect(k.commands.dev.cwd).toBe("apps/web");}
     const u = await config(repo(base, two("node server.js", {})));
     expect(u.commands.dev).toEqual({ run: wsUnknown, env: { PORT: "{port}" } });
     const rk = await config(repo({ packageManager: `${pm}@2.0.0`, scripts: { dev: "nuxt dev" }, dependencies: { nuxt: "4" } }));
@@ -413,7 +413,7 @@ describe("rules 4–6: apps", () => {
 
   it("more than 10 apps: keeps 10 and notes the rest", async () => {
     const files: Record<string, string> = { "pnpm-workspace.yaml": ws("apps/*") };
-    for (let i = 10; i < 22; i++) files[`apps/a${i}/package.json`] = pkg(`a${i}`, "vite", { vite: "1" });
+    for (let i = 10; i < 22; i++) {files[`apps/a${i}/package.json`] = pkg(`a${i}`, "vite", { vite: "1" });}
     const fs = await findings(repo(PNPM, files));
     expect(find(fs, "ports")!.value).toBe(10);
     expect(notes(fs)).toContain("more than 10 apps; skipped apps/a20, apps/a21");

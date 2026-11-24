@@ -38,7 +38,7 @@ function canWriteDir(dir: string): boolean {
   let cur = dir;
   while (!existsSync(cur)) {
     const parent = dirname(cur);
-    if (parent === cur) return false;
+    if (parent === cur) {return false;}
     cur = parent;
   }
   try {
@@ -55,7 +55,7 @@ function canWriteDir(dir: string): boolean {
  * never find it and would warn on every healthy machine.
  */
 function resolveBinary(bin: string): string | null {
-  if (!bin.includes("/") && !bin.includes("\\")) return which(bin);
+  if (!bin.includes("/") && !bin.includes("\\")) {return which(bin);}
   return existsSync(bin) ? bin : null;
 }
 
@@ -69,7 +69,7 @@ function canonical(dir: string): string {
   const tail: string[] = [];
   while (!existsSync(cur)) {
     const parent = dirname(cur);
-    if (parent === cur) return dir;
+    if (parent === cur) {return dir;}
     tail.unshift(basename(cur));
     cur = parent;
   }
@@ -250,7 +250,7 @@ async function repoFileCheck(name: string, project: ProjectConfig, snapshotError
   if (snapshotError !== undefined) {
     return check("fail", `the stored approval is unusable (${issueDetail(snapshotError)}) — run \`testlane config trust ${name}\``);
   }
-  if (!isInitialized(project.repoPath)) return check("ok", "not cloned yet");
+  if (!isInitialized(project.repoPath)) {return check("ok", "not cloned yet");}
   const approval = readRepoApproval(name);
   const branch = await repoConfigBranch(project);
   let tip;
@@ -268,8 +268,8 @@ async function repoFileCheck(name: string, project: ProjectConfig, snapshotError
         ? check("warn", `removed upstream from origin/${branch}, but an approval is stored; the next run drops it`)
         : check("ok", `no ${REPO_FILE} on origin/${branch}`);
     case "file":
-      if (!approval) return check("warn", `untrusted ${REPO_FILE} on origin/${branch} — ${trustHint}`);
-      if (approval.blob !== tip.blob) return check("warn", `${REPO_FILE} on origin/${branch} changed since approval — ${trustHint}`);
+      if (!approval) {return check("warn", `untrusted ${REPO_FILE} on origin/${branch} — ${trustHint}`);}
+      if (approval.blob !== tip.blob) {return check("warn", `${REPO_FILE} on origin/${branch} changed since approval — ${trustHint}`);}
       return check("ok", `trusted (sha256 ${approval.sha256.slice(0, 12)}, approved ${approval.approvedAt})`);
   }
 }
@@ -303,9 +303,9 @@ async function checkOrphans(name: string, repoPath: string, checks: Check[]): Pr
   const gitSet = new Set(gitDirs);
   const untracked = gitDirs.filter((d) => !tracked.has(d));
   const missing = [...tracked].filter((d) => !gitSet.has(d) || !existsSync(d));
-  if (untracked.length === 0 && missing.length === 0) return;
+  if (untracked.length === 0 && missing.length === 0) {return;}
   const bits: string[] = [];
-  if (untracked.length) bits.push(`${untracked.length} git worktree(s) not in state`);
+  if (untracked.length) {bits.push(`${untracked.length} git worktree(s) not in state`);}
   if (missing.length) {
     bits.push(
       `${missing.length} state entr${missing.length === 1 ? "y" : "ies"} with no live worktree (deleted on disk or unknown to git)`,
@@ -328,14 +328,14 @@ function isReadable(path: string): boolean {
 }
 
 function staleLocks(sdir: string): string[] {
-  if (!existsSync(sdir)) return [];
+  if (!existsSync(sdir)) {return [];}
   const out: string[] = [];
   for (const f of readdirSync(sdir)) {
-    if (!f.endsWith(".lock")) continue;
+    if (!f.endsWith(".lock")) {continue;}
     const p = join(sdir, f);
     try {
       const { pid } = JSON.parse(readFileSync(p, "utf8")) as { pid: number };
-      if (!pidAlive(pid)) out.push(f);
+      if (!pidAlive(pid)) {out.push(f);}
     } catch {
       out.push(f); // unreadable lock ⇒ stale
     }

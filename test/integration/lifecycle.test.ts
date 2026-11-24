@@ -66,11 +66,11 @@ afterEach(() => {
   if (existsSync(data)) {
     for (const slug of readdirSync(data)) {
       const file = join(data, slug, "process.json");
-      if (existsSync(file)) started.push(Number(JSON.parse(readFileSync(file, "utf8")).pid));
+      if (existsSync(file)) {started.push(Number(JSON.parse(readFileSync(file, "utf8")).pid));}
     }
   }
   for (const pid of started) {
-    if (!Number.isInteger(pid) || pid <= 1) continue;
+    if (!Number.isInteger(pid) || pid <= 1) {continue;}
     for (const target of [-pid, pid]) {
       try {
         process.kill(target, "SIGKILL");
@@ -124,7 +124,7 @@ function psField(field: string, pid: number): string {
 async function waitDead(pid: number, ms = 5_000): Promise<boolean> {
   const deadline = Date.now() + ms;
   while (pidAlive(pid)) {
-    if (Date.now() >= deadline) return false;
+    if (Date.now() >= deadline) {return false;}
     await sleep(50);
   }
   return true;
@@ -148,7 +148,7 @@ beforeAll(() => {
     cwd: repoRoot,
     encoding: "utf8",
   });
-  if (build.status !== 0) throw new Error(`build failed:\n${build.stdout}${build.stderr}`);
+  if (build.status !== 0) {throw new Error(`build failed:\n${build.stdout}${build.stderr}`);}
   // Package-scope lookup stops at node_modules, so the root "type": "module"
   // doesn't reach this build. Without this, Node 18 loads it as CommonJS.
   writeFileSync(join(builtDir, "package.json"), '{"type":"module"}\n');
@@ -382,7 +382,7 @@ describe("stop", () => {
     const s = await startJson(["main", "start", "tree"]);
     // The port can accept before the listen callback has written the file.
     const pidFile = join(tmp, "child.pid");
-    for (let i = 0; i < 100 && !existsSync(pidFile); i++) await sleep(50);
+    for (let i = 0; i < 100 && !existsSync(pidFile); i++) {await sleep(50);}
     const child = Number(readFileSync(pidFile, "utf8").trim());
     started.push(child);
     expect(child).not.toBe(s.pid);
@@ -510,9 +510,9 @@ describe("logs", () => {
     const log = join(dataDir("main"), "process.log");
     writeFileSync(log, "first\n");
     const f = spawnBuilt([PROJECT, "main", "logs", "-f"]);
-    for (let i = 0; i < 100 && !f.out().includes("first"); i++) await sleep(50);
+    for (let i = 0; i < 100 && !f.out().includes("first"); i++) {await sleep(50);}
     appendFileSync(log, "second\n");
-    for (let i = 0; i < 100 && !f.out().includes("second"); i++) await sleep(50);
+    for (let i = 0; i < 100 && !f.out().includes("second"); i++) {await sleep(50);}
     f.child.kill("SIGINT");
     const r = await f.done;
     expect(r.stdout).toBe("first\nsecond\n");

@@ -40,7 +40,7 @@ async function computeRows(project: string, du: boolean): Promise<Row[]> {
     const missing = !existsSync(ws.path);
     const dirty = !missing && ws.kind !== "path" ? await isDirty(ws.path) : false;
     const row: Row = { ...ws, dirty, missing };
-    if (du) row.diskBytes = await workspaceDiskBytes(ws.path);
+    if (du) {row.diskBytes = await workspaceDiskBytes(ws.path);}
     rows.push(row);
   }
   rows.sort((a, b) => (a.lastUsedAt < b.lastUsedAt ? 1 : -1));
@@ -49,7 +49,7 @@ async function computeRows(project: string, du: boolean): Promise<Row[]> {
 
 /** True when a cached PR entry is absent or older than the stale window. */
 function prStale(fetchedAt: string | undefined): boolean {
-  if (!fetchedAt) return true;
+  if (!fetchedAt) {return true;}
   return Date.now() - new Date(fetchedAt).getTime() > PR_STALE_MS;
 }
 
@@ -61,20 +61,20 @@ function prStale(fetchedAt: string | undefined): boolean {
  */
 async function refreshPrMeta(ctx: Ctx, project: ProjectConfig, rows: Row[]): Promise<Map<string, FreshPr>> {
   const fresh = new Map<string, FreshPr>();
-  if (!(await ctx.gh.available())) return fresh;
+  if (!(await ctx.gh.available())) {return fresh;}
   const repo = ghRepoSlug(project.repo);
-  if (!repo) return fresh;
+  if (!repo) {return fresh;}
 
   const stale = rows.filter(
     (r) => r.kind === "pr" && r.number !== undefined && !r.missing && prStale(r.pr?.fetchedAt),
   );
-  if (stale.length === 0) return fresh;
+  if (stale.length === 0) {return fresh;}
 
   const budget = new Promise<void>((res) => setTimeout(res, REFRESH_BUDGET_MS));
   const work = Promise.all(
     stale.map(async (r) => {
       const meta = await ctx.gh.prView(repo, r.number!);
-      if (meta) fresh.set(r.slug, { state: meta.state, ci: meta.ci ?? null });
+      if (meta) {fresh.set(r.slug, { state: meta.state, ci: meta.ci ?? null });}
     }),
   );
   await Promise.race([work, budget]);
@@ -82,31 +82,31 @@ async function refreshPrMeta(ctx: Ctx, project: ProjectConfig, rows: Row[]): Pro
 }
 
 function ciMark(ci: CiState): string {
-  if (ci === "pass") return " ✓";
-  if (ci === "fail") return " ✗";
+  if (ci === "pass") {return " ✓";}
+  if (ci === "fail") {return " ✗";}
   return "";
 }
 
 /** Compose the STATUS column: PR state + CI, plus dirty/missing (§9.8). */
 function status(r: Row, fresh: Map<string, FreshPr>): string {
-  if (r.missing) return "missing";
+  if (r.missing) {return "missing";}
   const parts: string[] = [];
   if (r.kind === "pr") {
     const f = fresh.get(r.slug);
     const state = f?.state ?? r.pr?.state;
-    if (state) parts.push(state.toLowerCase() + ciMark(f?.ci ?? null));
+    if (state) {parts.push(state.toLowerCase() + ciMark(f?.ci ?? null));}
   }
-  if (r.dirty) parts.push("dirty");
-  if (parts.length === 0) parts.push("clean");
+  if (r.dirty) {parts.push("dirty");}
+  if (parts.length === 0) {parts.push("clean");}
   return parts.join(" ");
 }
 
 function age(iso: string): string {
   const ms = Date.now() - new Date(iso).getTime();
   const d = Math.floor(ms / 86_400_000);
-  if (d >= 1) return `${d}d`;
+  if (d >= 1) {return `${d}d`;}
   const h = Math.floor(ms / 3_600_000);
-  if (h >= 1) return `${h}h`;
+  if (h >= 1) {return `${h}h`;}
   const m = Math.floor(ms / 60_000);
   return `${m}m`;
 }
@@ -162,7 +162,7 @@ export async function pick(input: ProjectInput): Promise<number> {
   }
   const state = loadState(project.name);
   const rows = Object.values(state.workspaces).sort((a, b) => (a.lastUsedAt < b.lastUsedAt ? 1 : -1));
-  if (rows.length === 0) return list(input); // reuse the "no workspaces" line
+  if (rows.length === 0) {return list(input);} // reuse the "no workspaces" line
 
   rows.forEach((ws, i) => {
     const label = ws.kind === "path" ? "(adopted)" : (ws.branch ?? "—");
@@ -220,9 +220,9 @@ export async function info(input: WorkspaceInput): Promise<number> {
     ["created", row.createdAt],
     ["last used", row.lastUsedAt],
   ];
-  if (row.pr) lines.push(["pr", `${row.pr.state} — ${row.pr.title}`], ["pr url", row.pr.url]);
-  if (du && row.diskBytes != null) lines.push(["disk", humanBytes(row.diskBytes)]);
-  for (const [k, v] of lines) stdoutOf(ctx).write(`${k}: ${v}\n`);
+  if (row.pr) {lines.push(["pr", `${row.pr.state} — ${row.pr.title}`], ["pr url", row.pr.url]);}
+  if (du && row.diskBytes != null) {lines.push(["disk", humanBytes(row.diskBytes)]);}
+  for (const [k, v] of lines) {stdoutOf(ctx).write(`${k}: ${v}\n`);}
   return ExitCode.SUCCESS;
 }
 

@@ -75,9 +75,9 @@ function extractFlags(pre: string[]): Extracted {
     const inlineVal = tok.startsWith("--") && eq !== -1 ? tok.slice(eq + 1) : undefined;
 
     const takeValue = (): string => {
-      if (inlineVal !== undefined) return inlineVal;
+      if (inlineVal !== undefined) {return inlineVal;}
       const next = pre[i + 1];
-      if (next === undefined) throw usage(`flag ${name} requires a value`);
+      if (next === undefined) {throw usage(`flag ${name} requires a value`);}
       i += 1;
       return next;
     };
@@ -110,7 +110,7 @@ function extractFlags(pre: string[]): Extracted {
       case "--pr":
       case "--branch":
       case "--path": {
-        if (disambiguator) throw usage("only one ref disambiguator (--pr/--branch/--path) may be given");
+        if (disambiguator) {throw usage("only one ref disambiguator (--pr/--branch/--path) may be given");}
         const kind = name.slice(2) as Disambiguator["kind"];
         disambiguator = { kind, value: takeValue() };
         break;
@@ -138,16 +138,16 @@ export function parse(argv: string[], deps: ParseDeps): ParseResult {
 
   // Nothing but flags → show help.
   if (rest.length === 0) {
-    if (disambiguator) throw usage("ref disambiguators are only valid for workspace commands");
+    if (disambiguator) {throw usage("ref disambiguators are only valid for workspace commands");}
     return { kind: "top", verb: "help", args: [], global };
   }
 
   const p0 = rest[0]!;
-  if (isFlag(p0)) throw usage(`unexpected flag '${p0}' before a command`);
+  if (isFlag(p0)) {throw usage(`unexpected flag '${p0}' before a command`);}
 
   // 3a. Top-level verb.
   if (isTopLevelVerb(p0)) {
-    if (disambiguator) throw usage("ref disambiguators are only valid for workspace commands");
+    if (disambiguator) {throw usage("ref disambiguators are only valid for workspace commands");}
     return { kind: "top", verb: p0, args: rest.slice(1), global };
   }
 
@@ -165,7 +165,7 @@ export function parse(argv: string[], deps: ParseDeps): ParseResult {
       ref = match.ref;
     } else {
       const next = rest[idx];
-      if (next === undefined) throw usage(`URL '${p0}' has no ref; provide one (e.g. a PR number or branch)`);
+      if (next === undefined) {throw usage(`URL '${p0}' has no ref; provide one (e.g. a PR number or branch)`);}
       ref = parseRef(next);
       idx += 1;
     }
@@ -276,14 +276,14 @@ function levenshtein(a: string, b: string): number {
   const n = b.length;
   const prev = Array.from({ length: n + 1 }, () => 0);
   const curr = Array.from({ length: n + 1 }, () => 0);
-  for (let j = 0; j <= n; j++) prev[j] = j;
+  for (let j = 0; j <= n; j++) {prev[j] = j;}
   for (let i = 1; i <= m; i++) {
     curr[0] = i;
     for (let j = 1; j <= n; j++) {
       const cost = a[i - 1] === b[j - 1] ? 0 : 1;
       curr[j] = Math.min(prev[j]! + 1, curr[j - 1]! + 1, prev[j - 1]! + cost);
     }
-    for (let j = 0; j <= n; j++) prev[j] = curr[j]!;
+    for (let j = 0; j <= n; j++) {prev[j] = curr[j]!;}
   }
   return prev[n]!;
 }

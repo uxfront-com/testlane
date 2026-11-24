@@ -61,7 +61,7 @@ export async function diff(input: WorkspaceInput): Promise<number> {
  * stop it (ADR-003).
  */
 function diffIO(ctx: Ctx): PassthroughOptions {
-  if (!ctx.isolated) return {};
+  if (!ctx.isolated) {return {};}
   return { stdout: stdoutOf(ctx), closeStdin: true, ownGroup: true, signal: ctx.signal };
 }
 
@@ -71,7 +71,7 @@ function diffIO(ctx: Ctx): PassthroughOptions {
  * unavailable, so diff still shows *something* useful.
  */
 async function diffRange(worktreeDir: string, project: ProjectConfig): Promise<string> {
-  if (!worktreeDir || !project.defaultBranch) return "";
+  if (!worktreeDir || !project.defaultBranch) {return "";}
   const res = await capture(
     ["git", "-C", worktreeDir, "merge-base", `origin/${project.defaultBranch}`, "HEAD"],
     { allowFailure: true },

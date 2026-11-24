@@ -33,9 +33,9 @@ interface Filters {
 }
 
 function fmtBytes(bytes: number | null): string {
-  if (bytes === null) return "?";
-  if (bytes >= 1e9) return `${(bytes / 1e9).toFixed(1)} GB`;
-  if (bytes >= 1e6) return `${(bytes / 1e6).toFixed(1)} MB`;
+  if (bytes === null) {return "?";}
+  if (bytes >= 1e9) {return `${(bytes / 1e9).toFixed(1)} GB`;}
+  if (bytes >= 1e6) {return `${(bytes / 1e6).toFixed(1)} MB`;}
   return `${Math.max(1, Math.round(bytes / 1e3))} KB`;
 }
 
@@ -52,7 +52,7 @@ async function buildPlan(targets: Workspace[], reasons: Map<string, string>): Pr
 }
 
 function confirm(ctx: Ctx, count: number): boolean {
-  if (ctx.flags.yes) return true;
+  if (ctx.flags.yes) {return true;}
   if (!process.stdin.isTTY) {
     throw usage(`refusing to remove ${count} workspace(s) without confirmation`, "pass --yes for non-interactive use");
   }
@@ -76,16 +76,16 @@ async function execute(
       continue;
     }
     const disposed = await disposeWorkspace(ctx, project, entry.ws, force);
-    if (!disposed) continue;
+    if (!disposed) {continue;}
     delete state.workspaces[entry.ws.slug];
     removed.push(entry.ws.slug);
-    if (entry.bytes) freed += entry.bytes;
+    if (entry.bytes) {freed += entry.bytes;}
   }
 
-  if (!ctx.flags.dryRun) saveState(project.name, state);
+  if (!ctx.flags.dryRun) {saveState(project.name, state);}
 
-  for (const slug of removed) stdoutOf(ctx).write(`${slug}\n`);
-  if (removed.length > 0) ctx.log.step(`freed ${fmtBytes(freed)}`);
+  for (const slug of removed) {stdoutOf(ctx).write(`${slug}\n`);}
+  if (removed.length > 0) {ctx.log.step(`freed ${fmtBytes(freed)}`);}
   return ExitCode.SUCCESS;
 }
 
@@ -95,7 +95,7 @@ export async function clean(input: ProjectInput): Promise<number> {
     bools: ["--all", "--merged", "--closed", "--include-adopted", "--force", "--yes", "--prune-state"],
     values: ["--older-than"],
   });
-  if (flags.bool("--yes")) ctx.flags.yes = true;
+  if (flags.bool("--yes")) {ctx.flags.yes = true;}
 
   const explicit = flags.positionals;
   const includeAdopted = flags.bool("--include-adopted");
@@ -136,9 +136,9 @@ export async function clean(input: ProjectInput): Promise<number> {
 
 /** Parse `--older-than 7d` / `36h` / `90m` into milliseconds (§9.9). */
 function parseOlderThan(raw: string | undefined): number | undefined {
-  if (raw === undefined) return undefined;
+  if (raw === undefined) {return undefined;}
   const m = /^(\d+)([smhdw])$/.exec(raw.trim());
-  if (!m) throw usage(`invalid --older-than '${raw}'`, "use a count + unit, e.g. 90m, 36h, 7d, 2w");
+  if (!m) {throw usage(`invalid --older-than '${raw}'`, "use a count + unit, e.g. 90m, 36h, 7d, 2w");}
   const n = Number(m[1]);
   const unit = m[2]!;
   const scale: Record<string, number> = { s: 1e3, m: 6e4, h: 36e5, d: 864e5, w: 6048e5 };
@@ -163,7 +163,7 @@ async function runClean(
     // Explicit slugs select exactly those workspaces, adopted or not (§9.9).
     const bySlug = new Map(all.map((w) => [w.slug, w]));
     const missing = explicit.filter((s) => !bySlug.has(s));
-    if (missing.length) throw usage(`no such workspace(s): ${missing.join(", ")}`);
+    if (missing.length) {throw usage(`no such workspace(s): ${missing.join(", ")}`);}
     targets = explicit.map((s) => bySlug.get(s)!);
   } else {
     targets = await selectByFilters(ctx, project, all, filters, includeAdopted, reasons);
@@ -207,24 +207,24 @@ async function selectByFilters(
 
   const selected: Workspace[] = [];
   for (const ws of all) {
-    if (ws.adopted && !includeAdopted) continue;
+    if (ws.adopted && !includeAdopted) {continue;}
 
     const why: string[] = [];
     if (filters.pruneState) {
-      if (existsSync(ws.path)) continue; // only entries whose worktree is gone
+      if (existsSync(ws.path)) {continue;} // only entries whose worktree is gone
       why.push("state-only");
     }
     if (filters.olderThanMs !== undefined) {
       const age = now - Date.parse(ws.lastUsedAt);
-      if (!(age >= filters.olderThanMs)) continue;
+      if (!(age >= filters.olderThanMs)) {continue;}
       why.push(`idle ${fmtAge(age)}`);
     }
     if (filters.merged) {
-      if (!merged!.has(ws.slug)) continue;
+      if (!merged!.has(ws.slug)) {continue;}
       why.push("merged");
     }
     if (filters.closed) {
-      if (!closed!.has(ws.slug)) continue;
+      if (!closed!.has(ws.slug)) {continue;}
       why.push("closed");
     }
     // --all with no narrowing filter takes everything above.
@@ -242,7 +242,7 @@ async function selectByFilters(
 async function closedSlugs(ctx: Ctx, project: ProjectConfig, all: Workspace[]): Promise<Set<string>> {
   const slugs = new Set<string>();
   const prs = all.filter((w) => w.kind === "pr" && w.number !== undefined);
-  if (prs.length === 0) return slugs;
+  if (prs.length === 0) {return slugs;}
 
   const isClosed = (state: string) => {
     const s = state.toUpperCase();
@@ -254,7 +254,7 @@ async function closedSlugs(ctx: Ctx, project: ProjectConfig, all: Workspace[]): 
     if (repo) {
       for (const ws of prs) {
         const meta = await ctx.gh.prView(repo, ws.number!);
-        if (isClosed(meta?.state ?? ws.pr?.state ?? "")) slugs.add(ws.slug);
+        if (isClosed(meta?.state ?? ws.pr?.state ?? "")) {slugs.add(ws.slug);}
       }
       return slugs;
     }
@@ -265,10 +265,10 @@ async function closedSlugs(ctx: Ctx, project: ProjectConfig, all: Workspace[]): 
   for (const ws of prs) {
     if (ws.pr?.state) {
       anyCached = true;
-      if (isClosed(ws.pr.state)) slugs.add(ws.slug);
+      if (isClosed(ws.pr.state)) {slugs.add(ws.slug);}
     }
   }
-  if (anyCached) return slugs;
+  if (anyCached) {return slugs;}
 
   // Last resort: a PR branch merged into the default branch counts as closed.
   return mergedSlugs(ctx, project, all);
@@ -287,23 +287,23 @@ async function mergedSlugs(ctx: Ctx, project: ProjectConfig, all: Workspace[]): 
   const branches = await mergedBranches(project.repoPath, base);
   const slugs = new Set<string>();
   for (const ws of all) {
-    if (ws.branch && ws.branch !== base && branches.has(ws.branch)) slugs.add(ws.slug);
+    if (ws.branch && ws.branch !== base && branches.has(ws.branch)) {slugs.add(ws.slug);}
   }
   return slugs;
 }
 
 function fmtAge(ms: number): string {
   const days = Math.floor(ms / 864e5);
-  if (days >= 1) return `${days}d`;
+  if (days >= 1) {return `${days}d`;}
   const hours = Math.floor(ms / 36e5);
-  if (hours >= 1) return `${hours}h`;
+  if (hours >= 1) {return `${hours}h`;}
   return `${Math.max(1, Math.floor(ms / 6e4))}m`;
 }
 
 export async function rm(input: WorkspaceInput): Promise<number> {
   const { ctx, project, ref } = input;
   const flags = parseFlags(input.args, { bools: ["--force", "--yes"] });
-  if (flags.bool("--yes")) ctx.flags.yes = true;
+  if (flags.bool("--yes")) {ctx.flags.yes = true;}
   const slug = slugFor(ref);
   const noFilters: Filters = { all: false, merged: false, closed: false, pruneState: false };
 

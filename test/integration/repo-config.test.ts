@@ -263,7 +263,7 @@ describe("config show", () => {
     const human = await env.run(["config", "show", "app"]);
     expect(human.code).toBe(0);
     const lines = human.stdout.trimEnd().split("\n");
-    for (const line of lines) expect(line).toMatch(/  # (user|repo|default)$/);
+    for (const line of lines) {expect(line).toMatch(/  # (user|repo|default)$/);}
     expect(lines.find((l) => l.startsWith("commands.which.run ="))).toMatch(/# repo$/);
     expect(lines.find((l) => l.startsWith("repo ="))).toMatch(/# user$/);
   });
@@ -338,7 +338,7 @@ describe("config add", () => {
   let plain: FixtureOrigin;
   const saved: Record<string, string | undefined> = {};
   const setEnv = (key: string, value: string) => {
-    if (!(key in saved)) saved[key] = process.env[key];
+    if (!(key in saved)) {saved[key] = process.env[key];}
     process.env[key] = value;
   };
 
@@ -362,8 +362,8 @@ describe("config add", () => {
 
   afterEach(() => {
     for (const [key, value] of Object.entries(saved)) {
-      if (value === undefined) delete process.env[key];
-      else process.env[key] = value;
+      if (value === undefined) {delete process.env[key];}
+      else {process.env[key] = value;}
       delete saved[key];
     }
   });
@@ -592,7 +592,7 @@ describe("unusable approvals and more gated paths", () => {
 describe("config add: names, leftovers and rollback", () => {
   const saved: Record<string, string | undefined> = {};
   const setEnv = (key: string, value: string) => {
-    if (!(key in saved)) saved[key] = process.env[key];
+    if (!(key in saved)) {saved[key] = process.env[key];}
     process.env[key] = value;
   };
   let plain: FixtureOrigin;
@@ -612,8 +612,8 @@ describe("config add: names, leftovers and rollback", () => {
 
   afterEach(() => {
     for (const [key, value] of Object.entries(saved)) {
-      if (value === undefined) delete process.env[key];
-      else process.env[key] = value;
+      if (value === undefined) {delete process.env[key];}
+      else {process.env[key] = value;}
       delete saved[key];
     }
   });

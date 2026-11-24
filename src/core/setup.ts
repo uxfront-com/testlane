@@ -55,7 +55,7 @@ export async function runSetup(
 
 function seed(ctx: Ctx, project: ProjectConfig, worktree: string, reseed: boolean): void {
   const seedFiles = project.setup.seedFiles;
-  if (seedFiles.length === 0) return;
+  if (seedFiles.length === 0) {return;}
 
   const configBase = join(ctx.configDir, "seeds", project.name);
   const fromBase = project.setup.seedFrom ? expandTilde(project.setup.seedFrom) : undefined;
@@ -64,8 +64,8 @@ function seed(ctx: Ctx, project: ProjectConfig, worktree: string, reseed: boolea
     assertSafeRelative(rel);
     const target = join(worktree, rel);
 
-    if (reseed && existsSync(target)) rmSync(target, { force: true });
-    if (existsSync(target)) continue; // never overwrite
+    if (reseed && existsSync(target)) {rmSync(target, { force: true });}
+    if (existsSync(target)) {continue;} // never overwrite
 
     const source = [join(configBase, rel), fromBase ? join(fromBase, rel) : undefined]
       .filter((s): s is string => s !== undefined)
@@ -109,7 +109,7 @@ export async function computeSetupHash(worktree: string, globs: string[]): Promi
     // still lets a `**` pattern descend every installed `node_modules/`, which in
     // a large monorepo can take a minute or more.
     const entries = await glob(pattern, { cwd: worktree, dot: true, onlyFiles: true, ignore: HASH_EXCLUDES });
-    for (const rel of entries) matched.add(rel);
+    for (const rel of entries) {matched.add(rel);}
   }
 
   const hash = createHash("sha256");
@@ -136,5 +136,5 @@ async function install(ctx: Ctx, project: ProjectConfig, ws: Workspace, wc: Work
 
   ctx.log.step("running setup");
   const code = await passthrough(["bash", "-c", script], { cwd: ws.path, env, ...scriptIO(ctx) });
-  if (code !== 0) throw setupError(`setup command failed (exit ${code})`);
+  if (code !== 0) {throw setupError(`setup command failed (exit ${code})`);}
 }

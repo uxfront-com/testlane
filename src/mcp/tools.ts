@@ -85,7 +85,7 @@ function jsonSchema(params: Record<string, Param>): object {
   for (const [name, p] of Object.entries(params)) {
     const { required: isRequired, ...schema } = p;
     properties[name] = schema;
-    if (isRequired) required.push(name);
+    if (isRequired) {required.push(name);}
   }
   return { type: "object", properties, ...(required.length ? { required } : {}), additionalProperties: false };
 }
@@ -94,16 +94,16 @@ function zodSchema(params: Record<string, Param>): z.ZodType<Record<string, unkn
   const shape: Record<string, z.ZodTypeAny> = {};
   for (const [name, p] of Object.entries(params)) {
     let s: z.ZodTypeAny;
-    if (p.type === "boolean") s = z.boolean();
+    if (p.type === "boolean") {s = z.boolean();}
     else if (p.type === "string") {
       let str = z.string().min(1);
-      if (p.pattern) str = str.regex(new RegExp(p.pattern), `must match ${p.pattern}`);
+      if (p.pattern) {str = str.regex(new RegExp(p.pattern), `must match ${p.pattern}`);}
       s = p.enum ? z.enum(p.enum as [string, ...string[]]) : str;
     } else {
       let n = p.type === "integer" ? z.number().int() : z.number();
-      if (p.minimum !== undefined) n = n.min(p.minimum);
-      if (p.exclusiveMinimum !== undefined) n = n.gt(p.exclusiveMinimum);
-      if (p.maximum !== undefined) n = n.max(p.maximum);
+      if (p.minimum !== undefined) {n = n.min(p.minimum);}
+      if (p.exclusiveMinimum !== undefined) {n = n.gt(p.exclusiveMinimum);}
+      if (p.maximum !== undefined) {n = n.max(p.maximum);}
       s = n;
     }
     shape[name] = p.required ? s : s.optional();
@@ -149,7 +149,7 @@ export function errorResult(e: unknown, stderr: string): ToolResult {
 /** A `--json` verb: its JSON as it printed it, or an envelope when it printed none. */
 function jsonResult(code: number, out: BufferSink, err: BufferSink): ToolResult {
   const text = out.text().trim();
-  if (text === "") return envelope({ exitCode: code, stdout: "", stderr: err.text() }, code !== 0);
+  if (text === "") {return envelope({ exitCode: code, stdout: "", stderr: err.text() }, code !== 0);}
   return { text, isError: code !== 0 };
 }
 

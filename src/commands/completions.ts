@@ -32,8 +32,8 @@ const PROJECT = PROJECT_VERBS.join(" ");
 const WORKSPACE = WORKSPACE_VERBS.join(" ");
 
 function render(shell: Shell, projects: string[]): string {
-  if (shell === "bash") return bash(projects);
-  if (shell === "zsh") return zsh(projects);
+  if (shell === "bash") {return bash(projects);}
+  if (shell === "zsh") {return zsh(projects);}
   return fish(projects);
 }
 

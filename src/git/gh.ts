@@ -38,7 +38,7 @@ interface StatusCheck {
  * empty/absent → null (no marker).
  */
 function rollupCi(rollup: StatusCheck[] | undefined): "pass" | "fail" | "pending" | null {
-  if (!rollup || rollup.length === 0) return null;
+  if (!rollup || rollup.length === 0) {return null;}
   let pending = false;
   for (const c of rollup) {
     const verdict = (c.conclusion || c.state || "").toUpperCase();
@@ -57,7 +57,7 @@ export class RealGhClient implements GhClient {
   private cachedAvailable: boolean | undefined;
 
   async available(): Promise<boolean> {
-    if (this.cachedAvailable !== undefined) return this.cachedAvailable;
+    if (this.cachedAvailable !== undefined) {return this.cachedAvailable;}
     try {
       const res = await capture(["gh", "auth", "status"], { allowFailure: true });
       this.cachedAvailable = res.code === 0;
@@ -73,7 +73,7 @@ export class RealGhClient implements GhClient {
         ["gh", "pr", "view", String(n), "--repo", repo, "--json", PR_FIELDS],
         { allowFailure: true },
       );
-      if (res.code !== 0) return null;
+      if (res.code !== 0) {return null;}
       const raw = JSON.parse(res.stdout) as {
         headRefName?: string;
         isCrossRepository?: boolean;

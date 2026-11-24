@@ -139,8 +139,8 @@ export function makeEnv(
       `worktrees_path = ${JSON.stringify(worktreesPath(name))}`,
       `default_branch = ${JSON.stringify(spec.defaultBranch ?? "main")}`,
     ];
-    if (spec.ports !== undefined) lines.push(`ports = ${spec.ports}`);
-    if (spec.extraToml) lines.push(spec.extraToml);
+    if (spec.ports !== undefined) {lines.push(`ports = ${spec.ports}`);}
+    if (spec.extraToml) {lines.push(spec.extraToml);}
     writeFileSync(join(configDir, `${name}.toml`), lines.join("\n") + "\n");
   }
 
@@ -183,8 +183,8 @@ export function makeEnv(
 }
 
 function restore(key: string, prev: string | undefined): void {
-  if (prev === undefined) delete process.env[key];
-  else process.env[key] = prev;
+  if (prev === undefined) {delete process.env[key];}
+  else {process.env[key] = prev;}
 }
 
 /**
@@ -199,7 +199,7 @@ export function fakeGh(metas: Record<number, Partial<PrMeta>>): GhClient & { dif
     available: async () => true,
     prView: async (_repo, n) => {
       const m = metas[n];
-      if (!m) return null;
+      if (!m) {return null;}
       return {
         headRefName: m.headRefName ?? `pr/${n}`,
         isCrossRepository: m.isCrossRepository ?? false,

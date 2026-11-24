@@ -202,8 +202,8 @@ describe("defaultConfigDir — §5.1", () => {
       expect(defaultConfigDir()).toBe(join(homedir(), ".testlane"));
       expect(homedir()).toBe(dir);
     } finally {
-      if (prevHome === undefined) delete process.env.HOME;
-      else process.env.HOME = prevHome;
+      if (prevHome === undefined) {delete process.env.HOME;}
+      else {process.env.HOME = prevHome;}
     }
   });
 });

@@ -57,13 +57,13 @@ function writeTree(dir: string, files: Record<string, string>): void {
 
 /** Every path under `dir` with its mtime, so a test can prove nothing was written. */
 function snapshot(dir: string): string[] {
-  if (!existsSync(dir)) return [];
+  if (!existsSync(dir)) {return [];}
   const out: string[] = [];
   const walk = (d: string): void => {
     for (const e of readdirSync(d, { withFileTypes: true })) {
       const p = join(d, e.name);
       out.push(`${p} ${statSync(p).mtimeMs}`);
-      if (e.isDirectory()) walk(p);
+      if (e.isDirectory()) {walk(p);}
     }
   };
   walk(dir);
@@ -74,8 +74,8 @@ function markers(dir: string): string[] {
   const found: string[] = [];
   const walk = (d: string): void => {
     for (const e of readdirSync(d, { withFileTypes: true })) {
-      if (e.name.startsWith("pwned")) found.push(join(d, e.name));
-      if (e.isDirectory()) walk(join(d, e.name));
+      if (e.name.startsWith("pwned")) {found.push(join(d, e.name));}
+      if (e.isDirectory()) {walk(join(d, e.name));}
     }
   };
   walk(dir);
@@ -317,8 +317,8 @@ describe("config detect <project>", () => {
       expect((await env.run(["config", "trust", "app"])).code).toBe(0);
       expect((await env.run(["config", "detect", "app"])).code).toBe(0);
     } finally {
-      if (prev === undefined) delete process.env.GIT_TRACE;
-      else process.env.GIT_TRACE = prev;
+      if (prev === undefined) {delete process.env.GIT_TRACE;}
+      else {process.env.GIT_TRACE = prev;}
     }
     const log = readFileSync(trace, "utf8");
     expect(log).toContain("built-in: git fetch");
@@ -348,7 +348,7 @@ describe("--detect", () => {
   let withFile: FixtureOrigin;
   const saved: Record<string, string | undefined> = {};
   const setEnv = (key: string, value: string) => {
-    if (!(key in saved)) saved[key] = process.env[key];
+    if (!(key in saved)) {saved[key] = process.env[key];}
     process.env[key] = value;
   };
 
@@ -372,8 +372,8 @@ describe("--detect", () => {
 
   afterEach(() => {
     for (const [key, value] of Object.entries(saved)) {
-      if (value === undefined) delete process.env[key];
-      else process.env[key] = value;
+      if (value === undefined) {delete process.env[key];}
+      else {process.env[key] = value;}
       delete saved[key];
     }
   });
@@ -385,7 +385,7 @@ describe("--detect", () => {
   };
   const onlyGitAnd = (extra: string[]) => {
     for (const argv of recorded) {
-      if (argv[0] === "git") continue;
+      if (argv[0] === "git") {continue;}
       expect(extra, argv.join(" ")).toContain(argv[0]);
     }
   };

@@ -80,7 +80,7 @@ export function loadState(project: string): State {
       hint: `this Testlane understands version ${STATE_VERSION}; upgrade Testlane or migrate the file`,
     });
   }
-  if (!parsed.workspaces) parsed.workspaces = {};
+  if (!parsed.workspaces) {parsed.workspaces = {};}
   return parsed;
 }
 
@@ -92,10 +92,10 @@ export function loadState(project: string): State {
 export function readRepoApproval(project: string): RepoApproval | undefined {
   try {
     const parsed = JSON.parse(readFileSync(statePath(project), "utf8")) as Partial<State> | null;
-    if (!parsed || parsed.version !== STATE_VERSION) return undefined;
+    if (!parsed || parsed.version !== STATE_VERSION) {return undefined;}
     const rc = parsed.repoConfig;
-    if (!rc || typeof rc !== "object") return undefined;
-    if (typeof rc.content !== "string" || typeof rc.sha256 !== "string" || typeof rc.blob !== "string") return undefined;
+    if (!rc || typeof rc !== "object") {return undefined;}
+    if (typeof rc.content !== "string" || typeof rc.sha256 !== "string" || typeof rc.blob !== "string") {return undefined;}
     return rc;
   } catch {
     return undefined;
@@ -187,7 +187,7 @@ export async function acquireFileLock(file: string, opts: FileLockOptions): Prom
   const deadline = Date.now() + opts.timeoutMs;
 
   for (;;) {
-    if (opts.signal?.aborted) throw abortedError();
+    if (opts.signal?.aborted) {throw abortedError();}
     try {
       const fd = openSync(file, "wx"); // O_CREAT | O_EXCL | O_WRONLY
       const contents: LockContents = { pid: process.pid, startedAt: new Date().toISOString() };
@@ -195,7 +195,7 @@ export async function acquireFileLock(file: string, opts: FileLockOptions): Prom
       closeSync(fd);
       return { release: () => rmSync(file, { force: true }) };
     } catch (e) {
-      if ((e as NodeJS.ErrnoException).code !== "EEXIST") throw e;
+      if ((e as NodeJS.ErrnoException).code !== "EEXIST") {throw e;}
 
       const holder = readLock(file);
       if (holder && !pidAlive(holder.pid)) {
@@ -203,7 +203,7 @@ export async function acquireFileLock(file: string, opts: FileLockOptions): Prom
         rmSync(file, { force: true });
         continue;
       }
-      if (Date.now() >= deadline) throw opts.onTimeout(holder);
+      if (Date.now() >= deadline) {throw opts.onTimeout(holder);}
       await sleep(LOCK_POLL_MS, opts.signal);
     }
   }

@@ -157,18 +157,18 @@ function wsContextWithPort(
   portFlag: string | undefined,
 ): WorkspaceContext {
   const override = parsePort(portFlag);
-  if (override === undefined) return wsContext(project, ws, dataDir);
+  if (override === undefined) {return wsContext(project, ws, dataDir);}
   return wsContext(project, { ...ws, ports: [override, ...ws.ports.slice(1)] }, dataDir);
 }
 
 function commandCwd(ws: Workspace, cwd: string | undefined, vars: Record<string, string>, name: string): string {
-  if (!cwd) return ws.path;
+  if (!cwd) {return ws.path;}
   const resolved = interpolate(cwd, vars, `commands.${name}.cwd`);
   return isAbsolute(resolved) ? resolved : join(ws.path, resolved);
 }
 
 function parsePort(value: string | undefined): number | undefined {
-  if (value === undefined) return undefined;
+  if (value === undefined) {return undefined;}
   const n = Number(value);
   if (!Number.isInteger(n) || n < 1 || n > 65535) {
     throw usage(`--port expects a port number (1–65535), got '${value}'`);
@@ -180,7 +180,7 @@ export function parseEnvFlags(items: string[]): Record<string, string> {
   const out: Record<string, string> = {};
   for (const item of items) {
     const eq = item.indexOf("=");
-    if (eq <= 0) throw usage(`--env expects K=V, got '${item}'`);
+    if (eq <= 0) {throw usage(`--env expects K=V, got '${item}'`);}
     out[item.slice(0, eq)] = item.slice(eq + 1);
   }
   return out;
@@ -198,11 +198,11 @@ export function printDryRun(
 ): void {
   const vars = templateVars(wc);
   const layered: Record<string, string> = { ...testlaneEnv(wc) };
-  for (const [k, v] of Object.entries(project.env)) layered[k] = interpolate(v, vars, `env.${k}`);
+  for (const [k, v] of Object.entries(project.env)) {layered[k] = interpolate(v, vars, `env.${k}`);}
   if (extra.commandEnv) {
-    for (const [k, v] of Object.entries(extra.commandEnv)) layered[k] = interpolate(v, vars, `command.env.${k}`);
+    for (const [k, v] of Object.entries(extra.commandEnv)) {layered[k] = interpolate(v, vars, `command.env.${k}`);}
   }
-  if (extra.flagEnv) Object.assign(layered, extra.flagEnv);
+  if (extra.flagEnv) {Object.assign(layered, extra.flagEnv);}
 
   for (const [k, v] of Object.entries(layered)) {
     process.stdout.write(`export ${k}=${shellQuote(v)}\n`);

@@ -37,7 +37,7 @@ export async function runHook(
   fatal: boolean,
 ): Promise<void> {
   const template = project.hooks[name];
-  if (!template) return;
+  if (!template) {return;}
 
   const script = interpolate(template, templateVars(wc), `hooks.${name}`);
   if (ctx.flags.dryRun) {
@@ -51,5 +51,5 @@ export async function runHook(
   if (code !== 0 && fatal) {
     throw setupError(`hook ${name} failed (exit ${code})`);
   }
-  if (code !== 0) ctx.log.warn(`hook ${name} exited ${code} (continuing)`);
+  if (code !== 0) {ctx.log.warn(`hook ${name} exited ${code} (continuing)`);}
 }

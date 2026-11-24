@@ -5,8 +5,8 @@ import { isAbsolute, join, resolve } from "node:path";
 
 /** Expand a leading `~` / `~/` to the user's home. No env-var interpolation (§5.4). */
 export function expandTilde(p: string): string {
-  if (p === "~") return homedir();
-  if (p.startsWith("~/")) return join(homedir(), p.slice(2));
+  if (p === "~") {return homedir();}
+  if (p.startsWith("~/")) {return join(homedir(), p.slice(2));}
   return p;
 }
 
@@ -28,6 +28,6 @@ export function stateDir(): string {
 
 export function xdgStateHome(): string {
   const fromEnv = process.env.XDG_STATE_HOME;
-  if (fromEnv && fromEnv.trim() !== "") return expandTilde(fromEnv);
+  if (fromEnv && fromEnv.trim() !== "") {return expandTilde(fromEnv);}
   return join(homedir(), ".local", "state");
 }

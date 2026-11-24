@@ -23,7 +23,7 @@ function issuesOf(fn: () => unknown): ConfigValidationError {
   try {
     fn();
   } catch (e) {
-    if (e instanceof ConfigValidationError) return e;
+    if (e instanceof ConfigValidationError) {return e;}
     throw e;
   }
   throw new Error("expected a ConfigValidationError");
@@ -51,7 +51,7 @@ describe("repo schema", () => {
     const err = issuesOf(() => parseRepoConfig("app", `editor = "zed"\nports = "two"\n`));
     expect(err.errCode).toBe("E_CONFIG");
     expect(err.issues.map((i) => i.path).sort()).toEqual(["editor", "ports"]);
-    for (const issue of err.issues) expect(issue.file).toBe("app:.testlane.toml");
+    for (const issue of err.issues) {expect(issue.file).toBe("app:.testlane.toml");}
     expect(err.message.split("\n")).toHaveLength(2);
   });
 
@@ -242,8 +242,8 @@ describe("validateAll and approved snapshots", () => {
         { file: "app:.testlane.toml", path: "editor", message: "user-only key; set it in app.toml" },
       ]);
     } finally {
-      if (prev === undefined) delete process.env.XDG_STATE_HOME;
-      else process.env.XDG_STATE_HOME = prev;
+      if (prev === undefined) {delete process.env.XDG_STATE_HOME;}
+      else {process.env.XDG_STATE_HOME = prev;}
     }
   });
 });

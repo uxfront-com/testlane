@@ -20,7 +20,7 @@ function stripComment(text: string): string {
   for (let i = 0; i < text.length; i++) {
     const c = text[i]!;
     if (quote) {
-      if (c === quote) quote = null;
+      if (c === quote) {quote = null;}
     } else if (c === '"' || c === "'") {
       quote = c;
     } else if (c === "#" && (i === 0 || /\s/.test(text[i - 1]!))) {
@@ -37,7 +37,7 @@ function splitFlow(text: string): string[] {
   let cur = "";
   for (const c of text) {
     if (quote) {
-      if (c === quote) quote = null;
+      if (c === quote) {quote = null;}
     } else if (c === '"' || c === "'") {
       quote = c;
     } else if (c === ",") {
@@ -62,15 +62,15 @@ function scalar(text: string): string | null {
 
 function rawScalar(text: string): string | null {
   const t = text.trim();
-  if (t === "") return null;
+  if (t === "") {return null;}
   const dq = t.match(/^"((?:[^"\\]|\\.)*)"$/);
-  if (dq) return dq[1]!.replace(/\\(.)/g, "$1");
+  if (dq) {return dq[1]!.replace(/\\(.)/g, "$1");}
   const sq = t.match(/^'((?:[^']|'')*)'$/);
-  if (sq) return sq[1]!.replace(/''/g, "'");
+  if (sq) {return sq[1]!.replace(/''/g, "'");}
   // A plain scalar can't start with an indicator or hold a flow character. A
   // leading `!` is pnpm's exclusion, not a YAML tag, when the rest is a path.
-  if (/^[[\]{}&*|>%@`"'?:-]/.test(t)) return null;
-  if (/[[\]{},]|:\s|\s#/.test(t)) return null;
+  if (/^[[\]{}&*|>%@`"'?:-]/.test(t)) {return null;}
+  if (/[[\]{},]|:\s|\s#/.test(t)) {return null;}
   return t;
 }
 
@@ -85,7 +85,7 @@ export function parseWorkspaceYaml(text: string): WorkspaceYaml {
 
   for (const raw of lines) {
     const line = stripComment(raw).replace(/\s+$/, "");
-    if (line.trim() === "") continue;
+    if (line.trim() === "") {continue;}
     const indented = /^\s/.test(line);
 
     // A block list may sit at column 0 under its key, as YAML allows.
@@ -93,13 +93,13 @@ export function parseWorkspaceYaml(text: string): WorkspaceYaml {
     if (item && (indented || inPackages)) {
       if (inPackages) {
         const value = item[2] === undefined ? null : scalar(item[2]);
-        if (value === null) out.skippedLines.push(raw.trim());
-        else (out.packages ??= []).push(value);
+        if (value === null) {out.skippedLines.push(raw.trim());}
+        else {(out.packages ??= []).push(value);}
       }
       continue;
     }
     if (indented) {
-      if (inPackages) out.skippedLines.push(raw.trim());
+      if (inPackages) {out.skippedLines.push(raw.trim());}
       continue;
     }
 
@@ -112,7 +112,7 @@ export function parseWorkspaceYaml(text: string): WorkspaceYaml {
     const name = (key[1] ?? key[2] ?? key[3] ?? "").trim();
     const rest = key[4]!.trim();
     if (name !== "packages") {
-      if (!out.skippedKeys.includes(name)) out.skippedKeys.push(name);
+      if (!out.skippedKeys.includes(name)) {out.skippedKeys.push(name);}
       continue;
     }
     if (rest === "") {
@@ -127,10 +127,10 @@ export function parseWorkspaceYaml(text: string): WorkspaceYaml {
     }
     out.packages ??= [];
     for (const part of splitFlow(flow[1]!)) {
-      if (part.trim() === "") continue;
+      if (part.trim() === "") {continue;}
       const value = scalar(part);
-      if (value === null) out.skippedLines.push(part.trim());
-      else out.packages.push(value);
+      if (value === null) {out.skippedLines.push(part.trim());}
+      else {out.packages.push(value);}
     }
   }
   return out;
@@ -141,7 +141,7 @@ export function parseWorkspaceYaml(text: string): WorkspaceYaml {
 // `./apps/x/` → `apps/x`, and `apps/x/package.json` → `apps/x`: the directory a pattern names.
 export function normalizePattern(glob: string): string {
   let p = glob.trim().replace(/\\/g, "/");
-  while (p.startsWith("./")) p = p.slice(2);
+  while (p.startsWith("./")) {p = p.slice(2);}
   p = p.replace(/\/package\.json$/, "").replace(/\/+$/, "");
   return p === "" ? "." : p;
 }
@@ -149,20 +149,20 @@ export function normalizePattern(glob: string): string {
 function segmentRegExp(seg: string): RegExp {
   let re = /^[*?]/.test(seg) ? "(?!\\.)" : "";
   for (const c of seg) {
-    if (c === "*") re += "[^/]*";
-    else if (c === "?") re += "[^/]";
-    else re += c.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+    if (c === "*") {re += "[^/]*";}
+    else if (c === "?") {re += "[^/]";}
+    else {re += c.replace(/[.+^${}()|[\]\\]/g, "\\$&");}
   }
   return new RegExp(`^${re}$`);
 }
 
 function matchSegments(pattern: string[], path: string[]): boolean {
-  if (pattern.length === 0) return path.length === 0;
+  if (pattern.length === 0) {return path.length === 0;}
   const [head, ...rest] = pattern;
   if (head === "**") {
     for (let k = 0; k <= path.length; k++) {
-      if (k > 0 && path[k - 1]!.startsWith(".")) return false;
-      if (matchSegments(rest, path.slice(k))) return true;
+      if (k > 0 && path[k - 1]!.startsWith(".")) {return false;}
+      if (matchSegments(rest, path.slice(k))) {return true;}
     }
     return false;
   }

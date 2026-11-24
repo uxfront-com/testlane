@@ -50,7 +50,7 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
-  for (const c of clients) c.kill();
+  for (const c of clients) {c.kill();}
   await Promise.all(clients.map((c) => c.exited));
   const pids: number[] = [];
   for (const { env, projects } of envs) {
@@ -60,19 +60,19 @@ afterEach(async () => {
       if (existsSync(data)) {
         for (const slug of readdirSync(data)) {
           const file = join(data, slug, "process.json");
-          if (existsSync(file)) pids.push(Number(JSON.parse(readFileSync(file, "utf8")).pid));
+          if (existsSync(file)) {pids.push(Number(JSON.parse(readFileSync(file, "utf8")).pid));}
         }
       }
       if (existsSync(trees)) {
         for (const slug of readdirSync(trees)) {
           const file = join(trees, slug, "bg.pid");
-          if (existsSync(file)) pids.push(Number(readFileSync(file, "utf8").trim()));
+          if (existsSync(file)) {pids.push(Number(readFileSync(file, "utf8").trim()));}
         }
       }
     }
   }
   for (const pid of pids) {
-    if (!Number.isInteger(pid) || pid <= 1) continue;
+    if (!Number.isInteger(pid) || pid <= 1) {continue;}
     for (const target of [-pid, pid]) {
       try {
         process.kill(target, "SIGKILL");
@@ -130,7 +130,7 @@ function expectSameShape(tool: unknown, cli: unknown, changing: string[] = [], p
     expect(tool !== null && typeof tool === "object", path).toBe(true);
     expect(Object.keys(tool as object).sort(), path).toEqual(Object.keys(cli).sort());
     for (const [k, v] of Object.entries(cli)) {
-      if (changing.includes(k)) continue;
+      if (changing.includes(k)) {continue;}
       expectSameShape((tool as Record<string, unknown>)[k], v, changing, `${path}.${k}`);
     }
     return;
@@ -236,9 +236,9 @@ describe("tools/list", () => {
       for (const banned of ["argv", "args", "passthrough", "force", "exec", "yes"]) {
         expect(Object.keys(t.inputSchema.properties), t.name).not.toContain(banned);
       }
-      if (readOnly.includes(t.name)) expect(t.annotations, t.name).toEqual({ readOnlyHint: true });
-      else if (t.name === "rm") expect(t.annotations).toEqual({ readOnlyHint: false, destructiveHint: true });
-      else expect(t.annotations, t.name).toEqual({ readOnlyHint: false, destructiveHint: false });
+      if (readOnly.includes(t.name)) {expect(t.annotations, t.name).toEqual({ readOnlyHint: true });}
+      else if (t.name === "rm") {expect(t.annotations).toEqual({ readOnlyHint: false, destructiveHint: true });}
+      else {expect(t.annotations, t.name).toEqual({ readOnlyHint: false, destructiveHint: false });}
     }
     // Only the two long tools take a timeout.
     const withTimeout = tools.filter((t) => "timeout" in t.inputSchema.properties).map((t) => t.name);
@@ -294,7 +294,7 @@ describe("stop, logs, diff and rm", () => {
     const st = await c.call("start", { project: "text", ref: "feature-x", command: "web", timeout: 20 });
     expect(st.isError, JSON.stringify(st.value)).toBe(false);
     // Three more lines after "listening on".
-    for (const n of [1, 2, 3]) writeFileSync(st.value.log, `line ${n}\n`, { flag: "a" });
+    for (const n of [1, 2, 3]) {writeFileSync(st.value.log, `line ${n}\n`, { flag: "a" });}
 
     const logs = await c.call("logs", { project: "text", ref: "feature-x", lines: 3 });
     expect(logs.isError).toBe(false);
@@ -488,13 +488,13 @@ describe("progress", () => {
       c.call("checkout", { project: "p3", ref: "feature-x", setup: true, timeout: 30 }),
       c.call("start", { project: "p4", ref: "feature-x", command: "web", timeout: 30 }),
     ]);
-    for (const r of [a, b, nc, ns]) expect(r.isError, JSON.stringify(r.value)).toBe(false);
+    for (const r of [a, b, nc, ns]) {expect(r.isError, JSON.stringify(r.value)).toBe(false);}
 
     for (const [token, answer] of [["tok-a", a], [7, b]] as const) {
       const p = c.progress(token);
       expect(p.length, String(token)).toBeGreaterThanOrEqual(2);
       const values = p.map((x) => x.msg.params!.progress as number);
-      for (let i = 1; i < values.length; i++) expect(values[i]!).toBeGreaterThan(values[i - 1]!);
+      for (let i = 1; i < values.length; i++) {expect(values[i]!).toBeGreaterThan(values[i - 1]!);}
       expect(p.every((x) => x.at <= answer.at)).toBe(true);
       expect(p.some((x) => x.at - sent >= 5_000)).toBe(true);
       expect(p.some((x) => x.msg.params!.message === "running setup")).toBe(true);
@@ -555,7 +555,7 @@ describe("timeout and cancel", () => {
     void first.then(() => (firstAnswered = true));
     // Wait until the first one is in its setup, holding the start lock.
     const bgFile = join(env.worktreesPath("t3"), "feature-x", "bg.pid");
-    for (let i = 0; i < 100 && !existsSync(bgFile); i++) await sleep(100);
+    for (let i = 0; i < 100 && !existsSync(bgFile); i++) {await sleep(100);}
     expect(existsSync(bgFile)).toBe(true);
 
     const sent = Date.now();
@@ -567,7 +567,7 @@ describe("timeout and cancel", () => {
     const pid = Number(readFileSync(bgFile, "utf8"));
     expect(alive(pid)).toBe(true);
     c.notify("notifications/cancelled", { requestId: "first", reason: "test" });
-    for (let i = 0; i < 40 && alive(pid); i++) await sleep(100);
+    for (let i = 0; i < 40 && alive(pid); i++) {await sleep(100);}
     expect(alive(pid)).toBe(false);
     // A cancelled request gets no response.
     expect((await c.request("ping")).msg.result).toEqual({});

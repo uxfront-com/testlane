@@ -123,9 +123,9 @@ export class McpClient {
     opts: { id?: string | number; progressToken?: string | number } = {},
   ): Promise<ToolAnswer> {
     const params: Record<string, unknown> = { name, arguments: args };
-    if (opts.progressToken !== undefined) params._meta = { progressToken: opts.progressToken };
+    if (opts.progressToken !== undefined) {params._meta = { progressToken: opts.progressToken };}
     const r = await this.request("tools/call", params, opts.id ?? this.nextId++);
-    if (r.msg.error) throw new Error(`${name}: JSON-RPC error ${r.msg.error.code} ${r.msg.error.message}`);
+    if (r.msg.error) {throw new Error(`${name}: JSON-RPC error ${r.msg.error.code} ${r.msg.error.message}`);}
     const result = r.msg.result as { content: Array<{ type: string; text: string }>; isError: boolean };
     const text = result.content[0]!.text;
     let value: unknown;

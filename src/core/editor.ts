@@ -37,8 +37,8 @@ const PRESETS: Record<string, Preset> = {
 /** The editor binary a preset would invoke (for doctor PATH check, §9.11). */
 export function presetBinary(editor: string): string | null {
   const preset = PRESETS[editor];
-  if (!preset) return null;
-  if (editor === "terminal") return process.env.SHELL || "bash";
+  if (!preset) {return null;}
+  if (editor === "terminal") {return process.env.SHELL || "bash";}
   return preset.build("/x")[0]!;
 }
 

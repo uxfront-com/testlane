@@ -34,7 +34,7 @@ export interface CaptureResult {
  * Non-zero exit throws TestlaneError unless `allowFailure` is set (§11.1).
  */
 export async function capture(argv: string[], opts: CaptureOptions = {}): Promise<CaptureResult> {
-  if (opts.signal?.aborted) throw abortedError();
+  if (opts.signal?.aborted) {throw abortedError();}
   recorder?.(argv);
   return await new Promise<CaptureResult>((resolve, reject) => {
     const child = spawn(argv[0]!, argv.slice(1), {
@@ -168,7 +168,7 @@ export async function detach(argv: string[], opts: DetachOptions = {}): Promise<
     });
   } finally {
     // The child holds its own copy of the descriptor.
-    if (fd !== undefined) closeSync(fd);
+    if (fd !== undefined) {closeSync(fd);}
   }
 }
 
@@ -183,7 +183,7 @@ export async function passthrough(argv: string[], opts: PassthroughOptions = {})
     return 0;
   }
 
-  if (opts.signal?.aborted) throw abortedError();
+  if (opts.signal?.aborted) {throw abortedError();}
   recorder?.(argv);
   return await new Promise<number>((resolve, reject) => {
     const stdin = opts.closeStdin ? "ignore" : "inherit";
@@ -215,7 +215,7 @@ export async function passthrough(argv: string[], opts: PassthroughOptions = {})
     let stopping: Promise<unknown> = Promise.resolve();
     const onAbort = () => {
       const pid = child.pid;
-      if (pid === undefined) return;
+      if (pid === undefined) {return;}
       stopping = opts.ownGroup ? stopGroup(pid, ABORT_GRACE_MS) : stopChild(child, ABORT_GRACE_MS);
     };
     opts.signal?.addEventListener("abort", onAbort, { once: true });
@@ -245,7 +245,7 @@ export async function passthrough(argv: string[], opts: PassthroughOptions = {})
 
 /** SIGTERM one child, then SIGKILL it after `graceMs` if it is still there. */
 async function stopChild(child: ReturnType<typeof spawn>, graceMs: number): Promise<void> {
-  if (child.exitCode !== null || child.signalCode !== null) return;
+  if (child.exitCode !== null || child.signalCode !== null) {return;}
   const exited = new Promise<void>((r) => child.once("exit", () => r()));
   child.kill("SIGTERM");
   const timer = setTimeout(() => child.kill("SIGKILL"), graceMs);
@@ -274,7 +274,7 @@ function signalGroup(pgid: number, signal: NodeJS.Signals): void {
     process.kill(-pgid, signal);
   } catch (e) {
     const code = (e as NodeJS.ErrnoException).code;
-    if (code === "ESRCH") return; // already gone
+    if (code === "ESRCH") {return;} // already gone
     if (code === "EPERM") {
       throw new TestlaneError("E_SETUP", `not permitted to signal process group ${pgid}`, {
         hint: "it belongs to another user; stop it as that user",
@@ -288,7 +288,7 @@ function signalGroup(pgid: number, signal: NodeJS.Signals): void {
 async function waitGroupGone(pgid: number, ms: number): Promise<boolean> {
   const deadline = Date.now() + ms;
   while (groupAlive(pgid)) {
-    if (Date.now() >= deadline) return false;
+    if (Date.now() >= deadline) {return false;}
     await new Promise((r) => setTimeout(r, GROUP_POLL_MS));
   }
   return true;
@@ -301,7 +301,7 @@ async function waitGroupGone(pgid: number, ms: number): Promise<boolean> {
  */
 export async function stopGroup(pgid: number, graceMs = STOP_GRACE_MS): Promise<"terminated" | "killed"> {
   signalGroup(pgid, "SIGTERM");
-  if (await waitGroupGone(pgid, graceMs)) return "terminated";
+  if (await waitGroupGone(pgid, graceMs)) {return "terminated";}
   signalGroup(pgid, "SIGKILL");
   await waitGroupGone(pgid, 2_000);
   return "killed";

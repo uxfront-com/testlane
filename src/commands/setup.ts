@@ -93,13 +93,13 @@ export async function setup(input: TopInput): Promise<number> {
 
   // ── --dry-run: print the plan, touch nothing. ───────────────────────────────
   if (ctx.flags.dryRun) {
-    if (!dirExisted) process.stdout.write(`mkdir -p ${configDir}\n`);
-    if (willWriteDefaults) process.stdout.write(`write ${defaultsFile}\n  root = ${tomlString(root)}\n`);
+    if (!dirExisted) {process.stdout.write(`mkdir -p ${configDir}\n`);}
+    if (willWriteDefaults) {process.stdout.write(`write ${defaultsFile}\n  root = ${tomlString(root)}\n`);}
     process.stdout.write(`write ${projectFile}\n${indent(projectToml)}`);
     if (detect) {
       if (!isInitialized(repoPath)) {
         process.stdout.write(`${shellJoin(bareCloneArgv(repo, repoPath))}\n`);
-        for (const argv of initConfigArgvs(repoPath)) process.stdout.write(`${shellJoin(argv)}\n`);
+        for (const argv of initConfigArgvs(repoPath)) {process.stdout.write(`${shellJoin(argv)}\n`);}
         process.stdout.write(`${shellJoin(initFetchArgv(repoPath))}\n`);
       } else if (branch) {
         process.stdout.write(`${shellJoin(fetchBranchArgv(repoPath, branch))}\n`);
@@ -113,11 +113,11 @@ export async function setup(input: TopInput): Promise<number> {
   const projectBefore = existsSync(projectFile) ? readFileSync(projectFile, "utf8") : undefined;
   const defaultsBefore = existsSync(defaultsFile) ? readFileSync(defaultsFile, "utf8") : undefined;
   const rollback = (): void => {
-    if (projectBefore === undefined) rmSync(projectFile, { force: true });
-    else writeFileSync(projectFile, projectBefore);
+    if (projectBefore === undefined) {rmSync(projectFile, { force: true });}
+    else {writeFileSync(projectFile, projectBefore);}
     if (willWriteDefaults) {
-      if (defaultsBefore === undefined) rmSync(defaultsFile, { force: true });
-      else writeFileSync(defaultsFile, defaultsBefore);
+      if (defaultsBefore === undefined) {rmSync(defaultsFile, { force: true });}
+      else {writeFileSync(defaultsFile, defaultsBefore);}
     }
     if (!dirExisted) {
       try {
@@ -160,7 +160,7 @@ export async function setup(input: TopInput): Promise<number> {
       ctx.log.step(`next: testlane config edit ${name}`);
       return ExitCode.SUCCESS;
     }
-    if (trust.outcome === "no-ref") ctx.log.step("origin has no default branch yet; nothing to detect");
+    if (trust.outcome === "no-ref") {ctx.log.step("origin has no default branch yet; nothing to detect");}
     ctx.log.step(`next: testlane ${name} ${branch ?? trust.branch ?? "<branch|pr|path>"}`);
     return ExitCode.SUCCESS;
   }
@@ -171,9 +171,9 @@ export async function setup(input: TopInput): Promise<number> {
 
 /** Return the flag value, else prompt on a TTY, else the fallback (if any). */
 function ask(ctx: Ctx, message: string, opts: { flag?: string; fallback?: string }): string | undefined {
-  if (opts.flag !== undefined) return opts.flag.trim() || opts.fallback;
-  if (ctx.flags.yes) return opts.fallback;
-  if (!process.stdin.isTTY) return opts.fallback;
+  if (opts.flag !== undefined) {return opts.flag.trim() || opts.fallback;}
+  if (ctx.flags.yes) {return opts.fallback;}
+  if (!process.stdin.isTTY) {return opts.fallback;}
 
   const suffix = opts.fallback ? ` [${opts.fallback}]` : "";
   const line = promptLine(`${message}${suffix}:`);
@@ -183,7 +183,7 @@ function ask(ctx: Ctx, message: string, opts: { flag?: string; fallback?: string
 
 /** Assert a gathered value is present, else a targeted usage error. */
 function required(value: string | undefined, flag: string, what: string): string {
-  if (value && value.trim()) return value.trim();
+  if (value && value.trim()) {return value.trim();}
   throw usage(`missing ${what}`, `pass ${flag} or run interactively on a terminal`);
 }
 

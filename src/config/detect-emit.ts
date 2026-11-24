@@ -37,9 +37,9 @@ export function tomlText(value: string): string {
 }
 
 function tomlValue(value: unknown): string {
-  if (typeof value === "string") return tomlText(value);
-  if (typeof value === "number") return String(value);
-  if (Array.isArray(value)) return `[${value.map(tomlValue).join(", ")}]`;
+  if (typeof value === "string") {return tomlText(value);}
+  if (typeof value === "number") {return String(value);}
+  if (Array.isArray(value)) {return `[${value.map(tomlValue).join(", ")}]`;}
   throw new TestlaneError("E_INTERNAL", `config detect: cannot write ${JSON.stringify(value)} as TOML`);
 }
 
@@ -72,7 +72,7 @@ export function renderDraft(all: Finding[], opts: DraftOptions): Draft {
     used.push(f);
   };
   const notesAt = (key: string): void => {
-    for (const f of findings) if (f.key === null && f.at === key) noteLine(f);
+    for (const f of findings) {if (f.key === null && f.at === key) {noteLine(f);}}
   };
   const keyLine = (f: Finding, name: string): void => {
     notesAt(f.key!);
@@ -81,7 +81,7 @@ export function renderDraft(all: Finding[], opts: DraftOptions): Draft {
     used.push(f);
   };
   const header = (title: string): void => {
-    if (lines.length) lines.push("");
+    if (lines.length) {lines.push("");}
     lines.push(`[${title}]`);
   };
 
@@ -93,7 +93,7 @@ export function renderDraft(all: Finding[], opts: DraftOptions): Draft {
     reason: `drafted by testlane config detect from ${opts.source}; review every line marked guess or note`,
   };
   noteLine(first);
-  for (const f of findings) if (f.key === null && (f.at === undefined || !keys.has(f.at))) noteLine(f);
+  for (const f of findings) {if (f.key === null && (f.at === undefined || !keys.has(f.at))) {noteLine(f);}}
 
   const top = findings.filter((f) => f.key !== null && !f.key.includes("."));
   for (const f of top) {
@@ -112,9 +112,9 @@ export function renderDraft(all: Finding[], opts: DraftOptions): Draft {
 
   const section = (prefix: string, title: string): void => {
     const rows = findings.filter((f) => f.key?.startsWith(`${prefix}.`) && !f.key.slice(prefix.length + 1).includes("."));
-    if (!rows.length) return;
+    if (!rows.length) {return;}
     header(title);
-    for (const f of rows) keyLine(f, keyPart(f.key!.slice(prefix.length + 1)));
+    for (const f of rows) {keyLine(f, keyPart(f.key!.slice(prefix.length + 1)));}
   };
   section("setup", "setup");
   section("env", "env");
@@ -122,7 +122,7 @@ export function renderDraft(all: Finding[], opts: DraftOptions): Draft {
   const commands: string[] = [];
   for (const f of findings) {
     const m = f.key?.match(/^commands\.([^.]+)\./);
-    if (m && !commands.includes(m[1]!)) commands.push(m[1]!);
+    if (m && !commands.includes(m[1]!)) {commands.push(m[1]!);}
   }
   for (const c of commands) {
     section(`commands.${c}`, `commands.${keyPart(c)}`);
@@ -130,7 +130,7 @@ export function renderDraft(all: Finding[], opts: DraftOptions): Draft {
   }
 
   let text = `${lines.join("\n")}\n`;
-  if (transform) text = transform(text);
+  if (transform) {text = transform(text);}
   const config = validateDraft(text, Boolean(opts.repoFile));
   return { text, config, findings: used.slice(1) };
 }

@@ -6,7 +6,7 @@ import { delimiter, join } from "node:path";
 
 export function which(bin: string): string | null {
   const rawPath = process.env.PATH ?? "";
-  if (!rawPath) return null;
+  if (!rawPath) {return null;}
 
   const exts =
     process.platform === "win32"
@@ -14,11 +14,11 @@ export function which(bin: string): string | null {
       : [""];
 
   for (const dir of rawPath.split(delimiter)) {
-    if (!dir) continue;
+    if (!dir) {continue;}
     for (const ext of exts) {
       const candidate = join(dir, bin + ext);
       try {
-        if (existsSync(candidate) && statSync(candidate).isFile()) return candidate;
+        if (existsSync(candidate) && statSync(candidate).isFile()) {return candidate;}
       } catch {
         // unreadable entry; keep scanning
       }

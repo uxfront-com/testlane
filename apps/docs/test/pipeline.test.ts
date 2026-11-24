@@ -12,8 +12,8 @@ const COMMANDS = join(import.meta.dirname, "../../../src/commands");
 function pages(dir = CONTENT): [string, string][] {
 	return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
 		const path = join(dir, entry.name);
-		if (entry.isDirectory()) return pages(path);
-		if (!entry.name.endsWith(".md")) return [];
+		if (entry.isDirectory()) {return pages(path);}
+		if (!entry.name.endsWith(".md")) {return [];}
 		return [[path.slice(CONTENT.length + 1), readFileSync(path, "utf8")]];
 	});
 }
@@ -28,14 +28,14 @@ describe("the pipeline diagram", () => {
 	it("shows each ref's slug, or its start and an ellipsis", () => {
 		for (const { ref, slug: shown } of PIPELINE_REFS) {
 			const actual = slug(parseRef(ref));
-			if (shown.endsWith("…")) expect(actual.startsWith(shown.slice(0, -1)), ref).toBe(true);
-			else expect(actual, ref).toBe(shown);
+			if (shown.endsWith("…")) {expect(actual.startsWith(shown.slice(0, -1)), ref).toBe(true);}
+			else {expect(actual, ref).toBe(shown);}
 		}
 	});
 
 	it("shows each ref as itself, or as its start and an ellipsis", () => {
 		for (const { ref, shownRef } of PIPELINE_REFS) {
-			if (shownRef === undefined) continue;
+			if (shownRef === undefined) {continue;}
 			expect(shownRef.endsWith("…"), shownRef).toBe(true);
 			expect(ref.startsWith(shownRef.slice(0, -1)), shownRef).toBe(true);
 		}

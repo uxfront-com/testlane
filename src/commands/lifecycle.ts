@@ -103,7 +103,7 @@ export async function start(input: WorkspaceInput): Promise<number> {
       return ExitCode.SUCCESS;
     }
     // A dead or reused PID: the entry is stale.
-    if (current) removeEntry(dataDir, current.pid);
+    if (current) {removeEntry(dataDir, current.pid);}
 
     const { ws } = await ensureWorkspace(ctx, project, spec, ensureOpts);
     // The trust gate may have approved a repo file that drops this command.
@@ -151,7 +151,7 @@ export async function start(input: WorkspaceInput): Promise<number> {
     // (`testlane mcp`) waits only the short grace, so it can answer in time.
     await stopGroup(child.pid, outcome === "aborted" ? ABORT_GRACE_MS : STOP_GRACE_MS);
     removeEntry(dataDir, child.pid);
-    if (outcome === "aborted") throw abortedError();
+    if (outcome === "aborted") {throw abortedError();}
     if (outcome === "exited") {
       writeTail(ctx, log);
       throw setupError(`'${name}' exited before 127.0.0.1:${port} accepted connections`, `full log: ${log}`);
@@ -182,7 +182,7 @@ export async function start(input: WorkspaceInput): Promise<number> {
 }
 
 function parseTimeout(raw: string | undefined): number {
-  if (raw === undefined) return DEFAULT_TIMEOUT_S * 1000;
+  if (raw === undefined) {return DEFAULT_TIMEOUT_S * 1000;}
   const n = Number(raw);
   if (raw.trim() === "" || !Number.isFinite(n) || n <= 0) {
     throw usage(`--timeout expects a number of seconds above 0, got '${raw}'`);
@@ -213,9 +213,9 @@ function printStarted(ctx: Ctx, project: ProjectConfig, slug: string, e: Process
 
 function writeTail(ctx: Ctx, log: string): void {
   const lines = tailLines(log, LOG_TAIL_LINES);
-  if (lines.length === 0) return;
+  if (lines.length === 0) {return;}
   ctx.log.write(`last ${lines.length} log line(s):\n`);
-  for (const line of lines) ctx.log.write(`  ${line}\n`);
+  for (const line of lines) {ctx.log.write(`  ${line}\n`);}
 }
 
 /** The ref to type for a slug's workspace: as originally typed, else the slug. */
@@ -266,7 +266,7 @@ export async function logs(input: WorkspaceInput): Promise<number> {
   }
 
   let offset = await copyFrom(file, 0, out);
-  if (!(flags.bool("-f") || flags.bool("--follow"))) return ExitCode.SUCCESS;
+  if (!(flags.bool("-f") || flags.bool("--follow"))) {return ExitCode.SUCCESS;}
 
   // Follow until interrupted, like `tail -f`. A truncated file is read again from the top.
   let interrupted = false;
@@ -278,7 +278,7 @@ export async function logs(input: WorkspaceInput): Promise<number> {
   try {
     while (!interrupted) {
       await new Promise((r) => setTimeout(r, 200));
-      if (!existsSync(file)) continue;
+      if (!existsSync(file)) {continue;}
       offset = await copyFrom(file, offset, out);
     }
   } finally {
@@ -296,7 +296,7 @@ async function copyFrom(file: string, offset: number, out: Sink): Promise<number
     const buf = Buffer.alloc(64 * 1024);
     for (;;) {
       const n = readSync(fd, buf, 0, buf.length, pos);
-      if (n === 0) return pos;
+      if (n === 0) {return pos;}
       pos += n;
       if (!out.write(Buffer.from(buf.subarray(0, n)))) {
         await new Promise<void>((r) => out.once("drain", () => r()));
@@ -327,13 +327,13 @@ export async function ps(input: ProjectInput): Promise<number> {
   const slugs = new Set(Object.keys(loadState(project.name).workspaces));
   const dataRoot = join(project.worktreesPath, ".data");
   if (existsSync(dataRoot)) {
-    for (const d of readdirSync(dataRoot, { withFileTypes: true })) if (d.isDirectory()) slugs.add(d.name);
+    for (const d of readdirSync(dataRoot, { withFileTypes: true })) {if (d.isDirectory()) {slugs.add(d.name);}}
   }
 
   const rows: PsRow[] = [];
   for (const slug of [...slugs].sort()) {
     const e = readEntry(dataDirFor(project, slug));
-    if (!e) continue;
+    if (!e) {continue;}
     rows.push({
       slug,
       command: e.command,

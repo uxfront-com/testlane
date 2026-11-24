@@ -18,11 +18,11 @@ export function promptLine(message: string, out: NodeJS.WritableStream = process
       bytes = readSync(0, buf, 0, buf.length, null);
     } catch (e) {
       const code = (e as NodeJS.ErrnoException).code;
-      if (code === "EAGAIN") continue; // stdin not ready yet; retry
-      if (code === "EOF") break;
+      if (code === "EAGAIN") {continue;} // stdin not ready yet; retry
+      if (code === "EOF") {break;}
       throw e;
     }
-    if (bytes === 0) break; // EOF
+    if (bytes === 0) {break;} // EOF
     readAny = true;
     input += buf.toString("utf8", 0, bytes);
     const nl = input.indexOf("\n");
@@ -32,6 +32,6 @@ export function promptLine(message: string, out: NodeJS.WritableStream = process
     }
   }
 
-  if (!readAny) return null; // EOF before any input
+  if (!readAny) {return null;} // EOF before any input
   return input.replace(/\r$/, "");
 }

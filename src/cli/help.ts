@@ -18,13 +18,13 @@ export function version(): string {
     if (existsSync(file)) {
       try {
         const pkg = JSON.parse(readFileSync(file, "utf8")) as { name?: string; version?: string };
-        if (pkg.name === PKG_NAME) return pkg.version ?? "0.0.0";
+        if (pkg.name === PKG_NAME) {return pkg.version ?? "0.0.0";}
       } catch {
         // unreadable/invalid; keep walking up
       }
     }
     const parent = dirname(dir);
-    if (parent === dir) break;
+    if (parent === dir) {break;}
     dir = parent;
   }
   return "0.0.0";

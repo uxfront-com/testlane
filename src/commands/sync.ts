@@ -31,18 +31,18 @@ export async function sync(input: WorkspaceInput): Promise<number> {
   const flags = parseFlags(input.args, { bools: ["--stash", "--discard", "--fresh"] });
   const mode = pickMode(flags.bool("--stash"), flags.bool("--discard"), flags.bool("--fresh"));
 
-  if (ctx.flags.dryRun) return dryRunSync(ctx, project, ref, mode);
+  if (ctx.flags.dryRun) {return dryRunSync(ctx, project, ref, mode);}
 
-  if (mode === "fresh") return syncFresh(ctx, project, ref);
+  if (mode === "fresh") {return syncFresh(ctx, project, ref);}
   return syncReset(ctx, project, ref, mode);
 }
 
 function pickMode(stash: boolean, discard: boolean, fresh: boolean): Mode {
   const on = [stash, discard, fresh].filter(Boolean).length;
-  if (on > 1) throw usage("--stash, --discard, and --fresh are mutually exclusive");
-  if (stash) return "stash";
-  if (discard) return "discard";
-  if (fresh) return "fresh";
+  if (on > 1) {throw usage("--stash, --discard, and --fresh are mutually exclusive");}
+  if (stash) {return "stash";}
+  if (discard) {return "discard";}
+  if (fresh) {return "fresh";}
   return "default";
 }
 
@@ -77,8 +77,8 @@ async function syncReset(ctx: Ctx, project: ProjectConfig, ref: RefSpec, mode: M
     //    land in FETCH_HEAD (not refs/heads/pr/<n>, which git refuses to update
     //    while checked out); the reset target below is FETCH_HEAD.
     const g = gitEnv(ctx, project);
-    if (ws.kind === "pr" && ws.number !== undefined) await fetchPrHead(g, ws.path, ws.number);
-    else if (ws.kind === "branch" && ws.branch) await fetchBranch(g, ws.branch);
+    if (ws.kind === "pr" && ws.number !== undefined) {await fetchPrHead(g, ws.path, ws.number);}
+    else if (ws.kind === "branch" && ws.branch) {await fetchBranch(g, ws.branch);}
 
     // 2. Determine the reset target (§7.4.2).
     const target = await resolveTarget(ws);
@@ -110,7 +110,7 @@ async function syncReset(ctx: Ctx, project: ProjectConfig, ref: RefSpec, mode: M
     saveState(project.name, state);
 
     const summary = [`${short(oldSha)} → ${short(newSha)}`, `${changed} file(s) changed`];
-    if (stashRef) summary.push(`stashed ${stashRef}`);
+    if (stashRef) {summary.push(`stashed ${stashRef}`);}
     ctx.log.step(summary.join(", "));
     return ExitCode.SUCCESS;
   } finally {
@@ -127,7 +127,7 @@ async function syncFresh(ctx: Ctx, project: ProjectConfig, ref: RefSpec): Promis
       const spec = resolveLast(project, ref);
       const slug = slugFor(spec);
       const ws = state.workspaces[slug];
-      if (!ws) throw resolveError(`no workspace for '${slug}'`, "run `testlane <project> <ref> checkout` first");
+      if (!ws) {throw resolveError(`no workspace for '${slug}'`, "run `testlane <project> <ref> checkout` first");}
 
       if (existsSync(ws.path) && !ws.adopted && (await isDirty(ws.path))) {
         throw gitError(
@@ -152,8 +152,8 @@ async function syncFresh(ctx: Ctx, project: ProjectConfig, ref: RefSpec): Promis
 async function resolveTarget(ws: Workspace): Promise<string> {
   // PR heads were fetched into FETCH_HEAD (see step 1) to avoid updating the
   // checked-out pr/<n> branch; reset the worktree straight to it.
-  if (ws.kind === "pr" && ws.number !== undefined) return "FETCH_HEAD";
-  if (await hasUpstream(ws.path)) return "@{u}";
+  if (ws.kind === "pr" && ws.number !== undefined) {return "FETCH_HEAD";}
+  if (await hasUpstream(ws.path)) {return "@{u}";}
   return ws.branch ?? "HEAD";
 }
 

@@ -72,7 +72,7 @@ export function mergeRaw(user: RawProject, repo?: RawRepo): MergedRaw {
     return undefined;
   };
   const table = <T>(prefix: string, u?: Record<string, T>, r?: Record<string, T>): Record<string, T> | undefined => {
-    if (u === undefined && r === undefined) return undefined;
+    if (u === undefined && r === undefined) {return undefined;}
     const out: Record<string, T> = {};
     for (const [k, v] of Object.entries(r ?? {})) {
       out[k] = v;
@@ -88,7 +88,7 @@ export function mergeRaw(user: RawProject, repo?: RawRepo): MergedRaw {
   const raw: RawProject = { repo: user.repo };
   sources.repo = "user";
   const set = <K extends keyof RawProject>(key: K, value: RawProject[K] | undefined): void => {
-    if (value !== undefined) raw[key] = value;
+    if (value !== undefined) {raw[key] = value;}
   };
   set("repo_path", pick("repo_path", user.repo_path, undefined));
   set("worktrees_path", pick("worktrees_path", user.worktrees_path, undefined));
@@ -104,10 +104,10 @@ export function mergeRaw(user: RawProject, repo?: RawRepo): MergedRaw {
     const cacheKey = pick("setup.cache_key", user.setup?.cache_key, repo?.setup?.cache_key);
     const seedFiles = pick("setup.seed_files", user.setup?.seed_files, repo?.setup?.seed_files);
     const seedFrom = pick("setup.seed_from", user.setup?.seed_from, undefined);
-    if (run !== undefined) setup.run = run;
-    if (cacheKey !== undefined) setup.cache_key = cacheKey;
-    if (seedFiles !== undefined) setup.seed_files = seedFiles;
-    if (seedFrom !== undefined) setup.seed_from = seedFrom;
+    if (run !== undefined) {setup.run = run;}
+    if (cacheKey !== undefined) {setup.cache_key = cacheKey;}
+    if (seedFiles !== undefined) {setup.seed_files = seedFiles;}
+    if (seedFrom !== undefined) {setup.seed_from = seedFrom;}
     raw.setup = setup;
   }
 

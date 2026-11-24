@@ -71,6 +71,6 @@ export function composeEnv(
       out[k] = interpolate(v, vars, `command.env.${k}`);
     }
   }
-  if (extra?.flagEnv) Object.assign(out, extra.flagEnv);
+  if (extra?.flagEnv) {Object.assign(out, extra.flagEnv);}
   return out;
 }

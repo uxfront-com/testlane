@@ -39,9 +39,9 @@ export function parseFlags(args: string[], spec: FlagSpec): ParsedFlags {
     const inline = eq !== -1 ? tok.slice(eq + 1) : undefined;
 
     const takeValue = (): string => {
-      if (inline !== undefined) return inline;
+      if (inline !== undefined) {return inline;}
       const next = args[i + 1];
-      if (next === undefined) throw usage(`flag ${name} requires a value`);
+      if (next === undefined) {throw usage(`flag ${name} requires a value`);}
       i += 1;
       return next;
     };

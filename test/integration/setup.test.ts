@@ -125,7 +125,7 @@ describe("§17.2 scenario 9 — env composition (--dry-run)", () => {
     const exported = new Map<string, string>();
     for (const line of r.stdout.split("\n")) {
       const m = /^export ([A-Z_0-9]+)=(.*)$/.exec(line);
-      if (m) exported.set(m[1]!, m[2]!.replace(/^'(.*)'$/, "$1"));
+      if (m) {exported.set(m[1]!, m[2]!.replace(/^'(.*)'$/, "$1"));}
     }
     // --env wins the FOO precedence chain.
     expect(exported.get("FOO")).toBe("flag");

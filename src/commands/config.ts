@@ -65,7 +65,7 @@ export async function config(input: TopInput): Promise<number> {
           : addFlags.detect
             ? "--detect"
             : undefined;
-    if (stray) throw usage(`unknown flag '${stray}'`, `${stray} applies only to \`config add <url>\``);
+    if (stray) {throw usage(`unknown flag '${stray}'`, `${stray} applies only to \`config add <url>\``);}
   }
   if (sub !== "detect" && flags.bool("--repo-file")) {
     throw usage("unknown flag '--repo-file'", "--repo-file applies only to `config detect`");
@@ -86,7 +86,7 @@ export async function config(input: TopInput): Promise<number> {
     case "trust":
       return trust(ctx, requireProject(ctx, rest[0], "trust"));
     case "detect":
-      if (rest.length > 1) throw usage(`unexpected argument '${rest[1]}'`, "testlane config detect [path | project]");
+      if (rest.length > 1) {throw usage(`unexpected argument '${rest[1]}'`, "testlane config detect [path | project]");}
       return detectCmd(ctx, rest[0], flags.bool("--repo-file"));
     default:
       throw usage(`unknown config subcommand '${sub}'`, SUBCOMMANDS);
@@ -100,7 +100,7 @@ function path(configDir: string): number {
 }
 
 function requireProject(ctx: Ctx, project: string | undefined, sub: string): string {
-  if (project === undefined) throw usage(`config ${sub} requires a project`, `testlane config ${sub} <project>`);
+  if (project === undefined) {throw usage(`config ${sub} requires a project`, `testlane config ${sub} <project>`);}
   if (!projectExists(ctx.configDir, project)) {
     throw usage(`unknown project '${project}'`, `no config file at ${projectFilePath(ctx.configDir, project)}`);
   }
@@ -165,7 +165,7 @@ function validate(input: TopInput, project?: string): number {
     }
     try {
       const loaded = loadEffectiveProjectWithSources(ctx.configDir, project, loadDefaults(ctx.configDir));
-      if (loaded.snapshotError) throw loaded.snapshotError;
+      if (loaded.snapshotError) {throw loaded.snapshotError;}
     } catch (e) {
       process.stderr.write(`${(e as Error).message}\n`);
       return ExitCode.CONFIG;
@@ -183,7 +183,7 @@ function validate(input: TopInput, project?: string): number {
     ctx.log.step("all project configs valid");
     return ExitCode.SUCCESS;
   }
-  for (const i of issues) process.stderr.write(`${i.file}: ${i.path}: ${i.message}\n`);
+  for (const i of issues) {process.stderr.write(`${i.file}: ${i.path}: ${i.message}\n`);}
   return ExitCode.CONFIG;
 }
 
@@ -211,15 +211,15 @@ function show(ctx: Ctx, name: string): number {
   };
   for (const [key, value] of Object.entries(config)) {
     if (key === "setup") {
-      for (const [k, v] of Object.entries(value as Record<string, unknown>)) add(`setup.${k}`, v, loaded.sources[`setup.${k}`]);
+      for (const [k, v] of Object.entries(value as Record<string, unknown>)) {add(`setup.${k}`, v, loaded.sources[`setup.${k}`]);}
     } else if (key === "env" || key === "hooks") {
-      for (const [k, v] of Object.entries(value as Record<string, unknown>)) add(`${key}.${k}`, v, loaded.sources[`${key}.${k}`]);
+      for (const [k, v] of Object.entries(value as Record<string, unknown>)) {add(`${key}.${k}`, v, loaded.sources[`${key}.${k}`]);}
     } else if (key === "commands") {
       for (const [cname, c] of Object.entries(value as Record<string, Record<string, unknown>>)) {
         const source = loaded.sources[`commands.${cname}`];
         for (const [k, v] of Object.entries(c)) {
           if (k === "env") {
-            for (const [ek, ev] of Object.entries(v as Record<string, string>)) add(`commands.${cname}.env.${ek}`, ev, source);
+            for (const [ek, ev] of Object.entries(v as Record<string, string>)) {add(`commands.${cname}.env.${ek}`, ev, source);}
           } else {
             add(`commands.${cname}.${k}`, v, source);
           }
@@ -244,8 +244,8 @@ function show(ctx: Ctx, name: string): number {
 /** The resolved config under its TOML key names; unset optional keys are left out. */
 function tomlView(p: ProjectConfig): Record<string, unknown> {
   const setup: Record<string, unknown> = { cache_key: p.setup.cacheKey, seed_files: p.setup.seedFiles };
-  if (p.setup.run !== undefined) setup.run = p.setup.run;
-  if (p.setup.seedFrom !== undefined) setup.seed_from = p.setup.seedFrom;
+  if (p.setup.run !== undefined) {setup.run = p.setup.run;}
+  if (p.setup.seedFrom !== undefined) {setup.seed_from = p.setup.seedFrom;}
   const commands: Record<string, Record<string, unknown>> = {};
   for (const [cname, c] of Object.entries(p.commands)) {
     commands[cname] = { run: c.run, ...(c.cwd !== undefined ? { cwd: c.cwd } : {}), env: c.env };
@@ -283,7 +283,7 @@ async function trust(ctx: Ctx, name: string): Promise<number> {
   const lock = await acquireLock(name, ctx.log);
   try {
     const g: GitEnv = { repoPath: project.repoPath, dryRun: false, log: ctx.log };
-    if (!isInitialized(project.repoPath)) await initPrimaryRepo(g, project.repo);
+    if (!isInitialized(project.repoPath)) {await initPrimaryRepo(g, project.repo);}
     const branch = await repoConfigBranch(project, () => detectDefaultBranch(g));
     if (!branch) {
       throw configError(`cannot tell the default branch of ${name}`, `set default_branch in ${name}.toml`);
@@ -291,7 +291,7 @@ async function trust(ctx: Ctx, name: string): Promise<number> {
     await fetchBranch(g, branch);
     const state = loadState(name);
     const result = await trustGate(ctx, project, state, { explicit: true });
-    if (result.stateChanged) saveState(name, state);
+    if (result.stateChanged) {saveState(name, state);}
     // The deferred check. The gate checked a file it approves before recording
     // it; with nothing new approved, the user file must load with what is.
     if (result.outcome !== "approved" && result.outcome !== "declined") {
@@ -307,10 +307,10 @@ async function trust(ctx: Ctx, name: string): Promise<number> {
 
 /** The clone URL `config add` writes: ssh verbatim; https as `https://<host>/<owner>/<repo>.git`. */
 export function cloneUrlFor(input: string): string | null {
-  if (/[\s\u0000-\u001f\u007f]/.test(input)) return null;
-  if (/^git@[^:]+:.+$/.test(input)) return input;
+  if (/[\s\u0000-\u001f\u007f]/.test(input)) {return null;}
+  if (/^git@[^:]+:.+$/.test(input)) {return input;}
   const m = input.match(/^(https?):\/\/([^/]+)\/([^/]+)\/([^/]+?)(?:\.git)?(?:\/.*)?$/);
-  if (!m) return null;
+  if (!m) {return null;}
   return `${m[1]}://${m[2]}/${m[3]}/${m[4]}.git`;
 }
 
@@ -327,7 +327,7 @@ export function repoNameOf(cloneUrl: string): string {
  */
 async function addUrl(ctx: Ctx, url: string, flags: { name?: string; root?: string; detect?: boolean }): Promise<number> {
   const repo = cloneUrlFor(url);
-  if (!repo) throw usage(`cannot derive a clone URL from '${url}'`, "pass an ssh or https repository URL");
+  if (!repo) {throw usage(`cannot derive a clone URL from '${url}'`, "pass an ssh or https repository URL");}
   const name = flags.name ?? repoNameOf(repo);
   if (!isValidProjectName(name)) {
     throw usage(`invalid project name '${name}'`, `${PROJECT_NAME_RULE}; pass --name <name>`);
@@ -345,7 +345,7 @@ async function addUrl(ctx: Ctx, url: string, flags: { name?: string; root?: stri
 
   const defaults = dirExisted ? loadDefaults(configDir) : {};
   const flagRoot = flags.root?.trim();
-  if (flags.root !== undefined && !flagRoot) throw usage("--root requires a directory");
+  if (flags.root !== undefined && !flagRoot) {throw usage("--root requires a directory");}
   if (defaults.root !== undefined && flagRoot !== undefined && resolvePath(flagRoot) !== resolvePath(defaults.root)) {
     throw usage(
       `--root ${flagRoot} conflicts with defaults.root = ${defaults.root}`,
@@ -367,13 +367,13 @@ async function addUrl(ctx: Ctx, url: string, flags: { name?: string; root?: stri
   }
 
   if (ctx.flags.dryRun) {
-    if (!dirExisted) process.stdout.write(`mkdir -p ${configDir}\n`);
-    if (writeRoot) process.stdout.write(`write ${defaultsFile}\n  root = ${tomlString(root)}\n`);
+    if (!dirExisted) {process.stdout.write(`mkdir -p ${configDir}\n`);}
+    if (writeRoot) {process.stdout.write(`write ${defaultsFile}\n  root = ${tomlString(root)}\n`);}
     process.stdout.write(`write ${projectFile}\n${indent(projectToml)}`);
     process.stdout.write(`${shellJoin(bareCloneArgv(repo, repoPath))}\n`);
-    for (const argv of initConfigArgvs(repoPath)) process.stdout.write(`${shellJoin(argv)}\n`);
+    for (const argv of initConfigArgvs(repoPath)) {process.stdout.write(`${shellJoin(argv)}\n`);}
     process.stdout.write(`${shellJoin(initFetchArgv(repoPath))}\n`);
-    if (flags.detect) process.stdout.write(`detect origin/<default> → ${projectFile}\n`);
+    if (flags.detect) {process.stdout.write(`detect origin/<default> → ${projectFile}\n`);}
     return ExitCode.SUCCESS;
   }
 
@@ -385,8 +385,8 @@ async function addUrl(ctx: Ctx, url: string, flags: { name?: string; root?: stri
   const rollback = (): void => {
     rmSync(projectFile, { force: true });
     if (writeRoot) {
-      if (defaultsBefore === undefined) rmSync(defaultsFile, { force: true });
-      else writeFileSync(defaultsFile, defaultsBefore);
+      if (defaultsBefore === undefined) {rmSync(defaultsFile, { force: true });}
+      else {writeFileSync(defaultsFile, defaultsBefore);}
     }
     // Innermost first; each only if this run created it and it's empty.
     const created = [dirname(repoPath), ...(rootExisted ? [] : [rootDir]), ...(dirExisted ? [] : [configDir])];
@@ -410,7 +410,7 @@ async function addUrl(ctx: Ctx, url: string, flags: { name?: string; root?: stri
     // `wx`: a concurrent `config add` of the same name loses here, not silently.
     writeFileSync(projectFile, projectToml, { flag: "wx" });
   } catch (e) {
-    if ((e as NodeJS.ErrnoException).code === "EEXIST") throw configError(`project '${name}' already exists`);
+    if ((e as NodeJS.ErrnoException).code === "EEXIST") {throw configError(`project '${name}' already exists`);}
     throw e;
   }
   ctx.log.step(`wrote ${projectFile}`);
@@ -434,7 +434,7 @@ async function addUrl(ctx: Ctx, url: string, flags: { name?: string; root?: stri
     writeFileSync(projectFile, draft, "utf8");
     ctx.log.step(`wrote a detected config to ${projectFile}; check each # guess: and # note: line`);
   } else {
-    if (flags.detect) ctx.log.step(`origin has no default branch yet; nothing to detect`);
+    if (flags.detect) {ctx.log.step(`origin has no default branch yet; nothing to detect`);}
     // No repo file: today's template, with the real repo line, opened for editing.
     writeFileSync(projectFile, defaultProjectTemplate(name, repo), "utf8");
   }
@@ -464,7 +464,7 @@ async function detectCmd(ctx: Ctx, arg: string | undefined, repoFile: boolean): 
     } catch {
       // missing: reported below
     }
-    if (!isDir) throw usage(`not a directory: ${target}`, "testlane config detect [path | project]");
+    if (!isDir) {throw usage(`not a directory: ${target}`, "testlane config detect [path | project]");}
     files = localFiles(dir);
     source = { kind: "path", path: dir };
     // The directory's name, not its path: a draft may be committed as `.testlane.toml`.
@@ -479,7 +479,7 @@ async function detectCmd(ctx: Ctx, arg: string | undefined, repoFile: boolean): 
     }
     const g: GitEnv = { repoPath: p.repoPath, dryRun: false, log: ctx.log };
     const branch = await repoConfigBranch(p, () => detectDefaultBranch(g));
-    if (!branch) throw configError(`cannot tell the default branch of ${target}`, `set default_branch in ${target}.toml`);
+    if (!branch) {throw configError(`cannot tell the default branch of ${target}`, `set default_branch in ${target}.toml`);}
     const ref = `refs/remotes/origin/${branch}`;
     if (!(await refExists(p.repoPath, ref))) {
       throw configError(`origin/${branch} is not fetched in ${p.repoPath}`, `fetch it with \`testlane config trust ${target}\``);

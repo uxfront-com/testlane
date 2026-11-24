@@ -76,13 +76,13 @@ export class McpServer {
 
   private async shutdown(): Promise<void> {
     const pending = [...this.calls.values()];
-    for (const call of pending) this.abort(call, "shutdown");
+    for (const call of pending) {this.abort(call, "shutdown");}
     await Promise.race([Promise.all(pending.map((c) => c.done)), sleep(SETTLE_CAP_MS)]);
     this.closed = true;
   }
 
   private write(message: object): void {
-    if (this.closed) return;
+    if (this.closed) {return;}
     this.opts.send(JSON.stringify(message) + "\n");
   }
 
@@ -95,7 +95,7 @@ export class McpServer {
   }
 
   private onLine(line: string): void {
-    if (line.trim() === "") return;
+    if (line.trim() === "") {return;}
     let msg: unknown;
     try {
       msg = JSON.parse(line);
@@ -119,7 +119,7 @@ export class McpServer {
     }
     if (typeof m.method !== "string") {
       // A response to a request we never send, or junk: answer only a request.
-      if ("id" in m && !("result" in m) && !("error" in m)) this.fail(id, INVALID_REQUEST, 'invalid request: "method" must be a string');
+      if ("id" in m && !("result" in m) && !("error" in m)) {this.fail(id, INVALID_REQUEST, 'invalid request: "method" must be a string');}
       return;
     }
     const params = typeof m.params === "object" && m.params !== null ? (m.params as Record<string, unknown>) : {};
@@ -137,7 +137,7 @@ export class McpServer {
   private onNotification(method: string, params: Record<string, unknown>): void {
     if (method === "notifications/cancelled" && isId(params.requestId)) {
       const call = this.calls.get(key(params.requestId));
-      if (call) this.abort(call, "cancel");
+      if (call) {this.abort(call, "cancel");}
     }
     // `notifications/initialized` and anything else need no answer.
   }
@@ -191,7 +191,7 @@ export class McpServer {
   }
 
   private abort(call: Call, why: NonNullable<Call["stopped"]>): void {
-    if (call.stopped) return;
+    if (call.stopped) {return;}
     call.stopped = why;
     call.controller.abort();
   }
@@ -213,7 +213,7 @@ export class McpServer {
       gh: this.opts.gh,
       onLine: (level, message) => {
         stderrSoFar += `${level === "warn" ? "warning: " : "→ "}${message}\n`;
-        if (level === "step") progress?.step(message);
+        if (level === "step") {progress?.step(message);}
       },
     });
     try {
@@ -233,7 +233,7 @@ export class McpServer {
         });
       }
     } finally {
-      if (deadline) clearTimeout(deadline);
+      if (deadline) {clearTimeout(deadline);}
       progress?.stop();
     }
   }
@@ -250,9 +250,9 @@ function key(id: Id): string {
 
 /** The call's `timeout` in seconds, when it's valid; `runTool` reports one that isn't. */
 function timeoutOf(args: unknown): number | undefined {
-  if (typeof args !== "object" || args === null) return DEFAULT_TIMEOUT_S;
+  if (typeof args !== "object" || args === null) {return DEFAULT_TIMEOUT_S;}
   const t = (args as Record<string, unknown>).timeout;
-  if (t === undefined) return DEFAULT_TIMEOUT_S;
+  if (t === undefined) {return DEFAULT_TIMEOUT_S;}
   return typeof t === "number" && Number.isFinite(t) && t > 0 ? t : undefined;
 }
 
@@ -289,7 +289,7 @@ class Progress {
   }
 
   private emit(): void {
-    if (this.done) return;
+    if (this.done) {return;}
     this.n += 1;
     this.send({
       jsonrpc: "2.0",

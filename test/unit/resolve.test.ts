@@ -173,6 +173,6 @@ describe("branch disambiguator: HEAD is not a branch name", () => {
       expect(isValidBranchName(bad), bad).toBe(false);
       expect(() => refFromDisambiguator("branch", bad), bad).toThrow(/--branch expects a branch name/);
     }
-    for (const ok of ["HEADS", "heads", "feature/HEAD", "HEAD-x"]) expect(isValidBranchName(ok), ok).toBe(true);
+    for (const ok of ["HEADS", "heads", "feature/HEAD", "HEAD-x"]) {expect(isValidBranchName(ok), ok).toBe(true);}
   });
 });

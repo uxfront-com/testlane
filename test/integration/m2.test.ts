@@ -159,8 +159,8 @@ describe("§17.2 scenario 12 — list --json shape & doctor fix hint", () => {
       expect(check?.detail).toContain(join(tmp, "no-such-shell"));
       expect(check?.detail).not.toContain("code");
     } finally {
-      if (prev === undefined) delete process.env.SHELL;
-      else process.env.SHELL = prev;
+      if (prev === undefined) {delete process.env.SHELL;}
+      else {process.env.SHELL = prev;}
     }
   });
 });
@@ -291,8 +291,8 @@ describe("§9.12 config add — seed a template when the project is absent", () 
     process.env.EDITOR = "true";
   });
   afterEach(() => {
-    if (prevEditor === undefined) delete process.env.EDITOR;
-    else process.env.EDITOR = prevEditor;
+    if (prevEditor === undefined) {delete process.env.EDITOR;}
+    else {process.env.EDITOR = prevEditor;}
   });
 
   it("AC1 — seeds the default template and warns for an absent file", async () => {
