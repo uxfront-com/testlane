@@ -208,7 +208,7 @@ jobs:
         run: pnpm --filter @uxfront/docs check:seo
 
       # Six pages of the static build, served by `wrangler dev` the way
-      # Cloudflare serves them (apps/docs/lighthouserc.json). Accessibility and
+      # Cloudflare serves them (apps/docs/lighthouserc.mjs). Accessibility and
       # best practices below 0.95, or SEO below 1, fail the job. Performance only
       # warns, since it varies with the runner.
       - name: Lighthouse

@@ -97,7 +97,7 @@ export default defineConfig({
       },
     },
     {
-      files: ["bin/testlane.ts", "apps/docs/scripts/**"],
+      files: ["bin/testlane.ts"],
       rules: {
         // Command-line entry points: the console is their output. The CLI writes through its
         // own streams everywhere else, so the rule stays on there.
