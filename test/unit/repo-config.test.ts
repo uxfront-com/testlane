@@ -19,7 +19,7 @@ afterEach(() => {
 
 const write = (name: string, body: string) => writeFileSync(join(dir, name), body);
 
-function issuesOf(fn: () => unknown): ConfigValidationError {
+function issuesOf(fn: () => void): ConfigValidationError {
   try {
     fn();
   } catch (error) {

@@ -8,7 +8,7 @@ import pc from "picocolors";
  */
 export interface Sink {
   write(chunk: string | Uint8Array): boolean;
-  once(event: "drain", listener: () => void): unknown;
+  once(event: "drain", listener: () => void): void;
 }
 
 export type LogLevel = "step" | "debug" | "warn";

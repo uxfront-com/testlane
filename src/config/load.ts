@@ -1,6 +1,7 @@
 // Config discovery, TOML parse, defaults merge, aggregate error reporting (§5).
 
 import { parse as parseToml } from "smol-toml";
+import type { TomlTable } from "smol-toml";
 import type { z } from "zod";
 import { isAbsolute, join, relative, sep } from "node:path";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
@@ -90,7 +91,7 @@ export function loadDefaults(configDir: string): Defaults {
   };
 }
 
-function parseTomlFile(file: string, label: string, issues: Array<ConfigIssue>): unknown {
+function parseTomlFile(file: string, label: string, issues: Array<ConfigIssue>): TomlTable {
   let text: string;
   try {
     text = readFileSync(file, "utf8");
