@@ -29,12 +29,12 @@ describe("help — verb lists", () => {
     for (const verb of ["start", "stop", "logs"]) {
       expect(section("WORKSPACE VERBS")).toMatch(new RegExp(`^  ${verb}\\b`, "m"));
     }
-    expect(section("PROJECT VERBS")).toMatch(/^  ps\b/m);
+    expect(section("PROJECT VERBS")).toMatch(/^ {2}ps\b/m);
     expect(HELP).toContain("testlane <project> [list|clean|ps] [flags]");
   });
 
   it("C2 — help lists mcp as a top-level verb", () => {
     const section = HELP.split("TOP-LEVEL VERBS\n")[1]!.split("\n\n")[0]!;
-    expect(section).toMatch(/^  mcp\b/m);
+    expect(section).toMatch(/^ {2}mcp\b/m);
   });
 });

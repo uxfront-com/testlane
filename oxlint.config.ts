@@ -12,7 +12,6 @@ export default defineConfig({
     "eqeqeq": "off",
     "no-console": "off",
     "no-promise-executor-return": "off",
-    "no-regex-spaces": "off",
     "no-useless-assignment": "off",
     "prefer-const": "off",
     "quality/no-array-filter-map": "off",

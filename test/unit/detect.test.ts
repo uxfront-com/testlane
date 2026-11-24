@@ -144,7 +144,7 @@ describe("fixture drafts", () => {
         const { text } = await draft(files, repoFile);
         for (const line of text.split("\n")) {
           if (line === "" || /^\[.+\]$/.test(line) || line.startsWith("# note: ")) {continue;}
-          expect(line).toMatch(/  # (detected|guess): \S/);
+          expect(line).toMatch(/ {2}# (detected|guess): \S/);
         }
         const parsed = parseToml(text);
         expect((repoFile ? RawRepoSchema : RawProjectSchema).safeParse(parsed).success).toBe(true);
@@ -380,8 +380,8 @@ describe("rules 4–6: apps", () => {
 
   it("an unknown dev server: both lines are guesses, PORT is set", async () => {
     const { text } = await draft(repo({ ...PNPM, scripts: { dev: "node server.js" } }));
-    expect(text).toMatch(/^run = "pnpm run dev"  # guess: /m);
-    expect(text).toMatch(/^PORT = "\{port\}"  # guess: /m);
+    expect(text).toMatch(/^run = "pnpm run dev" {2}# guess: /m);
+    expect(text).toMatch(/^PORT = "\{port\}" {2}# guess: /m);
     expect(text).not.toContain("node server.js");
   });
 

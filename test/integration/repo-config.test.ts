@@ -264,7 +264,7 @@ describe("config show", () => {
     const human = await env.run(["config", "show", "app"]);
     expect(human.code).toBe(0);
     const lines = human.stdout.trimEnd().split("\n");
-    for (const line of lines) {expect(line).toMatch(/  # (user|repo|default)$/);}
+    for (const line of lines) {expect(line).toMatch(/ {2}# (user|repo|default)$/);}
     expect(lines.find((l) => l.startsWith("commands.which.run ="))).toMatch(/# repo$/);
     expect(lines.find((l) => l.startsWith("repo ="))).toMatch(/# user$/);
   });
