@@ -42,12 +42,39 @@ export default defineConfig({
       },
     },
     {
-      files: ["src/**", "test/**", "apps/docs/server/**"],
+      files: [
+        "apps/docs/server/routes/sitemap.xml.ts",
+        "src/cli/flags.ts",
+        "src/cli/parse.ts",
+        "src/commands/clean.ts",
+        "src/commands/config.ts",
+        "src/commands/lifecycle.ts",
+        "src/commands/list.ts",
+        "src/commands/process.ts",
+        "src/commands/projects.ts",
+        "src/commands/setup.ts",
+        "src/config/detect-emit.ts",
+        "src/config/detect-parse.ts",
+        "src/config/detect.ts",
+        "src/core/editor.ts",
+        "src/core/repo-files.ts",
+        "src/core/resolve.ts",
+        "src/core/setup.ts",
+        "src/core/workspace.ts",
+        "src/git/repo.ts",
+        "src/lib/hash.ts",
+        "src/lib/proc.ts",
+        "src/lib/template.ts",
+        "src/main.ts",
+        "src/mcp/sinks.ts",
+        "test/mcp-client.ts",
+      ],
       rules: {
         // With noUncheckedIndexedAccess on, `!` marks a value the code has already checked in a
         // way the types can't follow: an index inside its loop's bounds, a capture group of a
         // regex that matched, the stdout of a child spawned with piped stdio, a field a filter
-        // kept. A runtime check there could never fail, and no test could reach it.
+        // kept. A runtime check there could never fail, and no test could reach it. The rule
+        // stays on in every other file.
         "typescript/no-non-null-assertion": "off",
       },
     },
