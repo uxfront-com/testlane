@@ -9,7 +9,8 @@ import { get } from "node:http";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
-import { makeEnv, makeFixtureOrigin, type Harness } from "../fixtures.ts";
+import { makeEnv, makeFixtureOrigin } from '../fixtures.ts';
+import type { Harness } from '../fixtures.ts';
 import { setProcRecorder } from "../../src/lib/proc.ts";
 import { pidAlive } from "../../src/core/state.ts";
 import { stopGroup } from "../../src/core/supervise.ts";
@@ -25,7 +26,7 @@ let tmp: string;
 let origin: ReturnType<typeof makeFixtureOrigin>;
 let env: Harness;
 /** PIDs (and so process groups) a test started; killed in afterEach. */
-let started: number[];
+let started: Array<number>;
 
 function makeLifeEnv(extraToml = ""): Harness {
   const toml = [
@@ -66,11 +67,11 @@ afterEach(() => {
   if (existsSync(data)) {
     for (const slug of readdirSync(data)) {
       const file = join(data, slug, "process.json");
-      if (existsSync(file)) started.push(Number(JSON.parse(readFileSync(file, "utf8")).pid));
+      if (existsSync(file)) {started.push(Number(JSON.parse(readFileSync(file, "utf8")).pid));}
     }
   }
   for (const pid of started) {
-    if (!Number.isInteger(pid) || pid <= 1) continue;
+    if (!Number.isInteger(pid) || pid <= 1) {continue;}
     for (const target of [-pid, pid]) {
       try {
         process.kill(target, "SIGKILL");
@@ -84,7 +85,10 @@ afterEach(() => {
 
 const dataDir = (slug: string) => join(env.worktreesPath(PROJECT), ".data", slug);
 const lines = (file: string) => (existsSync(file) ? readFileSync(file, "utf8").trim().split("\n").filter(Boolean) : []);
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms: number) =>
+  new Promise((r) => {
+    setTimeout(r, ms);
+  });
 
 interface Started {
   project: string;
@@ -98,7 +102,7 @@ interface Started {
   reused: boolean;
 }
 
-async function startJson(args: string[]): Promise<Started> {
+async function startJson(args: Array<string>): Promise<Started> {
   const r = await env.run([PROJECT, ...args, "--json"]);
   expect(r.code, r.stderr).toBe(0);
   const out = JSON.parse(r.stdout) as Started;
@@ -121,10 +125,10 @@ function psField(field: string, pid: number): string {
 }
 
 /** Wait until `pid` no longer answers kill(pid, 0); zombies are reaped by Node. */
-async function waitDead(pid: number, ms = 5_000): Promise<boolean> {
+async function waitDead(pid: number, ms = 5000): Promise<boolean> {
   const deadline = Date.now() + ms;
   while (pidAlive(pid)) {
-    if (Date.now() >= deadline) return false;
+    if (Date.now() >= deadline) {return false;}
     await sleep(50);
   }
   return true;
@@ -148,13 +152,13 @@ beforeAll(() => {
     cwd: repoRoot,
     encoding: "utf8",
   });
-  if (build.status !== 0) throw new Error(`build failed:\n${build.stdout}${build.stderr}`);
+  if (build.status !== 0) {throw new Error(`build failed:\n${build.stdout}${build.stderr}`);}
   // Package-scope lookup stops at node_modules, so the root "type": "module"
   // doesn't reach this build. Without this, Node 18 loads it as CommonJS.
   writeFileSync(join(builtDir, "package.json"), '{"type":"module"}\n');
 }, 120_000);
 
-function spawnBuilt(argv: string[]) {
+function spawnBuilt(argv: Array<string>) {
   const child = spawn("node", [builtCli, ...argv], {
     env: { ...process.env, TESTLANE_CONFIG_DIR: env.configDir, XDG_STATE_HOME: env.stateHome, NO_COLOR: "1" },
     stdio: ["ignore", "pipe", "pipe"],
@@ -267,7 +271,7 @@ describe("start", () => {
     const r = await env.run([PROJECT, "main", "start", "web", "--timeout", "1"]);
     expect(r.code).toBe(5);
     expect(r.stderr).toContain("timed out waiting for another start");
-    expect(Date.now() - t0).toBeLessThan(5_000);
+    expect(Date.now() - t0).toBeLessThan(5000);
     expect(existsSync(join(dataDir("main"), "process.json"))).toBe(false);
   });
 
@@ -313,7 +317,7 @@ describe("start", () => {
   it("P1-C3 — a port someone else already serves is refused instead of reported ready", async () => {
     const co = await env.run([PROJECT, "main", "checkout", "--json"]);
     expect(co.code).toBe(0);
-    const port = (JSON.parse(co.stdout) as { ports: number[] }).ports[0]!;
+    const port = (JSON.parse(co.stdout) as { ports: Array<number> }).ports[0]!;
     const squatter = spawn("node", ["-e", `require('net').createServer().listen(${port},'127.0.0.1')`], {
       stdio: "ignore",
     });
@@ -382,7 +386,7 @@ describe("stop", () => {
     const s = await startJson(["main", "start", "tree"]);
     // The port can accept before the listen callback has written the file.
     const pidFile = join(tmp, "child.pid");
-    for (let i = 0; i < 100 && !existsSync(pidFile); i++) await sleep(50);
+    for (let i = 0; i < 100 && !existsSync(pidFile); i++) {await sleep(50);}
     const child = Number(readFileSync(pidFile, "utf8").trim());
     started.push(child);
     expect(child).not.toBe(s.pid);
@@ -510,9 +514,9 @@ describe("logs", () => {
     const log = join(dataDir("main"), "process.log");
     writeFileSync(log, "first\n");
     const f = spawnBuilt([PROJECT, "main", "logs", "-f"]);
-    for (let i = 0; i < 100 && !f.out().includes("first"); i++) await sleep(50);
+    for (let i = 0; i < 100 && !f.out().includes("first"); i++) {await sleep(50);}
     appendFileSync(log, "second\n");
-    for (let i = 0; i < 100 && !f.out().includes("second"); i++) await sleep(50);
+    for (let i = 0; i < 100 && !f.out().includes("second"); i++) {await sleep(50);}
     f.child.kill("SIGINT");
     const r = await f.done;
     expect(r.stdout).toBe("first\nsecond\n");

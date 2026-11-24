@@ -6,7 +6,7 @@ import type { Sink } from "../lib/log.ts";
 
 /** Keeps everything written to it. With `tee`, also passes each chunk on. */
 export class BufferSink implements Sink {
-  private readonly chunks: Buffer[] = [];
+  private readonly chunks: Array<Buffer> = [];
 
   constructor(private readonly tee?: Sink) {}
 
@@ -30,7 +30,7 @@ export class BufferSink implements Sink {
  * writes, so a child process writing to it never blocks on a full pipe.
  */
 export class CappedSink implements Sink {
-  private readonly chunks: Buffer[] = [];
+  private readonly chunks: Array<Buffer> = [];
   private size = 0;
   truncated = false;
 
@@ -39,7 +39,7 @@ export class CappedSink implements Sink {
   write(chunk: string | Uint8Array): boolean {
     const buf = typeof chunk === "string" ? Buffer.from(chunk, "utf8") : Buffer.from(chunk);
     const room = this.maxBytes - this.size;
-    if (buf.length > room) this.truncated = true;
+    if (buf.length > room) {this.truncated = true;}
     if (room > 0) {
       const kept = buf.length > room ? buf.subarray(0, room) : buf;
       this.chunks.push(kept);
@@ -55,9 +55,9 @@ export class CappedSink implements Sink {
   /** What was kept. When truncated, it ends at the last whole line that fit. */
   text(): string {
     const all = Buffer.concat(this.chunks);
-    if (!this.truncated) return all.toString("utf8");
+    if (!this.truncated) {return all.toString("utf8");}
     const nl = all.lastIndexOf(0x0a);
-    if (nl !== -1) return all.subarray(0, nl + 1).toString("utf8");
+    if (nl !== -1) {return all.subarray(0, nl + 1).toString("utf8");}
     // One long line: cut it, and drop a character the cut split in two.
     return new StringDecoder("utf8").write(all);
   }
@@ -66,7 +66,7 @@ export class CappedSink implements Sink {
 /** Keeps only the last `n` lines written to it, so memory stays bounded. */
 export class TailSink implements Sink {
   private readonly decoder = new StringDecoder("utf8");
-  private readonly lines: string[] = [];
+  private readonly lines: Array<string> = [];
   private partial = "";
 
   constructor(private readonly n: number) {}
@@ -77,7 +77,7 @@ export class TailSink implements Sink {
     this.partial = parts.pop()!;
     for (const line of parts) {
       this.lines.push(line);
-      if (this.lines.length > this.n) this.lines.shift();
+      if (this.lines.length > this.n) {this.lines.shift();}
     }
     return true;
   }
@@ -91,7 +91,7 @@ export class TailSink implements Sink {
     const partial = this.partial + this.decoder.end();
     const lines = partial === "" ? this.lines : [...this.lines, partial];
     const kept = lines.slice(-this.n);
-    if (kept.length === 0) return "";
+    if (kept.length === 0) {return "";}
     return kept.join("\n") + (partial === "" ? "\n" : "");
   }
 }

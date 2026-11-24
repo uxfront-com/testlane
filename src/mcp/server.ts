@@ -6,25 +6,47 @@ import { createInterface } from "node:readline";
 import { ABORT_GRACE_MS } from "../lib/proc.ts";
 import type { Sink } from "../lib/log.ts";
 import type { GhClient } from "../git/gh.ts";
-import { DEFAULT_TIMEOUT_S, findTool, runTool, toolList, type Tool, type ToolResult } from "./tools.ts";
+import { DEFAULT_TIMEOUT_S, findTool, runTool, toolList } from './tools.ts';
+import type { Tool, ToolResult } from './tools.ts';
 
 /** The protocol versions this server speaks, newest first. */
 export const PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"] as const;
 
 /** A heartbeat repeats the last step at least this often while a long call runs. */
-export const HEARTBEAT_MS = 2_500;
+export const HEARTBEAT_MS = 2500;
 /**
  * How long a stopped call may take to wind down before the server answers
  * anyway: the children's grace, then SIGKILL and a little slack.
  */
-const SETTLE_CAP_MS = ABORT_GRACE_MS + 1_500;
+const SETTLE_CAP_MS = ABORT_GRACE_MS + 1500;
 
-const PARSE_ERROR = -32700;
-const INVALID_REQUEST = -32600;
-const METHOD_NOT_FOUND = -32601;
-const INVALID_PARAMS = -32602;
+const PARSE_ERROR = -32_700;
+const INVALID_REQUEST = -32_600;
+const METHOD_NOT_FOUND = -32_601;
+const INVALID_PARAMS = -32_602;
 
 type Id = string | number;
+
+/** The `result` of each response the server sends. */
+type Result =
+  | {
+      protocolVersion: string;
+      capabilities: { tools: { listChanged: boolean } };
+      serverInfo: { name: string; version: string };
+    }
+  | Record<string, never>
+  | { tools: ReturnType<typeof toolList> }
+  | { content: Array<{ type: "text"; text: string }>; isError: boolean };
+
+/** A message the server writes: a response, an error or a progress notification. */
+type Outgoing =
+  | { jsonrpc: "2.0"; id: Id | null; result: Result }
+  | { jsonrpc: "2.0"; id: Id | null; error: { code: number; message: string } }
+  | {
+      jsonrpc: "2.0";
+      method: "notifications/progress";
+      params: { progressToken: Id; progress: number; message: string };
+    };
 
 export interface ServerOptions {
   configDir: string;
@@ -46,7 +68,10 @@ interface Call {
 }
 
 const isId = (v: unknown): v is Id => typeof v === "string" || (typeof v === "number" && Number.isFinite(v));
-const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+const sleep = (ms: number) =>
+  new Promise<void>((r) => {
+    setTimeout(r, ms);
+  });
 
 /**
  * Serve until the input ends or `stop()` is called. In-flight calls are then
@@ -60,7 +85,9 @@ export class McpServer {
 
   async serve(): Promise<void> {
     const rl = createInterface({ input: this.opts.input, crlfDelay: Infinity });
-    const ended = new Promise<void>((resolve) => rl.once("close", resolve));
+    const ended = new Promise<void>((resolve) => {
+      rl.once("close", resolve);
+    });
     this.stopInput = () => rl.close();
     rl.on("line", (line) => this.onLine(line));
     await ended;
@@ -76,17 +103,17 @@ export class McpServer {
 
   private async shutdown(): Promise<void> {
     const pending = [...this.calls.values()];
-    for (const call of pending) this.abort(call, "shutdown");
+    for (const call of pending) {this.abort(call, "shutdown");}
     await Promise.race([Promise.all(pending.map((c) => c.done)), sleep(SETTLE_CAP_MS)]);
     this.closed = true;
   }
 
-  private write(message: object): void {
-    if (this.closed) return;
+  private write(message: Outgoing): void {
+    if (this.closed) {return;}
     this.opts.send(JSON.stringify(message) + "\n");
   }
 
-  private reply(id: Id | null, result: object): void {
+  private reply(id: Id | null, result: Result): void {
     this.write({ jsonrpc: "2.0", id, result });
   }
 
@@ -95,7 +122,7 @@ export class McpServer {
   }
 
   private onLine(line: string): void {
-    if (line.trim() === "") return;
+    if (line.trim() === "") {return;}
     let msg: unknown;
     try {
       msg = JSON.parse(line);
@@ -119,7 +146,7 @@ export class McpServer {
     }
     if (typeof m.method !== "string") {
       // A response to a request we never send, or junk: answer only a request.
-      if ("id" in m && !("result" in m) && !("error" in m)) this.fail(id, INVALID_REQUEST, 'invalid request: "method" must be a string');
+      if ("id" in m && !("result" in m) && !("error" in m)) {this.fail(id, INVALID_REQUEST, 'invalid request: "method" must be a string');}
       return;
     }
     const params = typeof m.params === "object" && m.params !== null ? (m.params as Record<string, unknown>) : {};
@@ -137,7 +164,7 @@ export class McpServer {
   private onNotification(method: string, params: Record<string, unknown>): void {
     if (method === "notifications/cancelled" && isId(params.requestId)) {
       const call = this.calls.get(key(params.requestId));
-      if (call) this.abort(call, "cancel");
+      if (call) {this.abort(call, "cancel");}
     }
     // `notifications/initialized` and anything else need no answer.
   }
@@ -146,7 +173,7 @@ export class McpServer {
     switch (method) {
       case "initialize": {
         const asked = params.protocolVersion;
-        const protocolVersion = (PROTOCOL_VERSIONS as readonly unknown[]).includes(asked)
+        const protocolVersion = (PROTOCOL_VERSIONS as ReadonlyArray<unknown>).includes(asked)
           ? (asked as string)
           : PROTOCOL_VERSIONS[0];
         this.reply(id, {
@@ -191,7 +218,7 @@ export class McpServer {
   }
 
   private abort(call: Call, why: NonNullable<Call["stopped"]>): void {
-    if (call.stopped) return;
+    if (call.stopped) {return;}
     call.stopped = why;
     call.controller.abort();
   }
@@ -201,9 +228,16 @@ export class McpServer {
     const timeoutS = timeoutOf(args);
     const deadline = tool.long && timeoutS !== undefined ? setTimeout(() => this.abort(call, "timeout"), timeoutS * 1000) : undefined;
     // A stopped call sends no more progress.
-    const stopped = new Promise<void>((r) =>
-      call.controller.signal.addEventListener("abort", () => (progress?.stop(), r()), { once: true }),
-    );
+    const stopped = new Promise<void>((r) => {
+      call.controller.signal.addEventListener(
+        "abort",
+        () => {
+          progress?.stop();
+          r();
+        },
+        { once: true },
+      );
+    });
 
     let stderrSoFar = "";
     const work = runTool(tool, args, {
@@ -213,7 +247,7 @@ export class McpServer {
       gh: this.opts.gh,
       onLine: (level, message) => {
         stderrSoFar += `${level === "warn" ? "warning: " : "→ "}${message}\n`;
-        if (level === "step") progress?.step(message);
+        if (level === "step") {progress?.step(message);}
       },
     });
     try {
@@ -233,7 +267,7 @@ export class McpServer {
         });
       }
     } finally {
-      if (deadline) clearTimeout(deadline);
+      if (deadline) {clearTimeout(deadline);}
       progress?.stop();
     }
   }
@@ -250,9 +284,9 @@ function key(id: Id): string {
 
 /** The call's `timeout` in seconds, when it's valid; `runTool` reports one that isn't. */
 function timeoutOf(args: unknown): number | undefined {
-  if (typeof args !== "object" || args === null) return DEFAULT_TIMEOUT_S;
+  if (typeof args !== "object" || args === null) {return DEFAULT_TIMEOUT_S;}
   const t = (args as Record<string, unknown>).timeout;
-  if (t === undefined) return DEFAULT_TIMEOUT_S;
+  if (t === undefined) {return DEFAULT_TIMEOUT_S;}
   return typeof t === "number" && Number.isFinite(t) && t > 0 ? t : undefined;
 }
 
@@ -277,7 +311,7 @@ class Progress {
   private readonly timer: NodeJS.Timeout;
 
   constructor(
-    private readonly send: (message: object) => void,
+    private readonly send: (message: Outgoing) => void,
     private readonly token: Id,
   ) {
     this.timer = setInterval(() => this.emit(), HEARTBEAT_MS);
@@ -289,7 +323,7 @@ class Progress {
   }
 
   private emit(): void {
-    if (this.done) return;
+    if (this.done) {return;}
     this.n += 1;
     this.send({
       jsonrpc: "2.0",

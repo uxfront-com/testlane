@@ -24,13 +24,13 @@ export type ProjectVerb = (typeof PROJECT_VERBS)[number];
 export type WorkspaceVerb = (typeof WORKSPACE_VERBS)[number];
 
 export function isTopLevelVerb(s: string): s is TopLevelVerb {
-  return (TOP_LEVEL_VERBS as readonly string[]).includes(s);
+  return (TOP_LEVEL_VERBS as ReadonlyArray<string>).includes(s);
 }
 export function isProjectVerb(s: string): s is ProjectVerb {
-  return (PROJECT_VERBS as readonly string[]).includes(s);
+  return (PROJECT_VERBS as ReadonlyArray<string>).includes(s);
 }
 export function isWorkspaceVerb(s: string): s is WorkspaceVerb {
-  return (WORKSPACE_VERBS as readonly string[]).includes(s);
+  return (WORKSPACE_VERBS as ReadonlyArray<string>).includes(s);
 }
 
 /** Verbs valid as a `default_command` target (before configured command names). */

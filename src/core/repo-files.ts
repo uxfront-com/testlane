@@ -15,7 +15,7 @@ const SKIP_DIRS = new Set(["node_modules", ".git"]);
 
 function decode(bytes: Buffer, label: string): string {
   const text = bytes.toString("utf8");
-  if (!Buffer.from(text, "utf8").equals(bytes)) throw configError(`${label} is not valid UTF-8`);
+  if (!Buffer.from(text, "utf8").equals(bytes)) {throw configError(`${label} is not valid UTF-8`);}
   return text.replace(/^﻿/, "");
 }
 
@@ -25,9 +25,9 @@ function decode(bytes: Buffer, label: string): string {
  */
 export function localFiles(root: string): RepoFiles {
   const base = resolve(root);
-  let cache: string[] | undefined;
+  let cache: Array<string> | undefined;
 
-  const walk = (dir: string, out: string[]): void => {
+  const walk = (dir: string, out: Array<string>): void => {
     let entries;
     try {
       entries = readdirSync(dir, { withFileTypes: true });
@@ -36,7 +36,7 @@ export function localFiles(root: string): RepoFiles {
     }
     for (const e of entries) {
       if (e.isDirectory()) {
-        if (!SKIP_DIRS.has(e.name)) walk(join(dir, e.name), out);
+        if (!SKIP_DIRS.has(e.name)) {walk(join(dir, e.name), out);}
       } else if (e.isFile()) {
         out.push(relative(base, join(dir, e.name)).split(sep).join("/"));
       }
@@ -44,7 +44,7 @@ export function localFiles(root: string): RepoFiles {
   };
 
   const inside = (path: string): string | null => {
-    if (path === "" || path.startsWith("/") || path.split("/").some((s) => s === ".." || s === "")) return null;
+    if (path === "" || path.startsWith("/") || path.split("/").some((s) => s === ".." || s === "")) {return null;}
     return join(base, ...path.split("/"));
   };
 
@@ -59,7 +59,7 @@ export function localFiles(root: string): RepoFiles {
     },
     read: async (path) => {
       const abs = inside(path);
-      if (!abs) return null;
+      if (!abs) {return null;}
       // Every segment must be a real directory or file, never a symlink.
       let cur = base;
       for (const seg of path.split("/")) {
@@ -70,17 +70,17 @@ export function localFiles(root: string): RepoFiles {
         } catch {
           return null;
         }
-        if (st.isSymbolicLink()) return null;
+        if (st.isSymbolicLink()) {return null;}
         if (cur === abs) {
-          if (!st.isFile()) return null;
-          if (st.size > MAX_BLOB_BYTES) throw configError(`${path} is larger than ${MAX_BLOB_BYTES} bytes`);
+          if (!st.isFile()) {return null;}
+          if (st.size > MAX_BLOB_BYTES) {throw configError(`${path} is larger than ${MAX_BLOB_BYTES} bytes`);}
         }
       }
       return decode(readFileSync(abs), path);
     },
     exists: async (path) => {
       const abs = inside(path);
-      if (!abs) return false;
+      if (!abs) {return false;}
       try {
         return lstatSync(abs).isFile();
       } catch {
@@ -100,20 +100,20 @@ export function gitFiles(repoPath: string, ref: string): RepoFiles {
   let index: Map<string, string> | undefined;
 
   const load = async (): Promise<Map<string, string>> => {
-    if (index) return index;
+    if (index) {return index;}
     const res = await capture(["git", "-C", repoPath, "ls-tree", "-r", "-z", "--full-tree", ref], {
       allowFailure: true,
       env: gitEnv(),
       errCode: "E_GIT",
     });
-    if (res.code !== 0) throw new TestlaneError("E_GIT", `git ls-tree failed for ${ref}: ${res.stderr.trim()}`);
+    if (res.code !== 0) {throw new TestlaneError("E_GIT", `git ls-tree failed for ${ref}: ${res.stderr.trim()}`);}
     index = new Map();
     for (const line of res.stdout.split("\0")) {
       const m = line.match(/^(\d+) (\w+) ([0-9a-f]+)\t(.*)$/s);
-      if (!m) continue;
+      if (!m) {continue;}
       const [, mode, type, id, path] = m;
-      if (type !== "blob" || (mode !== "100644" && mode !== "100755")) continue;
-      if (path!.split("/").some((s) => SKIP_DIRS.has(s))) continue;
+      if (type !== "blob" || (mode !== "100644" && mode !== "100755")) {continue;}
+      if (path!.split("/").some((s) => SKIP_DIRS.has(s))) {continue;}
       index.set(path!, id!);
     }
     return index;
@@ -123,7 +123,7 @@ export function gitFiles(repoPath: string, ref: string): RepoFiles {
     list: async () => [...(await load()).keys()].sort(),
     read: async (path) => {
       const id = (await load()).get(path);
-      if (id === undefined) return null;
+      if (id === undefined) {return null;}
       return decode(await readBlob(repoPath, id, `${path} on ${ref}`), `${path} on ${ref}`);
     },
     exists: async (path) => (await load()).has(path),

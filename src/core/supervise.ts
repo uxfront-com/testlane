@@ -25,17 +25,20 @@ export const startLockFile = (dataDir: string) => join(dataDir, "start.lock");
 // The group helpers live beside the spawn code; `stop` and `start` reach them here.
 export { STOP_GRACE_MS, groupAlive, stopGroup } from "../lib/proc.ts";
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms: number) =>
+  new Promise((r) => {
+    setTimeout(r, ms);
+  });
 
 /** The recorded entry, or null when there is none or it can't be read. */
 export function readEntry(dataDir: string): ProcessEntry | null {
   const file = processFile(dataDir);
-  if (!existsSync(file)) return null;
+  if (!existsSync(file)) {return null;}
   try {
     const e = JSON.parse(readFileSync(file, "utf8")) as Partial<ProcessEntry>;
     // PID 1 is init, and kill(-1) would signal every process we may signal.
-    if (typeof e.pid !== "number" || !Number.isInteger(e.pid) || e.pid <= 1) return null;
-    if (typeof e.lstart !== "string" || typeof e.command !== "string") return null;
+    if (typeof e.pid !== "number" || !Number.isInteger(e.pid) || e.pid <= 1) {return null;}
+    if (typeof e.lstart !== "string" || typeof e.command !== "string") {return null;}
     return e as ProcessEntry;
   } catch {
     return null;
@@ -54,7 +57,7 @@ export function writeEntry(dataDir: string, entry: ProcessEntry): void {
 export function removeEntry(dataDir: string, pid?: number): void {
   if (pid !== undefined) {
     const current = readEntry(dataDir);
-    if (current && current.pid !== pid) return;
+    if (current && current.pid !== pid) {return;}
   }
   rmSync(processFile(dataDir), { force: true });
 }
@@ -76,7 +79,7 @@ export async function startTime(pid: number): Promise<string | null> {
  * a dead PID or one the OS has since given to another process, is exited.
  */
 export async function isLive(entry: ProcessEntry): Promise<boolean> {
-  if (!pidAlive(entry.pid)) return false;
+  if (!pidAlive(entry.pid)) {return false;}
   const lstart = await startTime(entry.pid);
   return lstart !== null && lstart === entry.lstart;
 }
@@ -115,7 +118,7 @@ export function portAccepts(port: number): Promise<boolean> {
       socket.destroy();
       resolve(ok);
     };
-    socket.setTimeout(1_000, () => done(false));
+    socket.setTimeout(1000, () => done(false));
     socket.once("connect", () => done(true));
     socket.once("error", () => done(false));
   });
@@ -132,17 +135,17 @@ export async function waitForPort(
   signal?: AbortSignal,
 ): Promise<"ready" | "exited" | "timeout" | "aborted"> {
   for (;;) {
-    if (signal?.aborted) return "aborted";
-    if (hasExited()) return "exited";
-    if (await portAccepts(port)) return hasExited() ? "exited" : "ready";
-    if (Date.now() >= deadline) return "timeout";
+    if (signal?.aborted) {return "aborted";}
+    if (hasExited()) {return "exited";}
+    if (await portAccepts(port)) {return hasExited() ? "exited" : "ready";}
+    if (Date.now() >= deadline) {return "timeout";}
     await sleep(200);
   }
 }
 
 /** The last `n` lines of `file` (reads at most its last 64 KiB). */
-export function tailLines(file: string, n: number): string[] {
-  if (!existsSync(file)) return [];
+export function tailLines(file: string, n: number): Array<string> {
+  if (!existsSync(file)) {return [];}
   const fd = openSync(file, "r");
   try {
     const size = fstatSync(fd).size;
@@ -150,7 +153,7 @@ export function tailLines(file: string, n: number): string[] {
     const buf = Buffer.alloc(len);
     readSync(fd, buf, 0, len, size - len);
     const lines = buf.toString("utf8").split("\n");
-    if (lines[lines.length - 1] === "") lines.pop();
+    if (lines.at(-1) === "") {lines.pop();}
     return lines.slice(-n);
   } finally {
     closeSync(fd);

@@ -18,7 +18,7 @@ export async function mcp(input: TopInput): Promise<number> {
   const original = stdout.write;
   const writeProtocol = original.bind(stdout) as (line: string) => boolean;
   stdout.write = ((...args: Parameters<typeof stdout.write>) =>
-    (process.stderr.write as (...a: unknown[]) => boolean)(...args)) as typeof stdout.write;
+    (process.stderr.write as (...a: Array<unknown>) => boolean)(...args)) as typeof stdout.write;
 
   const server = new McpServer({
     configDir: input.ctx.configDir,

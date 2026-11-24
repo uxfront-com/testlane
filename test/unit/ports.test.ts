@@ -49,7 +49,7 @@ describe("allocatePorts — §8.5 deterministic-first", () => {
   it("stays within the 100-stride window (wraps offset)", async () => {
     const block = await allocatePorts({ slug: "wrap", basePort: 6000, ports: 5, reserved: new Set(), isFree: freeAll });
     expect(block[0]).toBeGreaterThanOrEqual(6000);
-    expect(block[block.length - 1]!).toBeLessThan(6000 + 100 * 5);
+    expect(block.at(-1)!).toBeLessThan(6000 + 100 * 5);
   });
 
   it("falls back to deterministic candidate when window exhausted", async () => {

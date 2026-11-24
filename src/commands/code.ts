@@ -11,7 +11,7 @@ import type { WorkspaceInput } from "./types.ts";
 
 export async function code(input: WorkspaceInput): Promise<number> {
   const { ctx, project, ref } = input;
-  if (ctx.flags.json) throw usage("--json is not supported for 'code'");
+  if (ctx.flags.json) {throw usage("--json is not supported for 'code'");}
   const flags = parseFlags(input.args, {
     bools: ["--fetch", "--setup", "--no-setup"],
     values: ["--editor"],

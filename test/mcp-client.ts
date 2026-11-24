@@ -2,7 +2,8 @@
 // `testlane mcp` and speaks newline-delimited JSON-RPC 2.0 to it, keeping every
 // stdout line, so a test can check that nothing else ever reached stdout.
 
-import { spawn, type ChildProcess } from "node:child_process";
+import { spawn } from 'node:child_process';
+import type { ChildProcess } from 'node:child_process';
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -26,6 +27,8 @@ export interface Received {
 
 export interface ToolAnswer {
   /** The text block, parsed as JSON. */
+  // Each tool answers with its own JSON shape, and tests read it as they would in a test file.
+  // oxlint-disable-next-line typescript/no-explicit-any
   value: any;
   isError: boolean;
   at: number;
@@ -33,8 +36,8 @@ export interface ToolAnswer {
 
 export class McpClient {
   /** Every line the server wrote to stdout, as written. */
-  readonly stdoutLines: string[] = [];
-  readonly received: Received[] = [];
+  readonly stdoutLines: Array<string> = [];
+  readonly received: Array<Received> = [];
   stderr = "";
   readonly exited: Promise<number | null>;
   private readonly child: ChildProcess;
@@ -42,12 +45,14 @@ export class McpClient {
   private nextId = 1;
   private readonly waiting = new Map<string, (r: Received) => void>();
 
-  constructor(env: Record<string, string>, preArgs: string[] = []) {
+  constructor(env: Record<string, string>, preArgs: Array<string> = []) {
     this.child = spawn(process.execPath, [builtCli, ...preArgs, "mcp"], {
       env: { ...(process.env as Record<string, string>), NO_COLOR: "1", TESTLANE_DEBUG: "0", ...env },
       stdio: ["pipe", "pipe", "pipe"],
     });
-    this.exited = new Promise((resolve) => this.child.once("exit", (code) => resolve(code)));
+    this.exited = new Promise((resolve) => {
+      this.child.once("exit", (code) => resolve(code));
+    });
     this.child.stdout!.setEncoding("utf8");
     this.child.stderr!.setEncoding("utf8");
     this.child.stderr!.on("data", (chunk: string) => {
@@ -99,7 +104,9 @@ export class McpClient {
 
   /** Wait for the response to `id`, sent some other way. */
   expect(id: string | number | null): Promise<Received> {
-    return new Promise((resolve) => this.waiting.set(JSON.stringify(id), resolve));
+    return new Promise((resolve) => {
+      this.waiting.set(JSON.stringify(id), resolve);
+    });
   }
 
   notify(method: string, params?: Record<string, unknown>): void {
@@ -123,9 +130,9 @@ export class McpClient {
     opts: { id?: string | number; progressToken?: string | number } = {},
   ): Promise<ToolAnswer> {
     const params: Record<string, unknown> = { name, arguments: args };
-    if (opts.progressToken !== undefined) params._meta = { progressToken: opts.progressToken };
+    if (opts.progressToken !== undefined) {params._meta = { progressToken: opts.progressToken };}
     const r = await this.request("tools/call", params, opts.id ?? this.nextId++);
-    if (r.msg.error) throw new Error(`${name}: JSON-RPC error ${r.msg.error.code} ${r.msg.error.message}`);
+    if (r.msg.error) {throw new Error(`${name}: JSON-RPC error ${r.msg.error.code} ${r.msg.error.message}`);}
     const result = r.msg.result as { content: Array<{ type: string; text: string }>; isError: boolean };
     const text = result.content[0]!.text;
     let value: unknown;
@@ -138,14 +145,14 @@ export class McpClient {
   }
 
   /** The progress notifications that carried `token`. */
-  progress(token: string | number): Received[] {
+  progress(token: string | number): Array<Received> {
     return this.received.filter(
       (r) => r.msg.method === "notifications/progress" && r.msg.params?.progressToken === token,
     );
   }
 
   /** End stdin and wait for the server to exit. Kills it after `ms`. */
-  async close(ms = 8_000): Promise<number | null> {
+  async close(ms = 8000): Promise<number | null> {
     this.child.stdin!.end();
     const timer = setTimeout(() => this.child.kill("SIGKILL"), ms);
     const code = await this.exited;

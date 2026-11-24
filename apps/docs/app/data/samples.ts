@@ -22,7 +22,7 @@ export interface RefSample {
 }
 
 /** The Refs chapter's code sample, one comment and command per ref. */
-export const REF_SAMPLES: RefSample[] = [
+export const REF_SAMPLES: Array<RefSample> = [
 	{ ref: "42", kind: "pr", comment: "A pull request" },
 	{ ref: "feat/login", kind: "branch", comment: "A branch" },
 	{
@@ -35,7 +35,7 @@ export const REF_SAMPLES: RefSample[] = [
 ];
 
 /** The four workspaces the hero and the Isolation chapter label, top to bottom. */
-export const WORKSPACES: { ref: string; kind: RefKind; port: string }[] = [
+export const WORKSPACES: Array<{ ref: string; kind: RefKind; port: string }> = [
 	{ ref: "#42", kind: "pr", port: "3053" },
 	{ ref: "feat/login", kind: "branch", port: "3011" },
 	{ ref: "fix/ports", kind: "branch", port: "3027" },

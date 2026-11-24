@@ -10,8 +10,10 @@ import { detect } from "../config/detect.ts";
 import { renderDraft } from "../config/detect-emit.ts";
 import { acquireLock, loadState, saveState } from "../core/state.ts";
 import { gitFiles } from "../core/repo-files.ts";
-import { repoConfigBranch, trustGate, type TrustResult } from "../core/trust.ts";
-import { detectDefaultBranch, fetchBranch, initPrimaryRepo, isInitialized, originUrl, type GitEnv } from "../git/repo.ts";
+import { repoConfigBranch, trustGate } from '../core/trust.ts';
+import type { TrustResult } from '../core/trust.ts';
+import { detectDefaultBranch, fetchBranch, initPrimaryRepo, isInitialized, originUrl } from '../git/repo.ts';
+import type { GitEnv } from '../git/repo.ts';
 
 export interface CloneDetectOptions {
   /** The clone URL, as the project file writes it. */
@@ -44,12 +46,12 @@ export async function cloneTrustDetect(
     if (!isInitialized(project.repoPath)) {
       try {
         await initPrimaryRepo(g, opts.repo);
-      } catch (e) {
+      } catch (error) {
         // repo_path didn't exist before this run.
         rmSync(project.repoPath, { recursive: true, force: true });
         opts.rollback();
-        if (e instanceof TestlaneError && e.errCode === "E_GIT") throw e;
-        throw new TestlaneError("E_GIT", `cloning ${opts.repo} failed: ${(e as Error).message}`);
+        if (error instanceof TestlaneError && error.errCode === "E_GIT") {throw error;}
+        throw new TestlaneError("E_GIT", `cloning ${opts.repo} failed: ${(error as Error).message}`);
       }
     } else {
       // An existing clone (a `setup --force` re-run). It must be a clone of this
@@ -65,7 +67,7 @@ export async function cloneTrustDetect(
       }
       // Bring its default branch up to date.
       const branch = await repoConfigBranch(project, () => detectDefaultBranch(g));
-      if (branch) await fetchBranch(g, branch);
+      if (branch) {await fetchBranch(g, branch);}
     }
 
     const state = loadState(name);
@@ -77,9 +79,9 @@ export async function cloneTrustDetect(
       saveState(name, state);
     }
     const trust = await trustGate(ctx, project, state, { explicit: true, untrustedHint: opts.untrustedHint });
-    if (trust.stateChanged) saveState(name, state);
+    if (trust.stateChanged) {saveState(name, state);}
 
-    if (!opts.detect || trust.outcome !== "no-file" || !trust.branch) return { trust };
+    if (!opts.detect || trust.outcome !== "no-file" || !trust.branch) {return { trust };}
     ctx.log.step(`detecting a config from origin/${trust.branch}`);
     const findings = await detect(gitFiles(project.repoPath, `refs/remotes/origin/${trust.branch}`), {
       repo: { value: opts.repo, reason: opts.detect.repoReason },

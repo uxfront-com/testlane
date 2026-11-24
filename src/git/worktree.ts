@@ -7,7 +7,7 @@ import { gitEnv as env } from "./env.ts";
 
 async function runGit(
   g: GitEnv,
-  argv: string[],
+  argv: Array<string>,
   opts: { read?: boolean; allowFailure?: boolean } = {},
 ): Promise<{ code: number; stdout: string; stderr: string }> {
   if (g.dryRun && !opts.read) {
@@ -20,15 +20,15 @@ async function runGit(
 
 // ── Argv builders ────────────────────────────────────────────────────────────
 
-export function addBranchWorktreeArgv(repoPath: string, dir: string, name: string): string[] {
+export function addBranchWorktreeArgv(repoPath: string, dir: string, name: string): Array<string> {
   return ["git", "-C", repoPath, "worktree", "add", dir, "-B", name, "--track", `origin/${name}`];
 }
 
-export function addPrWorktreeArgv(repoPath: string, dir: string, n: number): string[] {
+export function addPrWorktreeArgv(repoPath: string, dir: string, n: number): Array<string> {
   return ["git", "-C", repoPath, "worktree", "add", dir, `pr/${n}`];
 }
 
-export function addCommitWorktreeArgv(repoPath: string, dir: string, sha: string): string[] {
+export function addCommitWorktreeArgv(repoPath: string, dir: string, sha: string): Array<string> {
   return ["git", "-C", repoPath, "worktree", "add", "--detach", dir, sha];
 }
 
@@ -38,7 +38,7 @@ export function addCommitWorktreeArgv(repoPath: string, dir: string, sha: string
 export async function addBranchWorktree(g: GitEnv, dir: string, name: string): Promise<void> {
   const res = await runGit(g, addBranchWorktreeArgv(g.repoPath, dir, name), { allowFailure: true });
   throwIfAlreadyCheckedOut(res, name);
-  if (res.code !== 0) throw new TestlaneError("E_GIT", `git worktree add: ${res.stderr.trim()}`);
+  if (res.code !== 0) {throw new TestlaneError("E_GIT", `git worktree add: ${res.stderr.trim()}`);}
   g.log.step(`worktree ready: ${dir}`);
 }
 
@@ -46,7 +46,7 @@ export async function addBranchWorktree(g: GitEnv, dir: string, name: string): P
 export async function addPrWorktree(g: GitEnv, dir: string, n: number): Promise<void> {
   const res = await runGit(g, addPrWorktreeArgv(g.repoPath, dir, n), { allowFailure: true });
   throwIfAlreadyCheckedOut(res, `pr/${n}`);
-  if (res.code !== 0) throw new TestlaneError("E_GIT", `git worktree add: ${res.stderr.trim()}`);
+  if (res.code !== 0) {throw new TestlaneError("E_GIT", `git worktree add: ${res.stderr.trim()}`);}
   g.log.step(`worktree ready: ${dir}`);
 }
 
@@ -54,7 +54,7 @@ export async function addPrWorktree(g: GitEnv, dir: string, n: number): Promise<
 export async function addCommitWorktree(g: GitEnv, dir: string, sha: string): Promise<void> {
   const res = await runGit(g, addCommitWorktreeArgv(g.repoPath, dir, sha), { allowFailure: true });
   throwIfAlreadyCheckedOut(res, sha);
-  if (res.code !== 0) throw new TestlaneError("E_GIT", `git worktree add: ${res.stderr.trim()}`);
+  if (res.code !== 0) {throw new TestlaneError("E_GIT", `git worktree add: ${res.stderr.trim()}`);}
   g.log.step(`worktree ready: ${dir}`);
 }
 
@@ -72,7 +72,7 @@ function throwIfAlreadyCheckedOut(
 /** Remove a worktree; `force` allows removing a dirty tree (§7.5, §19.12). */
 export async function removeWorktree(g: GitEnv, dir: string, force: boolean): Promise<void> {
   const argv = ["git", "-C", g.repoPath, "worktree", "remove", dir];
-  if (force) argv.push("--force");
+  if (force) {argv.push("--force");}
   await runGit(g, argv, { allowFailure: false });
 }
 
@@ -134,19 +134,19 @@ export async function stashPush(dir: string, message: string): Promise<string | 
     ["git", "-C", dir, "stash", "push", "--include-untracked", "-m", message],
     { allowFailure: true, env: env() },
   );
-  if (res.code !== 0) throw new TestlaneError("E_GIT", `git stash push: ${res.stderr.trim()}`);
-  if (/no local changes/i.test(res.stdout)) return null;
+  if (res.code !== 0) {throw new TestlaneError("E_GIT", `git stash push: ${res.stderr.trim()}`);}
+  if (/no local changes/i.test(res.stdout)) {return null;}
   return "stash@{0}";
 }
 
 /** Count files changed between two revisions in a worktree. */
 export async function diffCount(dir: string, from: string, to: string): Promise<number> {
-  if (!from || !to || from === to) return 0;
+  if (!from || !to || from === to) {return 0;}
   const res = await capture(["git", "-C", dir, "diff", "--name-only", `${from}..${to}`], {
     allowFailure: true,
     env: env(),
   });
-  if (res.code !== 0) return 0;
+  if (res.code !== 0) {return 0;}
   return res.stdout.split("\n").filter((l) => l.trim() !== "").length;
 }
 
@@ -156,7 +156,7 @@ export async function mergedBranches(repoPath: string, base: string): Promise<Se
     allowFailure: true,
     env: env(),
   });
-  if (res.code !== 0) return new Set();
+  if (res.code !== 0) {return new Set();}
   const names = res.stdout
     .split("\n")
     .map((l) => l.replace(/^[*+ ]+/, "").trim())
@@ -165,15 +165,15 @@ export async function mergedBranches(repoPath: string, base: string): Promise<Se
 }
 
 /** List worktree directories known to git (for doctor orphan detection, §9.11). */
-export async function listWorktrees(repoPath: string): Promise<string[]> {
+export async function listWorktrees(repoPath: string): Promise<Array<string>> {
   const res = await capture(["git", "-C", repoPath, "worktree", "list", "--porcelain"], {
     allowFailure: true,
     env: env(),
   });
-  if (res.code !== 0) return [];
-  const dirs: string[] = [];
+  if (res.code !== 0) {return [];}
+  const dirs: Array<string> = [];
   for (const line of res.stdout.split("\n")) {
-    if (line.startsWith("worktree ")) dirs.push(line.slice("worktree ".length));
+    if (line.startsWith("worktree ")) {dirs.push(line.slice("worktree ".length));}
   }
   return dirs;
 }

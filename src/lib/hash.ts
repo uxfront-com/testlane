@@ -2,8 +2,8 @@
 
 import { createHash } from "node:crypto";
 
-const FNV_OFFSET_BASIS = 0x811c9dc5;
-const FNV_PRIME = 0x01000193;
+const FNV_OFFSET_BASIS = 0x81_1c_9d_c5;
+const FNV_PRIME = 0x01_00_01_93;
 
 /** FNV-1a 32-bit hash of a UTF-8 string, returned as an unsigned 32-bit integer. */
 export function fnv1a32(input: string): number {

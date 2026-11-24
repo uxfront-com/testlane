@@ -2,13 +2,14 @@
 
 import { spawn } from "node:child_process";
 import { closeSync, openSync } from "node:fs";
-import { TestlaneError, abortedError, type ErrCode } from "./errors.ts";
+import { TestlaneError, abortedError } from './errors.ts';
+import type { ErrCode } from './errors.ts';
 import type { Sink } from "./log.ts";
 
 // Optional recorder: when set, every spawned argv is recorded before execution.
 // Used by integration tests to assert which external commands ran (§17.2).
-let recorder: ((argv: string[]) => void) | null = null;
-export function setProcRecorder(fn: ((argv: string[]) => void) | null): void {
+let recorder: ((argv: Array<string>) => void) | null = null;
+export function setProcRecorder(fn: ((argv: Array<string>) => void) | null): void {
   recorder = fn;
 }
 
@@ -33,8 +34,8 @@ export interface CaptureResult {
  * Run `argv` capturing stdout/stderr. Argv-based, never through a shell.
  * Non-zero exit throws TestlaneError unless `allowFailure` is set (§11.1).
  */
-export async function capture(argv: string[], opts: CaptureOptions = {}): Promise<CaptureResult> {
-  if (opts.signal?.aborted) throw abortedError();
+export async function capture(argv: Array<string>, opts: CaptureOptions = {}): Promise<CaptureResult> {
+  if (opts.signal?.aborted) {throw abortedError();}
   recorder?.(argv);
   return await new Promise<CaptureResult>((resolve, reject) => {
     const child = spawn(argv[0]!, argv.slice(1), {
@@ -77,7 +78,7 @@ export async function capture(argv: string[], opts: CaptureOptions = {}): Promis
  * (a repo file's sha256, §5.7). Never throws on a non-zero exit.
  */
 export async function captureBytes(
-  argv: string[],
+  argv: Array<string>,
   opts: { cwd?: string; env?: Record<string, string> } = {},
 ): Promise<{ code: number; stdout: Buffer; stderr: string }> {
   recorder?.(argv);
@@ -87,7 +88,7 @@ export async function captureBytes(
       env: opts.env ?? (process.env as Record<string, string>),
       stdio: ["ignore", "pipe", "pipe"],
     });
-    const out: Buffer[] = [];
+    const out: Array<Buffer> = [];
     let stderr = "";
     child.stdout!.on("data", (chunk: Buffer) => out.push(chunk));
     child.stderr!.setEncoding("utf8");
@@ -126,7 +127,7 @@ export interface PassthroughOptions {
 }
 
 /** SIGTERM → SIGKILL grace for a child stopped by an abort signal (ADR-003). */
-export const ABORT_GRACE_MS = 2_000;
+export const ABORT_GRACE_MS = 2000;
 
 export interface DetachOptions {
   cwd?: string;
@@ -146,7 +147,7 @@ export interface Detached {
  * unref it so Testlane can exit while it runs. stdio is ignored, or appended to
  * `log` when given (§10, §9.14).
  */
-export async function detach(argv: string[], opts: DetachOptions = {}): Promise<Detached> {
+export async function detach(argv: Array<string>, opts: DetachOptions = {}): Promise<Detached> {
   recorder?.(argv);
   const fd = opts.log !== undefined ? openSync(opts.log, "a") : undefined;
   try {
@@ -168,7 +169,7 @@ export async function detach(argv: string[], opts: DetachOptions = {}): Promise<
     });
   } finally {
     // The child holds its own copy of the descriptor.
-    if (fd !== undefined) closeSync(fd);
+    if (fd !== undefined) {closeSync(fd);}
   }
 }
 
@@ -177,13 +178,13 @@ export async function detach(argv: string[], opts: DetachOptions = {}): Promise<
  * child's process group for the duration, then restores handlers (§11.1, §19.13).
  * Returns the child's exit code (128+signal on signal death).
  */
-export async function passthrough(argv: string[], opts: PassthroughOptions = {}): Promise<number> {
+export async function passthrough(argv: Array<string>, opts: PassthroughOptions = {}): Promise<number> {
   if (opts.detach) {
     await detach(argv, { cwd: opts.cwd, env: opts.env });
     return 0;
   }
 
-  if (opts.signal?.aborted) throw abortedError();
+  if (opts.signal?.aborted) {throw abortedError();}
   recorder?.(argv);
   return await new Promise<number>((resolve, reject) => {
     const stdin = opts.closeStdin ? "ignore" : "inherit";
@@ -215,7 +216,7 @@ export async function passthrough(argv: string[], opts: PassthroughOptions = {})
     let stopping: Promise<unknown> = Promise.resolve();
     const onAbort = () => {
       const pid = child.pid;
-      if (pid === undefined) return;
+      if (pid === undefined) {return;}
       stopping = opts.ownGroup ? stopGroup(pid, ABORT_GRACE_MS) : stopChild(child, ABORT_GRACE_MS);
     };
     opts.signal?.addEventListener("abort", onAbort, { once: true });
@@ -245,8 +246,10 @@ export async function passthrough(argv: string[], opts: PassthroughOptions = {})
 
 /** SIGTERM one child, then SIGKILL it after `graceMs` if it is still there. */
 async function stopChild(child: ReturnType<typeof spawn>, graceMs: number): Promise<void> {
-  if (child.exitCode !== null || child.signalCode !== null) return;
-  const exited = new Promise<void>((r) => child.once("exit", () => r()));
+  if (child.exitCode !== null || child.signalCode !== null) {return;}
+  const exited = new Promise<void>((r) => {
+    child.once("exit", () => r());
+  });
   child.kill("SIGTERM");
   const timer = setTimeout(() => child.kill("SIGKILL"), graceMs);
   await exited;
@@ -264,23 +267,23 @@ export function groupAlive(pgid: number): boolean {
   try {
     process.kill(-pgid, 0);
     return true;
-  } catch (e) {
-    return (e as NodeJS.ErrnoException).code === "EPERM";
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === "EPERM";
   }
 }
 
 function signalGroup(pgid: number, signal: NodeJS.Signals): void {
   try {
     process.kill(-pgid, signal);
-  } catch (e) {
-    const code = (e as NodeJS.ErrnoException).code;
-    if (code === "ESRCH") return; // already gone
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ESRCH") {return;} // already gone
     if (code === "EPERM") {
       throw new TestlaneError("E_SETUP", `not permitted to signal process group ${pgid}`, {
         hint: "it belongs to another user; stop it as that user",
       });
     }
-    throw e;
+    throw error;
   }
 }
 
@@ -288,8 +291,10 @@ function signalGroup(pgid: number, signal: NodeJS.Signals): void {
 async function waitGroupGone(pgid: number, ms: number): Promise<boolean> {
   const deadline = Date.now() + ms;
   while (groupAlive(pgid)) {
-    if (Date.now() >= deadline) return false;
-    await new Promise((r) => setTimeout(r, GROUP_POLL_MS));
+    if (Date.now() >= deadline) {return false;}
+    await new Promise((r) => {
+      setTimeout(r, GROUP_POLL_MS);
+    });
   }
   return true;
 }
@@ -301,9 +306,9 @@ async function waitGroupGone(pgid: number, ms: number): Promise<boolean> {
  */
 export async function stopGroup(pgid: number, graceMs = STOP_GRACE_MS): Promise<"terminated" | "killed"> {
   signalGroup(pgid, "SIGTERM");
-  if (await waitGroupGone(pgid, graceMs)) return "terminated";
+  if (await waitGroupGone(pgid, graceMs)) {return "terminated";}
   signalGroup(pgid, "SIGKILL");
-  await waitGroupGone(pgid, 2_000);
+  await waitGroupGone(pgid, 2000);
   return "killed";
 }
 
@@ -318,7 +323,7 @@ function signalNumber(sig: string): number {
  * instead of surfacing as E_INTERNAL (§14). node:child_process reports ENOENT
  * asynchronously via the `error` event, unlike Bun's synchronous throw.
  */
-function mapSpawnError(e: unknown, argv: string[]): TestlaneError {
+function mapSpawnError(e: unknown, argv: Array<string>): TestlaneError {
   if ((e as NodeJS.ErrnoException).code === "ENOENT") {
     return new TestlaneError("E_SETUP", `command not found: ${argv[0]}`, {
       hint: `ensure '${argv[0]}' is installed and on your PATH`,

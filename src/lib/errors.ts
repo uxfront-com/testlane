@@ -64,5 +64,5 @@ export function abortedError(): TestlaneError {
 
 /** Throw `abortedError()` once `signal` has fired. */
 export function throwIfAborted(signal: AbortSignal | undefined): void {
-  if (signal?.aborted) throw abortedError();
+  if (signal?.aborted) {throw abortedError();}
 }

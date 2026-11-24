@@ -10,12 +10,12 @@ import { matchWorkspaces, parseWorkspaceYaml } from "./detect-parse.ts";
 /** A read-only view of a repo's files: a checkout, a commit, or a map in a test. */
 export interface RepoFiles {
   /** Every regular file, repo-relative with `/`, outside the `node_modules` and `.git` directories. Symlinks are left out. */
-  list(): Promise<string[]>;
+  list(): Promise<Array<string>>;
   /** UTF-8 text, or null when the file is absent. Throws E_CONFIG for a file over 1 MiB. */
   read(path: string): Promise<string | null>;
   exists(path: string): Promise<boolean>;
   /** Get `paths` ready to read in one go, where a read can be slow on its own, like in a partial clone. */
-  prefetch?(paths: string[]): Promise<void>;
+  prefetch?(paths: Array<string>): Promise<void>;
 }
 
 /** The root files `detect` reads, besides each workspace's `package.json`. */
@@ -74,7 +74,7 @@ interface App {
   confidence: Confidence;
   reason: string;
   /** Arguments the dev script had that the draft drops. */
-  dropped: string[];
+  dropped: Array<string>;
 }
 
 type Framework = "nuxt" | "next" | "vite" | "astro" | "storybook";
@@ -87,7 +87,7 @@ const LOCKFILES: Array<[string, PackageManager]> = [
   ["bun.lockb", "bun"],
 ];
 
-const PM_ORDER: PackageManager[] = ["pnpm", "yarn", "bun", "npm"];
+const PM_ORDER: Array<PackageManager> = ["pnpm", "yarn", "bun", "npm"];
 const MAX_APPS = 10;
 const PLACEHOLDER_REPO = "git@github.com:ORG/REPO.git";
 const ENV_EXAMPLE = /^\.env(\..+)?\.example$/;
@@ -97,8 +97,8 @@ const TASK_RUNNER = /(^|[\s;&|(])(turbo|vp|nx|lerna)(\s|$)/;
  * The findings for a repo, in the order the draft prints them. Every key the
  * draft sets is one finding; notes carry what the draft leaves to the reader.
  */
-export async function detect(files: RepoFiles, opts: DetectOptions = {}): Promise<Finding[]> {
-  const out: Finding[] = [];
+export async function detect(files: RepoFiles, opts: DetectOptions = {}): Promise<Array<Finding>> {
+  const out: Array<Finding> = [];
   const key = (k: string, value: unknown, confidence: Confidence, reason: string): void => {
     out.push({ key: k, value, kind: confidence === "low" ? "guess" : "detected", confidence, reason });
   };
@@ -117,8 +117,8 @@ export async function detect(files: RepoFiles, opts: DetectOptions = {}): Promis
     key("repo", opts.repo.value, "high", opts.repo.reason);
   } else {
     const fromPkg = root?.repository ? normaliseRepoUrl(root.repository) : null;
-    if (fromPkg) key("repo", fromPkg, "low", "package.json repository.url");
-    else key("repo", PLACEHOLDER_REPO, "low", "no repository URL found; replace it");
+    if (fromPkg) {key("repo", fromPkg, "low", "package.json repository.url");}
+    else {key("repo", PLACEHOLDER_REPO, "low", "no repository URL found; replace it");}
   }
 
   if (rootText === null) {
@@ -158,20 +158,20 @@ export async function detect(files: RepoFiles, opts: DetectOptions = {}): Promis
     pmReason = "no lockfile and no packageManager";
   }
   const lockfile = locks.find(([, m]) => m === pm)?.[0];
-  const others = locks.filter(([, m]) => m !== pm).map(([f]) => f);
+  const others = locks.flatMap(([f, m]) => (m === pm ? [] : [f]));
   if (others.length) {
     const how = others.map((f) => `${f} (${LOCKFILES.find(([l]) => l === f)![1]})`).join(", ");
     note(`${how} also present; this draft installs with ${pm}`, "setup.run");
   }
 
   // ── 3. Workspace ───────────────────────────────────────────────────────────
-  let patterns: string[] | undefined;
+  let patterns: Array<string> | undefined;
   let patternSource = "";
   const wsText = await files.read("pnpm-workspace.yaml");
   if (wsText !== null) {
     const ws = parseWorkspaceYaml(wsText);
     const skipped = [...ws.skippedKeys, ...ws.skippedLines.map((l) => JSON.stringify(l))];
-    if (skipped.length) note(`pnpm-workspace.yaml: skipped ${skipped.join(", ")}`);
+    if (skipped.length) {note(`pnpm-workspace.yaml: skipped ${skipped.join(", ")}`);}
     if (ws.packages !== undefined) {
       patterns = ws.packages;
       patternSource = "pnpm-workspace.yaml";
@@ -188,12 +188,12 @@ export async function detect(files: RepoFiles, opts: DetectOptions = {}): Promis
     .filter((p) => p.endsWith("/package.json"))
     .map((p) => p.slice(0, -"/package.json".length));
   const wsDirs = patterns ? matchWorkspaces(patterns, pkgDirs).sort() : [];
-  const pkgs: Pkg[] = [];
+  const pkgs: Array<Pkg> = [];
   for (const dir of wsDirs) {
     const text = await files.read(`${dir}/package.json`);
     const pkg = text === null ? null : parsePkg(dir, text);
-    if (pkg === null) note(`${dir}/package.json is not valid JSON; skipped`);
-    else pkgs.push(pkg);
+    if (pkg === null) {note(`${dir}/package.json is not valid JSON; skipped`);}
+    else {pkgs.push(pkg);}
   }
   const isWorkspace = pkgs.length > 0;
 
@@ -214,14 +214,14 @@ export async function detect(files: RepoFiles, opts: DetectOptions = {}): Promis
 
   // ── 4–6. Apps, framework and port, names ───────────────────────────────────
   const { apps, left, unnamed } = findApps(root, pkgs, pm);
-  for (const p of unnamed) note(`${p.dir}/package.json has a dev script but no name; skipped`);
-  if (left.length) note(`more than ${MAX_APPS} apps; skipped ${left.map((p) => p.dir).join(", ")}`);
+  for (const p of unnamed) {note(`${p.dir}/package.json has a dev script but no name; skipped`);}
+  if (left.length) {note(`more than ${MAX_APPS} apps; skipped ${left.map((p) => p.dir).join(", ")}`);}
   const runner = taskRunner(list, root);
   const main = apps[0];
 
   // ── 7. Build before dev ────────────────────────────────────────────────────
   let setupRun = install;
-  let setupConfidence: Confidence = pmConfidence;
+  const setupConfidence: Confidence = pmConfidence;
   let setupReason = installReason;
   if (runner) {
     note(`${runner} runs this repo's tasks; the draft doesn't guess a build step before dev`, "setup.run");
@@ -264,11 +264,11 @@ export async function detect(files: RepoFiles, opts: DetectOptions = {}): Promis
 
   // ── env ────────────────────────────────────────────────────────────────────
   const nuxt = apps.find((a) => a.framework === "nuxt");
-  if (nuxt) key("env.NUXT_TELEMETRY_DISABLED", "1", "high", `${where(nuxt.pkg)} runs Nuxt`);
+  if (nuxt) {key("env.NUXT_TELEMETRY_DISABLED", "1", "high", `${where(nuxt.pkg)} runs Nuxt`);}
 
   // ── commands ───────────────────────────────────────────────────────────────
-  if (apps.length > 1) key("ports", apps.length, "high", `${apps.length} apps, one port each`);
-  if (apps.length === 0) note("no package with a dev script; add [commands.dev] by hand");
+  if (apps.length > 1) {key("ports", apps.length, "high", `${apps.length} apps, one port each`);}
+  if (apps.length === 0) {note("no package with a dev script; add [commands.dev] by hand");}
   const names = new Set<string>(["test", "check"]);
   apps.forEach((app, i) => {
     const name = i === 0 ? "dev" : commandName(app.pkg, names);
@@ -281,7 +281,7 @@ export async function detect(files: RepoFiles, opts: DetectOptions = {}): Promis
     const why = i === 0 ? `${app.reason}; the main app (${where(app.pkg)})` : app.reason;
     if (app.framework) {
       key(`${prefix}.run`, app.command, app.confidence, why);
-      if (app.pkg.dir !== "" && pm === "bun") key(`${prefix}.cwd`, literal(app.pkg.dir), app.confidence, `bun x runs in ${app.pkg.dir}`);
+      if (app.pkg.dir !== "" && pm === "bun") {key(`${prefix}.cwd`, literal(app.pkg.dir), app.confidence, `bun x runs in ${app.pkg.dir}`);}
     } else {
       key(`${prefix}.run`, app.command, "low", why);
       key(`${prefix}.env.PORT`, port, "low", "unknown dev server; assumes it reads PORT");
@@ -292,7 +292,7 @@ export async function detect(files: RepoFiles, opts: DetectOptions = {}): Promis
   // Yarn 1 runs its own built-in (`yarn check`) over a script of the same name, so Yarn always says `run`.
   const script = (s: string): string =>
     pm === "npm" ? (s === "test" ? "npm test" : `npm run ${s}`) : pm === "pnpm" ? `pnpm ${s}` : `${pm} run ${s}`;
-  if (root.scripts.test !== undefined) key("commands.test.run", script("test"), "high", "package.json has a test script");
+  if (root.scripts.test !== undefined) {key("commands.test.run", script("test"), "high", "package.json has a test script");}
   if (root.scripts.check !== undefined) {
     key("commands.check.run", script("check"), "high", "package.json has a check script");
   } else {
@@ -310,7 +310,7 @@ export async function detect(files: RepoFiles, opts: DetectOptions = {}): Promis
       const parsed = parseToml(conductor) as { scripts?: Record<string, unknown> };
       for (const s of ["setup", "run"]) {
         const v = parsed.scripts?.[s];
-        if (typeof v === "string") note(`conductor.toml ${s} runs ${JSON.stringify(v)}`);
+        if (typeof v === "string") {note(`conductor.toml ${s} runs ${JSON.stringify(v)}`);}
       }
     } catch {
       note("conductor.toml is not valid TOML; skipped");
@@ -322,6 +322,15 @@ export async function detect(files: RepoFiles, opts: DetectOptions = {}): Promis
 
 // ── Packages ─────────────────────────────────────────────────────────────────
 
+/** The string-valued entries of a package.json object field, like `scripts`. */
+const stringEntries = (v: unknown): Record<string, string> => {
+  const out: Record<string, string> = {};
+  if (v && typeof v === "object" && !Array.isArray(v)) {
+    for (const [k, s] of Object.entries(v)) {if (typeof s === "string") {out[k] = s;}}
+  }
+  return out;
+};
+
 function parsePkg(dir: string, text: string): Pkg | null {
   let json: unknown;
   try {
@@ -329,18 +338,11 @@ function parsePkg(dir: string, text: string): Pkg | null {
   } catch {
     return null;
   }
-  if (!json || typeof json !== "object" || Array.isArray(json)) return null;
+  if (!json || typeof json !== "object" || Array.isArray(json)) {return null;}
   const j = json as Record<string, unknown>;
-  const strings = (v: unknown): Record<string, string> => {
-    const out: Record<string, string> = {};
-    if (v && typeof v === "object" && !Array.isArray(v)) {
-      for (const [k, s] of Object.entries(v)) if (typeof s === "string") out[k] = s;
-    }
-    return out;
-  };
   const deps = new Set<string>();
   for (const field of ["dependencies", "devDependencies"]) {
-    for (const k of Object.keys(strings(j[field]))) deps.add(k);
+    for (const k of Object.keys(stringEntries(j[field]))) {deps.add(k);}
   }
   const repo = j.repository;
   const repository =
@@ -348,14 +350,14 @@ function parsePkg(dir: string, text: string): Pkg | null {
   return {
     dir,
     ...(typeof j.name === "string" && j.name !== "" ? { name: j.name } : {}),
-    scripts: strings(j.scripts),
+    scripts: stringEntries(j.scripts),
     deps,
     ...(typeof j.packageManager === "string" ? { packageManager: j.packageManager } : {}),
     ...(typeof repository === "string" ? { repository } : {}),
   };
 }
 
-function workspacesField(text: string): string[] | undefined {
+function workspacesField(text: string): Array<string> | undefined {
   try {
     const ws = (JSON.parse(text) as { workspaces?: unknown }).workspaces;
     const list = Array.isArray(ws) ? ws : ws && typeof ws === "object" ? (ws as { packages?: unknown }).packages : undefined;
@@ -373,22 +375,22 @@ function where(pkg: Pkg): string {
 export function normaliseRepoUrl(url: string): string | null {
   const u = url.trim();
   const short = u.match(/^(?:github:)?([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/);
-  if (short) return `https://github.com/${short[1]}/${short[2]!.replace(/\.git$/, "")}.git`;
+  if (short) {return `https://github.com/${short[1]}/${short[2]!.replace(/\.git$/, "")}.git`;}
   const m = u.match(/^(?:git\+)?(?:https?|git|ssh):\/\/(?:[^@/]+@)?([^/:]+)(?::\d+)?\/([^/]+)\/([^/#?]+?)(?:\.git)?\/?(?:[#?].*)?$/);
-  if (m) return `https://${m[1]}/${m[2]}/${m[3]}.git`;
+  if (m) {return `https://${m[1]}/${m[2]}/${m[3]}.git`;}
   const scp = u.match(/^(?:git\+)?[^@\s]+@([^:/\s]+):([^/\s]+)\/([^/\s]+?)(?:\.git)?\/?$/);
-  if (scp) return `https://${scp[1]}/${scp[2]}/${scp[3]}.git`;
+  if (scp) {return `https://${scp[1]}/${scp[2]}/${scp[3]}.git`;}
   return null;
 }
 
 // ── Apps ─────────────────────────────────────────────────────────────────────
 
 /** The apps, main app first; the packages past the cap; and those with no name to filter on. */
-function findApps(root: Pkg, pkgs: Pkg[], pm: PackageManager): { apps: App[]; left: Pkg[]; unnamed: Pkg[] } {
+function findApps(root: Pkg, pkgs: Array<Pkg>, pm: PackageManager): { apps: Array<App>; left: Array<Pkg>; unnamed: Array<Pkg> } {
   const hasDev = (p: Pkg) => p.scripts.dev !== undefined && !TASK_RUNNER.test(p.scripts.dev);
   let candidates = pkgs.filter(hasDev);
   const inApps = candidates.filter((p) => p.dir.startsWith("apps/"));
-  if (inApps.length) candidates = inApps;
+  if (inApps.length) {candidates = inApps;}
   const rootFramework = hasDev(root) ? framework(root.scripts.dev!) : undefined;
   const rootCounts = hasDev(root) && (candidates.length === 0 || rootFramework !== undefined);
   // pm filters by package name, so a workspace package without one can't be run.
@@ -399,18 +401,18 @@ function findApps(root: Pkg, pkgs: Pkg[], pm: PackageManager): { apps: App[]; le
   return { apps: sorted.slice(0, MAX_APPS).map((p, i) => app(p, pm, portVar(i))), left: sorted.slice(MAX_APPS), unnamed };
 }
 
-function framework(dev: string): { fw: Framework; args: string[] } | undefined {
-  if (/&&|\|\||;|\||[<>`]|\$\(/.test(dev)) return undefined;
+function framework(dev: string): { fw: Framework; args: Array<string> } | undefined {
+  if (/&&|\|\||;|\||[<>`]|\$\(/.test(dev)) {return undefined;}
   const words = dev.trim().split(/\s+/);
   const [a, b] = words;
-  if ((a === "nuxt" || a === "nuxi") && b === "dev") return { fw: "nuxt", args: words.slice(2) };
-  if (a === "next" && b === "dev") return { fw: "next", args: words.slice(2) };
-  if (a === "astro" && b === "dev") return { fw: "astro", args: words.slice(2) };
-  if (a === "storybook" && b === "dev") return { fw: "storybook", args: words.slice(2) };
+  if ((a === "nuxt" || a === "nuxi") && b === "dev") {return { fw: "nuxt", args: words.slice(2) };}
+  if (a === "next" && b === "dev") {return { fw: "next", args: words.slice(2) };}
+  if (a === "astro" && b === "dev") {return { fw: "astro", args: words.slice(2) };}
+  if (a === "storybook" && b === "dev") {return { fw: "storybook", args: words.slice(2) };}
   if (a === "vite") {
-    if (b === undefined) return { fw: "vite", args: [] };
-    if (b === "dev" || b === "serve") return { fw: "vite", args: words.slice(2) };
-    if (b.startsWith("-")) return { fw: "vite", args: words.slice(1) };
+    if (b === undefined) {return { fw: "vite", args: [] };}
+    if (b === "dev" || b === "serve") {return { fw: "vite", args: words.slice(2) };}
+    if (b.startsWith("-")) {return { fw: "vite", args: words.slice(1) };}
   }
   return undefined;
 }
@@ -422,7 +424,7 @@ function portVar(i: number): string {
 
 /** Repo text inside a templated value: `{{` keeps a `{` literal (§5.5), so a name can't name a variable. */
 function literal(text: string): string {
-  return text.replace(/\{/g, "{{");
+  return text.replaceAll('{', "{{");
 }
 
 const FORMS: Record<Framework, (port: string) => string> = {
@@ -437,15 +439,15 @@ const FORMS: Record<Framework, (port: string) => string> = {
 const OWN_FLAGS = new Set(["--host", "--hostname", "-H", "--port", "-p", "--strictPort", "--strict-port", "--ci"]);
 const BARE_FLAGS = new Set(["--strictPort", "--strict-port", "--ci"]);
 
-function droppedArgs(args: string[]): string[] {
-  const dropped: string[] = [];
+function droppedArgs(args: Array<string>): Array<string> {
+  const dropped: Array<string> = [];
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]!;
     const name = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
     if (OWN_FLAGS.has(name)) {
       // `--host` alone is valid for vite; a value never starts with `-`.
       const next = args[i + 1];
-      if (!arg.includes("=") && !BARE_FLAGS.has(name) && next !== undefined && !next.startsWith("-")) i += 1;
+      if (!arg.includes("=") && !BARE_FLAGS.has(name) && next !== undefined && !next.startsWith("-")) {i += 1;}
       continue;
     }
     dropped.push(arg);
@@ -454,8 +456,8 @@ function droppedArgs(args: string[]): string[] {
 }
 
 function dependsOn(pkg: Pkg, fw: Framework): boolean {
-  if (fw === "storybook") return pkg.deps.has("storybook") || [...pkg.deps].some((d) => d.startsWith("@storybook/"));
-  if (fw === "nuxt") return pkg.deps.has("nuxt") || pkg.deps.has("nuxi");
+  if (fw === "storybook") {return pkg.deps.has("storybook") || [...pkg.deps].some((d) => d.startsWith("@storybook/"));}
+  if (fw === "nuxt") {return pkg.deps.has("nuxt") || pkg.deps.has("nuxi");}
   return pkg.deps.has(fw);
 }
 
@@ -495,27 +497,29 @@ function app(pkg: Pkg, pm: PackageManager, port: string): App {
   return { pkg, command, confidence: "low", reason: `${where(pkg)} has a dev script of an unknown server`, dropped: [] };
 }
 
+/** Lower-case, with anything but letters, digits, `:`, `_` and `-` replaced by `-`. */
+const commandSlug = (s: string): string =>
+  s
+    .toLowerCase()
+    .replaceAll(/[^a-z0-9:_-]/g, "-")
+    .replace(/^[^a-z0-9]+/, "");
+
 /** A command name from a package name; on a clash, from its directory. */
 function commandName(pkg: Pkg, taken: Set<string>): string {
-  const clean = (s: string): string =>
-    s
-      .toLowerCase()
-      .replace(/[^a-z0-9:_-]/g, "-")
-      .replace(/^[^a-z0-9]+/, "");
-  const fromName = pkg.name ? clean(pkg.name.replace(/^@[^/]+\//, "")) : "";
-  if (fromName && !taken.has(fromName)) return fromName;
-  const fromDir = clean(pkg.dir === "" ? "root" : pkg.dir);
+  const fromName = pkg.name ? commandSlug(pkg.name.replace(/^@[^/]+\//, "")) : "";
+  if (fromName && !taken.has(fromName)) {return fromName;}
+  const fromDir = commandSlug(pkg.dir === "" ? "root" : pkg.dir);
   let candidate = fromDir || "app";
-  for (let n = 2; taken.has(candidate); n++) candidate = `${fromDir || "app"}-${n}`;
+  for (let n = 2; taken.has(candidate); n++) {candidate = `${fromDir || "app"}-${n}`;}
   return candidate;
 }
 
 /** The task runner that isn't turbo, when one drives the repo: the draft notes it and guesses no build. */
-function taskRunner(list: string[], root: Pkg): string | undefined {
-  if (list.includes("nx.json")) return "nx (nx.json)";
+function taskRunner(list: Array<string>, root: Pkg): string | undefined {
+  if (list.includes("nx.json")) {return "nx (nx.json)";}
   const vp = root.deps.has("vite-plus") || Object.values(root.scripts).some((s) => /^vp\s/.test(s));
-  if (vp) return "vite-plus (vp)";
-  if (list.includes("lerna.json")) return "lerna (lerna.json)";
+  if (vp) {return "vite-plus (vp)";}
+  if (list.includes("lerna.json")) {return "lerna (lerna.json)";}
   return undefined;
 }
 
@@ -524,6 +528,6 @@ function taskRunner(list: string[], root: Pkg): string | undefined {
  * or `..`, or starts with `~`; otherwise a project name. No argument means `.`.
  */
 export function isPathArgument(arg: string | undefined): boolean {
-  if (arg === undefined) return true;
+  if (arg === undefined) {return true;}
   return arg.includes("/") || arg === "." || arg === ".." || arg.startsWith("~");
 }

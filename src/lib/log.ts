@@ -8,7 +8,7 @@ import pc from "picocolors";
  */
 export interface Sink {
   write(chunk: string | Uint8Array): boolean;
-  once(event: "drain", listener: () => void): unknown;
+  once(event: "drain", listener: () => void): void;
 }
 
 export type LogLevel = "step" | "debug" | "warn";
@@ -49,14 +49,14 @@ export class Logger {
 
   /** One `→`-prefixed step line on stderr. Silenced by --quiet. */
   step(message: string): void {
-    if (this.quiet) return;
+    if (this.quiet) {return;}
     this.write(`${this.dim("→")} ${message}\n`);
     this.onLine?.("step", message);
   }
 
   /** Verbose-only detail (e.g. external command + timing). */
   debug(message: string): void {
-    if (!this.verbose_) return;
+    if (!this.verbose_) {return;}
     this.write(`${this.dim("·")} ${message}\n`);
     this.onLine?.("debug", message);
   }
@@ -82,7 +82,7 @@ export class Logger {
  * and a non-TTY stderr (§13.3).
  */
 export function colorEnabled(noColorFlag: boolean): boolean {
-  if (noColorFlag) return false;
-  if (process.env.NO_COLOR !== undefined && process.env.NO_COLOR !== "") return false;
+  if (noColorFlag) {return false;}
+  if (process.env.NO_COLOR !== undefined && process.env.NO_COLOR !== "") {return false;}
   return Boolean(process.stderr.isTTY);
 }

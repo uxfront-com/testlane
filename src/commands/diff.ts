@@ -4,12 +4,14 @@
 import { existsSync } from "node:fs";
 import { ExitCode, resolveError } from "../lib/errors.ts";
 import { parseFlags } from "../cli/flags.ts";
-import { capture, passthrough, type PassthroughOptions } from "../lib/proc.ts";
+import { capture, passthrough } from '../lib/proc.ts';
+import type { PassthroughOptions } from '../lib/proc.ts';
 import { shellJoin } from "../lib/shell.ts";
 import { loadState } from "../core/state.ts";
 import { slug as slugFor } from "../core/resolve.ts";
 import { ghRepoSlug, resolveLast } from "../core/workspace.ts";
-import { stdoutOf, type Ctx, type ProjectConfig } from "../config/schema.ts";
+import { stdoutOf } from '../config/schema.ts';
+import type { Ctx, ProjectConfig } from '../config/schema.ts';
 import type { WorkspaceInput } from "./types.ts";
 
 export async function diff(input: WorkspaceInput): Promise<number> {
@@ -61,7 +63,7 @@ export async function diff(input: WorkspaceInput): Promise<number> {
  * stop it (ADR-003).
  */
 function diffIO(ctx: Ctx): PassthroughOptions {
-  if (!ctx.isolated) return {};
+  if (!ctx.isolated) {return {};}
   return { stdout: stdoutOf(ctx), closeStdin: true, ownGroup: true, signal: ctx.signal };
 }
 
@@ -71,7 +73,7 @@ function diffIO(ctx: Ctx): PassthroughOptions {
  * unavailable, so diff still shows *something* useful.
  */
 async function diffRange(worktreeDir: string, project: ProjectConfig): Promise<string> {
-  if (!worktreeDir || !project.defaultBranch) return "";
+  if (!worktreeDir || !project.defaultBranch) {return "";}
   const res = await capture(
     ["git", "-C", worktreeDir, "merge-base", `origin/${project.defaultBranch}`, "HEAD"],
     { allowFailure: true },

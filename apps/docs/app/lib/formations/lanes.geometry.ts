@@ -30,7 +30,7 @@ export const BOX_X1 = 3.7;
 export const BOX_HH = 0.19;
 
 /** The lanes' colours, top to bottom: from lime through green to cyan. */
-export const LANE_COLORS: Vec3[] = [
+export const LANE_COLORS: Array<Vec3> = [
 	[0.62, 1, 0.3],
 	[0.2, 1, 0.45],
 	[0.14, 0.95, 0.78],

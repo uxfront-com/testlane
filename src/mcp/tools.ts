@@ -6,10 +6,13 @@
 import { existsSync } from "node:fs";
 import { z } from "zod";
 import { TestlaneError, configError, usage } from "../lib/errors.ts";
-import { Logger, type LogLevel, type Sink } from "../lib/log.ts";
+import { Logger } from '../lib/log.ts';
+import type { LogLevel, Sink } from '../lib/log.ts';
 import { loadDefaults, loadEffectiveProject } from "../config/load.ts";
-import { parseRef, refFromDisambiguator, type RefSpec } from "../core/resolve.ts";
-import { RealGhClient, type GhClient } from "../git/gh.ts";
+import { parseRef, refFromDisambiguator } from '../core/resolve.ts';
+import type { RefSpec } from '../core/resolve.ts';
+import { RealGhClient } from '../git/gh.ts';
+import type { GhClient } from '../git/gh.ts';
 import type { Ctx, GlobalFlags } from "../config/schema.ts";
 import type { WorkspaceInput } from "../commands/types.ts";
 import { checkout } from "../commands/checkout.ts";
@@ -42,7 +45,7 @@ interface Param {
   type: "string" | "boolean" | "integer" | "number";
   description: string;
   required?: boolean;
-  enum?: readonly string[];
+  enum?: ReadonlyArray<string>;
   pattern?: string;
   minimum?: number;
   exclusiveMinimum?: number;
@@ -81,11 +84,11 @@ const WORKSPACE = { project: PROJECT, ref: REF, kind: KIND };
 
 function jsonSchema(params: Record<string, Param>): object {
   const properties: Record<string, object> = {};
-  const required: string[] = [];
+  const required: Array<string> = [];
   for (const [name, p] of Object.entries(params)) {
     const { required: isRequired, ...schema } = p;
     properties[name] = schema;
-    if (isRequired) required.push(name);
+    if (isRequired) {required.push(name);}
   }
   return { type: "object", properties, ...(required.length ? { required } : {}), additionalProperties: false };
 }
@@ -94,16 +97,16 @@ function zodSchema(params: Record<string, Param>): z.ZodType<Record<string, unkn
   const shape: Record<string, z.ZodTypeAny> = {};
   for (const [name, p] of Object.entries(params)) {
     let s: z.ZodTypeAny;
-    if (p.type === "boolean") s = z.boolean();
+    if (p.type === "boolean") {s = z.boolean();}
     else if (p.type === "string") {
       let str = z.string().min(1);
-      if (p.pattern) str = str.regex(new RegExp(p.pattern), `must match ${p.pattern}`);
-      s = p.enum ? z.enum(p.enum as [string, ...string[]]) : str;
+      if (p.pattern) {str = str.regex(new RegExp(p.pattern), `must match ${p.pattern}`);}
+      s = p.enum ? z.enum(p.enum as [string, ...Array<string>]) : str;
     } else {
       let n = p.type === "integer" ? z.number().int() : z.number();
-      if (p.minimum !== undefined) n = n.min(p.minimum);
-      if (p.exclusiveMinimum !== undefined) n = n.gt(p.exclusiveMinimum);
-      if (p.maximum !== undefined) n = n.max(p.maximum);
+      if (p.minimum !== undefined) {n = n.min(p.minimum);}
+      if (p.exclusiveMinimum !== undefined) {n = n.gt(p.exclusiveMinimum);}
+      if (p.maximum !== undefined) {n = n.max(p.maximum);}
       s = n;
     }
     shape[name] = p.required ? s : s.optional();
@@ -135,7 +138,12 @@ interface CallEnv {
   err: BufferSink;
 }
 
-const envelope = (value: object, isError: boolean): ToolResult => ({ text: JSON.stringify(value), isError });
+/** What a tool answers with when its verb printed no JSON of its own. */
+type Envelope =
+  | { error: { errCode: string; exitCode: number; message: string; hint: string | null }; stderr: string }
+  | { exitCode: number; stdout: string; stderr: string; truncated?: boolean; removed?: boolean };
+
+const envelope = (value: Envelope, isError: boolean): ToolResult => ({ text: JSON.stringify(value), isError });
 
 /** A thrown error as `{error: {errCode, exitCode, message, hint}, stderr}`. */
 export function errorResult(e: unknown, stderr: string): ToolResult {
@@ -149,12 +157,12 @@ export function errorResult(e: unknown, stderr: string): ToolResult {
 /** A `--json` verb: its JSON as it printed it, or an envelope when it printed none. */
 function jsonResult(code: number, out: BufferSink, err: BufferSink): ToolResult {
   const text = out.text().trim();
-  if (text === "") return envelope({ exitCode: code, stdout: "", stderr: err.text() }, code !== 0);
+  if (text === "") {return envelope({ exitCode: code, stdout: "", stderr: err.text() }, code !== 0);}
   return { text, isError: code !== 0 };
 }
 
 /** A verb without `--json`: `{exitCode, stdout, stderr}`. */
-function textResult(code: number, stdout: string, err: BufferSink, extra: object = {}): ToolResult {
+function textResult(code: number, stdout: string, err: BufferSink, extra: { truncated?: boolean } = {}): ToolResult {
   return envelope({ exitCode: code, stdout, stderr: err.text(), ...extra }, code !== 0);
 }
 
@@ -186,11 +194,11 @@ function refOf(args: Record<string, unknown>): RefSpec {
   return kind ? refFromDisambiguator(kind, ref) : parseRef(ref);
 }
 
-function workspace(env: CallEnv, args: Record<string, unknown>, verbArgs: string[]): WorkspaceInput {
+function workspace(env: CallEnv, args: Record<string, unknown>, verbArgs: Array<string>): WorkspaceInput {
   return { ctx: env.ctx, project: project(env, args), ref: refOf(args), args: verbArgs, passthrough: [] };
 }
 
-const flag = (on: unknown, name: string): string[] => (on === true ? [name] : []);
+const flag = (on: unknown, name: string): Array<string> => (on === true ? [name] : []);
 
 /** Run a `--json` verb into a buffer and return its JSON. */
 async function viaJson(env: CallEnv, run: (ctx: Ctx) => Promise<number> | number): Promise<ToolResult> {
@@ -200,7 +208,7 @@ async function viaJson(env: CallEnv, run: (ctx: Ctx) => Promise<number> | number
   return jsonResult(code, out, env.err);
 }
 
-export const TOOLS: Tool[] = [
+export const TOOLS: Array<Tool> = [
   {
     name: "projects",
     description: "List the configured projects, with each one's repository and number of workspaces. Same as `testlane projects --json`.",
@@ -395,7 +403,7 @@ export function findTool(name: string): Tool | undefined {
 }
 
 /** The `tools/list` entries. */
-export function toolList(): object[] {
+export function toolList(): Array<object> {
   return TOOLS.map((t) => ({
     name: t.name,
     description: t.description,
@@ -440,7 +448,7 @@ export async function runTool(tool: Tool, rawArgs: unknown, opts: CallOptions): 
       noTrustApproval: true,
     };
     return await tool.run(parsed.data, { ctx, err });
-  } catch (e) {
-    return errorResult(e, err.text());
+  } catch (error) {
+    return errorResult(error, err.text());
   }
 }

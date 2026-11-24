@@ -103,7 +103,7 @@ export interface Crumb {
  * only redirects, like a sidebar group's `/docs/cli`, points at the page it
  * opens instead, its first page in `GROUP_ENTRY_PAGES` (S3).
  */
-export function breadcrumbList(crumbs: Crumb[]) {
+export function breadcrumbList(crumbs: Array<Crumb>) {
 	return {
 		"@context": "https://schema.org",
 		"@type": "BreadcrumbList",

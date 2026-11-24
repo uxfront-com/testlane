@@ -1,6 +1,7 @@
 // TESTLANE_* export vars + env composition (§5.5, §11.2).
 
-import { interpolate, workspaceVars, type TemplateVars } from "../lib/template.ts";
+import { interpolate, workspaceVars } from '../lib/template.ts';
+import type { TemplateVars } from '../lib/template.ts';
 import type { ProjectConfig } from "../config/schema.ts";
 import type { Workspace } from "./state.ts";
 
@@ -12,7 +13,7 @@ export interface WorkspaceContext {
   ref: string;
   branch: string;
   slug: string;
-  ports: number[];
+  ports: Array<number>;
 }
 
 export function wsContext(project: ProjectConfig, ws: Workspace, dataDir: string): WorkspaceContext {
@@ -71,6 +72,6 @@ export function composeEnv(
       out[k] = interpolate(v, vars, `command.env.${k}`);
     }
   }
-  if (extra?.flagEnv) Object.assign(out, extra.flagEnv);
+  if (extra?.flagEnv) {Object.assign(out, extra.flagEnv);}
   return out;
 }

@@ -56,7 +56,7 @@ export const PIPELINE_STEPS: Record<"resolve" | "materialize" | "act", PipelineS
 };
 
 /** Resolve, in detail: each kind of ref and the slug it gets. */
-export const PIPELINE_REFS: PipelineRef[] = [
+export const PIPELINE_REFS: Array<PipelineRef> = [
 	{ label: "Pull request", kind: "pr", ref: "42", slug: "pr-42" },
 	{ label: "Branch", kind: "branch", ref: "feat/login", slug: "feat-login" },
 	{
@@ -70,7 +70,7 @@ export const PIPELINE_REFS: PipelineRef[] = [
 ];
 
 /** Materialize, in detail, in the order the CLI runs them (DESIGN §8.1). */
-export const PIPELINE_SUBSTEPS: PipelineSubstep[] = [
+export const PIPELINE_SUBSTEPS: Array<PipelineSubstep> = [
 	{ name: "Bare clone", when: "First use of a project only" },
 	{ name: "Worktree", when: "New workspaces only" },
 	{ name: "Ports", when: "New workspaces only" },
@@ -82,7 +82,7 @@ export const PIPELINE_SUBSTEPS: PipelineSubstep[] = [
 ];
 
 /** Splits a note into text and code, at its backticks: odd parts are code. */
-export function noteParts(note: string): string[] {
+export function noteParts(note: string): Array<string> {
 	return note.split("`");
 }
 

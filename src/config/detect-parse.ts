@@ -5,11 +5,11 @@
 
 export interface WorkspaceYaml {
   /** The `packages:` entries, quotes removed; `undefined` when the key is absent. */
-  packages?: string[];
+  packages?: Array<string>;
   /** Other top-level keys, in file order. */
-  skippedKeys: string[];
+  skippedKeys: Array<string>;
   /** Lines this parser could not read, trimmed, in file order. */
-  skippedLines: string[];
+  skippedLines: Array<string>;
 }
 
 const TOP_KEY = /^(?:"([^"]*)"|'([^']*)'|([^\s#:'"-][^:#]*?))\s*:(.*)$/;
@@ -20,7 +20,7 @@ function stripComment(text: string): string {
   for (let i = 0; i < text.length; i++) {
     const c = text[i]!;
     if (quote) {
-      if (c === quote) quote = null;
+      if (c === quote) {quote = null;}
     } else if (c === '"' || c === "'") {
       quote = c;
     } else if (c === "#" && (i === 0 || /\s/.test(text[i - 1]!))) {
@@ -31,13 +31,13 @@ function stripComment(text: string): string {
 }
 
 /** A flow list's items, split on commas outside quotes. */
-function splitFlow(text: string): string[] {
-  const parts: string[] = [];
+function splitFlow(text: string): Array<string> {
+  const parts: Array<string> = [];
   let quote: string | null = null;
   let cur = "";
   for (const c of text) {
     if (quote) {
-      if (c === quote) quote = null;
+      if (c === quote) {quote = null;}
     } else if (c === '"' || c === "'") {
       quote = c;
     } else if (c === ",") {
@@ -62,15 +62,15 @@ function scalar(text: string): string | null {
 
 function rawScalar(text: string): string | null {
   const t = text.trim();
-  if (t === "") return null;
+  if (t === "") {return null;}
   const dq = t.match(/^"((?:[^"\\]|\\.)*)"$/);
-  if (dq) return dq[1]!.replace(/\\(.)/g, "$1");
+  if (dq) {return dq[1]!.replaceAll(/\\(.)/g, "$1");}
   const sq = t.match(/^'((?:[^']|'')*)'$/);
-  if (sq) return sq[1]!.replace(/''/g, "'");
+  if (sq) {return sq[1]!.replaceAll('\'\'', "'");}
   // A plain scalar can't start with an indicator or hold a flow character. A
   // leading `!` is pnpm's exclusion, not a YAML tag, when the rest is a path.
-  if (/^[[\]{}&*|>%@`"'?:-]/.test(t)) return null;
-  if (/[[\]{},]|:\s|\s#/.test(t)) return null;
+  if (/^[[\]{}&*|>%@`"'?:-]/.test(t)) {return null;}
+  if (/[[\]{},]|:\s|\s#/.test(t)) {return null;}
   return t;
 }
 
@@ -85,7 +85,7 @@ export function parseWorkspaceYaml(text: string): WorkspaceYaml {
 
   for (const raw of lines) {
     const line = stripComment(raw).replace(/\s+$/, "");
-    if (line.trim() === "") continue;
+    if (line.trim() === "") {continue;}
     const indented = /^\s/.test(line);
 
     // A block list may sit at column 0 under its key, as YAML allows.
@@ -93,13 +93,13 @@ export function parseWorkspaceYaml(text: string): WorkspaceYaml {
     if (item && (indented || inPackages)) {
       if (inPackages) {
         const value = item[2] === undefined ? null : scalar(item[2]);
-        if (value === null) out.skippedLines.push(raw.trim());
-        else (out.packages ??= []).push(value);
+        if (value === null) {out.skippedLines.push(raw.trim());}
+        else {(out.packages ??= []).push(value);}
       }
       continue;
     }
     if (indented) {
-      if (inPackages) out.skippedLines.push(raw.trim());
+      if (inPackages) {out.skippedLines.push(raw.trim());}
       continue;
     }
 
@@ -112,7 +112,7 @@ export function parseWorkspaceYaml(text: string): WorkspaceYaml {
     const name = (key[1] ?? key[2] ?? key[3] ?? "").trim();
     const rest = key[4]!.trim();
     if (name !== "packages") {
-      if (!out.skippedKeys.includes(name)) out.skippedKeys.push(name);
+      if (!out.skippedKeys.includes(name)) {out.skippedKeys.push(name);}
       continue;
     }
     if (rest === "") {
@@ -127,10 +127,10 @@ export function parseWorkspaceYaml(text: string): WorkspaceYaml {
     }
     out.packages ??= [];
     for (const part of splitFlow(flow[1]!)) {
-      if (part.trim() === "") continue;
+      if (part.trim() === "") {continue;}
       const value = scalar(part);
-      if (value === null) out.skippedLines.push(part.trim());
-      else out.packages.push(value);
+      if (value === null) {out.skippedLines.push(part.trim());}
+      else {out.packages.push(value);}
     }
   }
   return out;
@@ -140,29 +140,29 @@ export function parseWorkspaceYaml(text: string): WorkspaceYaml {
 
 // `./apps/x/` → `apps/x`, and `apps/x/package.json` → `apps/x`: the directory a pattern names.
 export function normalizePattern(glob: string): string {
-  let p = glob.trim().replace(/\\/g, "/");
-  while (p.startsWith("./")) p = p.slice(2);
+  let p = glob.trim().replaceAll('\\', "/");
+  while (p.startsWith("./")) {p = p.slice(2);}
   p = p.replace(/\/package\.json$/, "").replace(/\/+$/, "");
   return p === "" ? "." : p;
 }
 
 function segmentRegExp(seg: string): RegExp {
-  let re = /^[*?]/.test(seg) ? "(?!\\.)" : "";
+  let re = /^[*?]/.test(seg) ? String.raw`(?!\.)` : "";
   for (const c of seg) {
-    if (c === "*") re += "[^/]*";
-    else if (c === "?") re += "[^/]";
-    else re += c.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+    if (c === "*") {re += "[^/]*";}
+    else if (c === "?") {re += "[^/]";}
+    else {re += c.replaceAll(/[.+^${}()|[\]\\]/g, String.raw`\$&`);}
   }
   return new RegExp(`^${re}$`);
 }
 
-function matchSegments(pattern: string[], path: string[]): boolean {
-  if (pattern.length === 0) return path.length === 0;
+function matchSegments(pattern: Array<string>, path: Array<string>): boolean {
+  if (pattern.length === 0) {return path.length === 0;}
   const [head, ...rest] = pattern;
   if (head === "**") {
     for (let k = 0; k <= path.length; k++) {
-      if (k > 0 && path[k - 1]!.startsWith(".")) return false;
-      if (matchSegments(rest, path.slice(k))) return true;
+      if (k > 0 && path[k - 1]!.startsWith(".")) {return false;}
+      if (matchSegments(rest, path.slice(k))) {return true;}
     }
     return false;
   }
@@ -179,8 +179,8 @@ export function globMatch(glob: string, dir: string): boolean {
 }
 
 /** Directories matched by an include pattern and by no `!` pattern. `.` (the root) is never matched. */
-export function matchWorkspaces(patterns: string[], dirs: string[]): string[] {
+export function matchWorkspaces(patterns: Array<string>, dirs: Array<string>): Array<string> {
   const include = patterns.filter((p) => !p.startsWith("!") && normalizePattern(p) !== ".");
-  const exclude = patterns.filter((p) => p.startsWith("!")).map((p) => p.slice(1));
+  const exclude = patterns.flatMap((p) => (p.startsWith("!") ? [p.slice(1)] : []));
   return dirs.filter((d) => include.some((p) => globMatch(p, d)) && !exclude.some((p) => globMatch(p, d)));
 }

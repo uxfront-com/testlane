@@ -6,14 +6,14 @@ import type { TemplateVars } from "../lib/template.ts";
 
 export interface EditorLaunch {
   /** argv to spawn. When viaBash, argv is ["bash","-c",script]. */
-  argv: string[];
+  argv: Array<string>;
   wait: boolean;
   cwd?: string;
   viaBash: boolean;
 }
 
 interface Preset {
-  build(path: string): string[];
+  build(path: string): Array<string>;
   wait: boolean;
   needsShellCwd?: boolean;
 }
@@ -37,8 +37,8 @@ const PRESETS: Record<string, Preset> = {
 /** The editor binary a preset would invoke (for doctor PATH check, §9.11). */
 export function presetBinary(editor: string): string | null {
   const preset = PRESETS[editor];
-  if (!preset) return null;
-  if (editor === "terminal") return process.env.SHELL || "bash";
+  if (!preset) {return null;}
+  if (editor === "terminal") {return process.env.SHELL || "bash";}
   return preset.build("/x")[0]!;
 }
 

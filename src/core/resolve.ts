@@ -19,12 +19,12 @@ export type RefSpec =
 export function refFromDisambiguator(kind: "pr" | "branch" | "path", value: string): RefSpec {
   if (kind === "pr") {
     const m = value.match(/^#?(\d+)$/);
-    if (!m) throw resolveError(`--pr expects a number, got '${value}'`);
+    if (!m) {throw resolveError(`--pr expects a number, got '${value}'`);}
     return { kind: "pr", number: Number(m[1]) };
   }
-  if (kind === "path") return { kind: "path", path: value };
+  if (kind === "path") {return { kind: "path", path: value };}
   // git would read a leading `-` as an option (`--upload-pack=<cmd>` runs <cmd>).
-  if (value.startsWith("-")) throw resolveError(`--branch expects a branch name, got '${value}'`, "a branch name can't start with '-'");
+  if (value.startsWith("-")) {throw resolveError(`--branch expects a branch name, got '${value}'`, "a branch name can't start with '-'");}
   // git would read `+src:dst`, `a:b` or `x*` as a refspec that writes other refs.
   if (!isValidBranchName(value)) {
     throw resolveError(`--branch expects a branch name, got '${value}'`, "git refuses it as a branch name, or would read it as a refspec");
@@ -35,7 +35,7 @@ export function refFromDisambiguator(kind: "pr" | "branch" | "path", value: stri
 /** Parse a user-supplied ref string into a RefSpec (first match wins, §6.1). */
 export function parseRef(input: string): RefSpec {
   // 1. last-used shorthand
-  if (input === "-") return { kind: "last" };
+  if (input === "-") {return { kind: "last" };}
 
   // 2. filesystem path
   if (input.startsWith("/") || input.startsWith("./") || input.startsWith("../") || input.startsWith("~")) {
@@ -49,13 +49,13 @@ export function parseRef(input: string): RefSpec {
 
   // 4. pr/<n> (case-insensitive)
   const prSlash = input.match(/^pr\/(\d+)$/i);
-  if (prSlash) return { kind: "pr", number: Number(prSlash[1]) };
+  if (prSlash) {return { kind: "pr", number: Number(prSlash[1]) };}
 
   // 5. full 40-char commit SHA (short SHAs deliberately not auto-detected)
-  if (/^[0-9a-f]{40}$/.test(input)) return { kind: "commit", sha: input };
+  if (/^[0-9a-f]{40}$/.test(input)) {return { kind: "commit", sha: input };}
 
   // 6. otherwise a branch name, validated
-  if (isValidBranchName(input)) return { kind: "branch", name: input };
+  if (isValidBranchName(input)) {return { kind: "branch", name: input };}
 
   // 7. no match
   throw resolveError(`could not parse ref '${input}'`, "expected a PR number, branch name, path, or '-'");
@@ -67,24 +67,24 @@ export function parseRef(input: string): RefSpec {
  * and keeps ref parsing unit-testable.
  */
 export function isValidBranchName(name: string): boolean {
-  if (name === "" || name === "@") return false;
+  if (name === "" || name === "@") {return false;}
   // git refuses it too, and in argv it would read as an option.
-  if (name.startsWith("-")) return false;
+  if (name.startsWith("-")) {return false;}
   // In `git fetch`, a leading `+` makes a forced refspec.
-  if (name.startsWith("+")) return false;
+  if (name.startsWith("+")) {return false;}
   // `refs/remotes/origin/HEAD` is a symref to origin's default branch, so a
   // forced fetch into it moves that branch. git refuses `HEAD` itself, and on a
   // case-insensitive filesystem `head` or `Head` is the same file.
-  if (/^head$/i.test(name)) return false;
-  if (name.startsWith("/") || name.endsWith("/")) return false;
-  if (name.startsWith(".") || name.endsWith(".")) return false;
-  if (name.endsWith(".lock")) return false;
-  if (name.includes("..") || name.includes("//") || name.includes("@{")) return false;
+  if (/^head$/i.test(name)) {return false;}
+  if (name.startsWith("/") || name.endsWith("/")) {return false;}
+  if (name.startsWith(".") || name.endsWith(".")) {return false;}
+  if (name.endsWith(".lock")) {return false;}
+  if (name.includes("..") || name.includes("//") || name.includes("@{")) {return false;}
   // Disallowed characters: control chars, space, and ~ ^ : ? * [ \
-  if (/[\x00-\x20\x7f ~^:?*[\\]/.test(name)) return false;
+  if (/[\u0000-\u0020\u007f ~^:?*[\\]/.test(name)) {return false;}
   // No path component may begin with a dot or end with .lock.
   for (const part of name.split("/")) {
-    if (part === "" || part.startsWith(".") || part.endsWith(".lock")) return false;
+    if (part === "" || part.startsWith(".") || part.endsWith(".lock")) {return false;}
   }
   return true;
 }
@@ -111,15 +111,15 @@ export function slug(spec: RefSpec): string {
 
 function sanitize(name: string): string {
   return name
-    .replace(/[^A-Za-z0-9._-]/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^[-.]+|[-.]+$/g, "")
+    .replaceAll(/[^A-Za-z0-9._-]/g, "-")
+    .replaceAll(/-+/g, "-")
+    .replaceAll(/^[-.]+|[-.]+$/g, "")
     .toLowerCase();
 }
 
 function branchSlug(name: string): string {
   const s = sanitize(name);
-  if (s.length <= 60) return s;
+  if (s.length <= 60) {return s;}
   return `${s.slice(0, 52)}-${sha256Hex(name).slice(0, 7)}`;
 }
 
@@ -148,13 +148,13 @@ export function normalizeRepoUrl(url: string): RepoCoords | null {
     path = ssh[2]!;
   } else {
     const https = url.match(/^https?:\/\/([^/]+)\/(.+)$/);
-    if (!https) return null;
+    if (!https) {return null;}
     host = https[1]!;
     path = https[2]!;
   }
 
   const segs = path.replace(/\.git$/, "").split("/").filter(Boolean);
-  if (segs.length < 2) return null;
+  if (segs.length < 2) {return null;}
   return {
     host: host.toLowerCase(),
     owner: segs[0]!.toLowerCase(),
@@ -171,11 +171,11 @@ export interface UrlInput {
 /** Parse a p0 URL form into repo coordinates + an optional embedded ref (§4.3). */
 export function parseUrlInput(url: string): UrlInput | null {
   const coords = normalizeRepoUrl(url);
-  if (!coords) return null;
+  if (!coords) {return null;}
 
   // Only https URLs carry /pull/ or /tree/ segments.
   const https = url.match(/^https?:\/\/[^/]+\/(.+)$/);
-  if (!https) return { coords };
+  if (!https) {return { coords };}
 
   const segs = https[1]!.replace(/\.git$/, "").split("/").filter(Boolean);
   // segs[0]=owner, segs[1]=repo, then optionally pull/<n> or tree/<branch...>
@@ -184,7 +184,7 @@ export function parseUrlInput(url: string): UrlInput | null {
   }
   if (segs.length >= 4 && segs[2] === "tree") {
     const branch = segs.slice(3).join("/");
-    if (isValidBranchName(branch)) return { coords, ref: { kind: "branch", name: branch } };
+    if (isValidBranchName(branch)) {return { coords, ref: { kind: "branch", name: branch } };}
   }
   return { coords };
 }

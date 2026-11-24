@@ -41,13 +41,13 @@ const CLOCK_SKEW_MS = 14 * 60 * 60 * 1000;
 /** @param {string} text */
 export function decode(text) {
 	return text
-		.replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
-		.replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(Number.parseInt(n, 16)))
-		.replace(/&quot;/g, '"')
-		.replace(/&#39;|&apos;/g, "'")
-		.replace(/&lt;/g, "<")
-		.replace(/&gt;/g, ">")
-		.replace(/&amp;/g, "&");
+		.replaceAll(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
+		.replaceAll(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(Number.parseInt(n, 16)))
+		.replaceAll('&quot;', '"')
+		.replaceAll(/&#39;|&apos;/g, "'")
+		.replaceAll('&lt;', "<")
+		.replaceAll('&gt;', ">")
+		.replaceAll('&amp;', "&");
 }
 
 /**
@@ -124,9 +124,9 @@ export function parseHeaders(text) {
 		if (!/^\s/.test(line)) {
 			const source = line.trim().replace(/^https?:\/\/[^/]+/, "");
 			const pattern = source
-				.replace(/[.+?^${}()|[\]\\]/g, "\\$&")
-				.replace(/\*/g, ".*")
-				.replace(/:\w+/g, "[^/]+");
+				.replaceAll(/[.+?^${}()|[\]\\]/g, String.raw`\$&`)
+				.replaceAll('*', ".*")
+				.replaceAll(/:\w+/g, "[^/]+");
 			rules.push({ pattern: new RegExp(`^${pattern}$`), headers: {} });
 			continue;
 		}

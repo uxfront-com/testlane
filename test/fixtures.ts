@@ -15,7 +15,7 @@ const AUTHOR_ENV = {
 } as const;
 
 /** Run a git command synchronously; throws on non-zero with captured stderr. */
-function git(args: string[], cwd?: string): string {
+function git(args: Array<string>, cwd?: string): string {
   const res = spawnSync("git", args, {
     cwd,
     env: { ...process.env, ...AUTHOR_ENV, GIT_TERMINAL_PROMPT: "0" } as Record<string, string>,
@@ -40,7 +40,7 @@ export interface FixtureOrigin {
   /** Merge `from` into `into` in the origin (via the work clone). Returns the new sha. */
   merge(into: string, from: string): string;
   /** Delete `paths` on `branch`, commit, push. Returns the new sha. */
-  remove(branch: string, paths: string[]): string;
+  remove(branch: string, paths: Array<string>): string;
 }
 
 /** Build a bare origin repo plus a private work clone used to author commits. */
@@ -110,7 +110,7 @@ export interface Harness {
   stateHome: string;
   worktreesPath(project: string): string;
   repoPath(project: string): string;
-  run(argv: string[]): Promise<RunResult>;
+  run(argv: Array<string>): Promise<RunResult>;
 }
 
 /**
@@ -139,12 +139,12 @@ export function makeEnv(
       `worktrees_path = ${JSON.stringify(worktreesPath(name))}`,
       `default_branch = ${JSON.stringify(spec.defaultBranch ?? "main")}`,
     ];
-    if (spec.ports !== undefined) lines.push(`ports = ${spec.ports}`);
-    if (spec.extraToml) lines.push(spec.extraToml);
+    if (spec.ports !== undefined) {lines.push(`ports = ${spec.ports}`);}
+    if (spec.extraToml) {lines.push(spec.extraToml);}
     writeFileSync(join(configDir, `${name}.toml`), lines.join("\n") + "\n");
   }
 
-  const run = async (argv: string[]): Promise<RunResult> => {
+  const run = async (argv: Array<string>): Promise<RunResult> => {
     const prevConfig = process.env.TESTLANE_CONFIG_DIR;
     const prevState = process.env.XDG_STATE_HOME;
     const prevDebug = process.env.TESTLANE_DEBUG;
@@ -183,8 +183,8 @@ export function makeEnv(
 }
 
 function restore(key: string, prev: string | undefined): void {
-  if (prev === undefined) delete process.env[key];
-  else process.env[key] = prev;
+  if (prev === undefined) {delete process.env[key];}
+  else {process.env[key] = prev;}
 }
 
 /**
@@ -192,14 +192,14 @@ function restore(key: string, prev: string | undefined): void {
  * spawning `gh`. `metas` maps a PR number to its metadata; `prDiff` records its
  * calls and returns exit 0.
  */
-export function fakeGh(metas: Record<number, Partial<PrMeta>>): GhClient & { diffCalls: Array<{ n: number; args: string[] }> } {
-  const diffCalls: Array<{ n: number; args: string[] }> = [];
+export function fakeGh(metas: Record<number, Partial<PrMeta>>): GhClient & { diffCalls: Array<{ n: number; args: Array<string> }> } {
+  const diffCalls: Array<{ n: number; args: Array<string> }> = [];
   return {
     diffCalls,
     available: async () => true,
     prView: async (_repo, n) => {
       const m = metas[n];
-      if (!m) return null;
+      if (!m) {return null;}
       return {
         headRefName: m.headRefName ?? `pr/${n}`,
         isCrossRepository: m.isCrossRepository ?? false,

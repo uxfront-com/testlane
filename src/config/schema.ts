@@ -49,7 +49,7 @@ export const RawProjectSchema = z
     editor: z.string().optional(),
     default_command: z.string().optional(),
     ports: z.number().int().min(1).max(10).optional(),
-    base_port: z.number().int().min(1024).max(65000).optional(),
+    base_port: z.number().int().min(1024).max(65_000).optional(),
     setup: RawSetupSchema.optional(),
     env: envTable.optional(),
     commands: z.record(commandName, RawCommandSchema).optional(),
@@ -141,7 +141,7 @@ export interface ProjectConfig {
   defaultCommand: string;
   ports: number;
   basePort: number;
-  setup: { run?: string; cacheKey: string[]; seedFiles: string[]; seedFrom?: string };
+  setup: { run?: string; cacheKey: Array<string>; seedFiles: Array<string>; seedFrom?: string };
   env: Record<string, string>;
   commands: Record<string, CommandConfig>;
   hooks: Partial<Record<(typeof HOOK_NAMES)[number], string>>;

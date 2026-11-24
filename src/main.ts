@@ -4,20 +4,18 @@ import { existsSync } from "node:fs";
 import { ExitCode, TestlaneError, isTestlaneError } from "./lib/errors.ts";
 import { Logger, colorEnabled } from "./lib/log.ts";
 import { defaultConfigDir } from "./lib/paths.ts";
-import { parse, type ParseDeps, type ParseResult } from "./cli/parse.ts";
+import { parse } from './cli/parse.ts';
+import type { ParseDeps, ParseResult } from './cli/parse.ts';
 import {
   listProjectNames,
   loadDefaults,
   loadEffectiveProject,
   projectExists,
 } from "./config/load.ts";
-import {
-  coordsEqual,
-  normalizeRepoUrl,
-  parseUrlInput,
-  type RefSpec,
-} from "./core/resolve.ts";
-import { RealGhClient, unavailableGh, type GhClient } from "./git/gh.ts";
+import { coordsEqual, normalizeRepoUrl, parseUrlInput } from './core/resolve.ts';
+import type { RefSpec } from './core/resolve.ts';
+import { RealGhClient, unavailableGh } from './git/gh.ts';
+import type { GhClient } from './git/gh.ts';
 import type { Ctx, Defaults, ProjectConfig } from "./config/schema.ts";
 import { isPathArgument } from "./config/detect.ts";
 
@@ -42,7 +40,7 @@ export interface MainOptions {
   gh?: GhClient;
 }
 
-export async function main(argv: string[], opts: MainOptions = {}): Promise<number> {
+export async function main(argv: Array<string>, opts: MainOptions = {}): Promise<number> {
   const debug = wantsDebug(argv);
   try {
     const configDir = resolveConfigDir(argv);
@@ -63,35 +61,35 @@ export async function main(argv: string[], opts: MainOptions = {}): Promise<numb
     const ctx: Ctx = { configDir, defaults, flags, log, gh };
 
     return await dispatch(result, ctx, defaults);
-  } catch (e) {
-    return formatError(e, debug);
+  } catch (error) {
+    return formatError(error, debug);
   }
 }
 
 // ── Config-dir resolution (§5.1) ────────────────────────────────────────────
 
 /** --config-dir flag → $TESTLANE_CONFIG_DIR → ~/.testlane. */
-function resolveConfigDir(argv: string[]): string {
+function resolveConfigDir(argv: Array<string>): string {
   const fromFlag = preScanConfigDir(argv);
-  if (fromFlag) return fromFlag;
+  if (fromFlag) {return fromFlag;}
   const fromEnv = process.env.TESTLANE_CONFIG_DIR;
-  if (fromEnv && fromEnv.trim() !== "") return fromEnv;
+  if (fromEnv && fromEnv.trim() !== "") {return fromEnv;}
   return defaultConfigDir();
 }
 
 /** Lightweight pre-scan for --config-dir before parse (deps need it first). */
-function preScanConfigDir(argv: string[]): string | undefined {
+function preScanConfigDir(argv: Array<string>): string | undefined {
   for (let i = 0; i < argv.length; i++) {
     const tok = argv[i]!;
-    if (tok === "--") break;
-    if (tok === "--config-dir") return argv[i + 1];
-    if (tok.startsWith("--config-dir=")) return tok.slice("--config-dir=".length);
+    if (tok === "--") {break;}
+    if (tok === "--config-dir") {return argv[i + 1];}
+    if (tok.startsWith("--config-dir=")) {return tok.slice("--config-dir=".length);}
   }
   return undefined;
 }
 
-function wantsDebug(argv: string[]): boolean {
-  if (process.env.TESTLANE_DEBUG === "1") return true;
+function wantsDebug(argv: Array<string>): boolean {
+  if (process.env.TESTLANE_DEBUG === "1") {return true;}
   const cut = argv.indexOf("--");
   const pre = cut === -1 ? argv : argv.slice(0, cut);
   return pre.includes("--verbose") || pre.includes("-v");
@@ -100,7 +98,7 @@ function wantsDebug(argv: string[]): boolean {
 // ── ParseDeps backed by config/load ─────────────────────────────────────────
 
 function buildDeps(configDir: string, defaults: Defaults): ParseDeps {
-  const commandNames = (name: string): string[] => {
+  const commandNames = (name: string): Array<string> => {
     try {
       return Object.keys(loadEffectiveProject(configDir, name, defaults).commands);
     } catch {
@@ -128,7 +126,7 @@ function resolveUrlProject(
   url: string,
 ): { project: string; ref?: RefSpec } | null {
   const parsed = parseUrlInput(url);
-  if (!parsed) return null;
+  if (!parsed) {return null;}
   for (const name of listProjectNames(configDir)) {
     let proj: ProjectConfig;
     try {
@@ -147,42 +145,42 @@ function resolveUrlProject(
 // ── Config-dir existence guard (§5.1) ───────────────────────────────────────
 
 function guardConfigDir(result: ParseResult, configDir: string): void {
-  if (isExemptFromConfigDir(result)) return;
-  if (existsSync(configDir)) return;
+  if (isExemptFromConfigDir(result)) {return;}
+  if (existsSync(configDir)) {return;}
   throw new TestlaneError("E_CONFIG", `config directory does not exist: ${configDir}`, {
     hint: "create it and add <project>.toml files, or pass --config-dir",
   });
 }
 
 function isExemptFromConfigDir(result: ParseResult): boolean {
-  if (result.kind !== "top") return false;
-  if (result.verb === "help" || result.verb === "version" || result.verb === "doctor") return true;
-  if (result.verb === "completions") return true;
+  if (result.kind !== "top") {return false;}
+  if (result.verb === "help" || result.verb === "version" || result.verb === "doctor") {return true;}
+  if (result.verb === "completions") {return true;}
   // `mcp` starts without a config dir. Each tool but `doctor` checks it per call (ADR-003).
-  if (result.verb === "mcp") return true;
+  if (result.verb === "mcp") {return true;}
   // `setup` creates the config dir, so it must run when the dir is still absent.
-  if (result.verb === "setup") return true;
+  if (result.verb === "setup") {return true;}
   // `config path` is exempt; `config edit/validate` are not. `config add <url>`
   // is, since it creates the config dir on a new machine, and so is
   // `config detect <path>`, which reads only that directory (§9.12).
   if (result.verb === "config") {
     const sub = result.args[0];
-    if (sub === "add") return configAddTarget(result.args.slice(1)) !== undefined;
-    if (sub === "detect") return isPathArgument(result.args.slice(1).find((a) => !a.startsWith("-") || a === "-"));
+    if (sub === "add") {return configAddTarget(result.args.slice(1)) !== undefined;}
+    if (sub === "detect") {return isPathArgument(result.args.slice(1).find((a) => !a.startsWith("-") || a === "-"));}
     return sub === undefined || sub === "path";
   }
   return false;
 }
 
 /** The URL `config add` was given, skipping its `--name`/`--root` values. */
-function configAddTarget(args: string[]): string | undefined {
+function configAddTarget(args: Array<string>): string | undefined {
   for (let i = 0; i < args.length; i++) {
     const tok = args[i]!;
     if (tok === "--name" || tok === "--root") {
       i += 1;
       continue;
     }
-    if (tok.startsWith("-") && tok !== "-") continue;
+    if (tok.startsWith("-") && tok !== "-") {continue;}
     return parseUrlInput(tok) ? tok : undefined;
   }
   return undefined;
@@ -275,13 +273,13 @@ async function dispatch(result: ParseResult, ctx: Ctx, defaults: Defaults): Prom
 function formatError(e: unknown, debug: boolean): number {
   if (isTestlaneError(e)) {
     process.stderr.write(`error(${e.errCode}): ${e.message}\n`);
-    if (e.hint) process.stderr.write(`hint: ${e.hint}\n`);
-    if (debug && e.stack) process.stderr.write(`${e.stack}\n`);
+    if (e.hint) {process.stderr.write(`hint: ${e.hint}\n`);}
+    if (debug && e.stack) {process.stderr.write(`${e.stack}\n`);}
     return e.code;
   }
   const err = e as Error;
   process.stderr.write(`error(E_INTERNAL): ${err?.message ?? String(e)}\n`);
-  if (debug && err?.stack) process.stderr.write(`${err.stack}\n`);
+  if (debug && err?.stack) {process.stderr.write(`${err.stack}\n`);}
   return ExitCode.INTERNAL;
 }
 

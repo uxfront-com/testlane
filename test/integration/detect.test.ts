@@ -7,7 +7,8 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpath
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import { parse as parseToml } from "smol-toml";
-import { makeEnv, makeFixtureOrigin, type FixtureOrigin, type Harness } from "../fixtures.ts";
+import { makeEnv, makeFixtureOrigin } from '../fixtures.ts';
+import type { FixtureOrigin, Harness } from '../fixtures.ts';
 import { setProcRecorder } from "../../src/lib/proc.ts";
 import { setDraftTransform } from "../../src/config/detect-emit.ts";
 import { gitFiles, localFiles } from "../../src/core/repo-files.ts";
@@ -34,7 +35,7 @@ const REPO_FILES: Record<string, string> = {
 
 let tmp: string;
 let env: Harness;
-let recorded: string[][];
+let recorded: Array<Array<string>>;
 
 beforeEach(() => {
   tmp = realpathSync(mkdtempSync(join(tmpdir(), "testlane-detect-")));
@@ -56,37 +57,37 @@ function writeTree(dir: string, files: Record<string, string>): void {
 }
 
 /** Every path under `dir` with its mtime, so a test can prove nothing was written. */
-function snapshot(dir: string): string[] {
-  if (!existsSync(dir)) return [];
-  const out: string[] = [];
+function snapshot(dir: string): Array<string> {
+  if (!existsSync(dir)) {return [];}
+  const out: Array<string> = [];
   const walk = (d: string): void => {
     for (const e of readdirSync(d, { withFileTypes: true })) {
       const p = join(d, e.name);
       out.push(`${p} ${statSync(p).mtimeMs}`);
-      if (e.isDirectory()) walk(p);
+      if (e.isDirectory()) {walk(p);}
     }
   };
   walk(dir);
   return out.sort();
 }
 
-function markers(dir: string): string[] {
-  const found: string[] = [];
+function markers(dir: string): Array<string> {
+  const found: Array<string> = [];
   const walk = (d: string): void => {
     for (const e of readdirSync(d, { withFileTypes: true })) {
-      if (e.name.startsWith("pwned")) found.push(join(d, e.name));
-      if (e.isDirectory()) walk(join(d, e.name));
+      if (e.name.startsWith("pwned")) {found.push(join(d, e.name));}
+      if (e.isDirectory()) {walk(join(d, e.name));}
     }
   };
   walk(dir);
   return found;
 }
 
-const git = (dir: string, ...args: string[]) => spawnSync("git", ["-C", dir, ...args]).stdout.toString();
+const git = (dir: string, ...args: Array<string>) => spawnSync("git", ["-C", dir, ...args]).stdout.toString();
 const READ_ONLY_GIT = new Set(["ls-tree", "cat-file", "rev-list", "rev-parse", "symbolic-ref", "ls-remote", "config"]);
-const gitSubcommand = (argv: string[]) => argv.slice(argv[1] === "-C" ? 3 : 1).find((a, i, rest) => !a.startsWith("-") && rest[i - 1] !== "-c");
+const gitSubcommand = (argv: Array<string>) => argv.slice(argv[1] === "-C" ? 3 : 1).find((a, i, rest) => !a.startsWith("-") && rest[i - 1] !== "-c");
 /** A fetch of blobs by id, as a partial clone's on-demand read runs it: it moves no ref. */
-const isBlobFetch = (argv: string[]) =>
+const isBlobFetch = (argv: Array<string>) =>
   gitSubcommand(argv) === "fetch" &&
   argv.includes("--no-write-fetch-head") &&
   argv.slice(argv.indexOf("origin") + 1).every((a) => a.startsWith("--") || /^[0-9a-f]{40,64}$/.test(a));
@@ -317,8 +318,8 @@ describe("config detect <project>", () => {
       expect((await env.run(["config", "trust", "app"])).code).toBe(0);
       expect((await env.run(["config", "detect", "app"])).code).toBe(0);
     } finally {
-      if (prev === undefined) delete process.env.GIT_TRACE;
-      else process.env.GIT_TRACE = prev;
+      if (prev === undefined) {delete process.env.GIT_TRACE;}
+      else {process.env.GIT_TRACE = prev;}
     }
     const log = readFileSync(trace, "utf8");
     expect(log).toContain("built-in: git fetch");
@@ -348,7 +349,7 @@ describe("--detect", () => {
   let withFile: FixtureOrigin;
   const saved: Record<string, string | undefined> = {};
   const setEnv = (key: string, value: string) => {
-    if (!(key in saved)) saved[key] = process.env[key];
+    if (!(key in saved)) {saved[key] = process.env[key];}
     process.env[key] = value;
   };
 
@@ -372,8 +373,8 @@ describe("--detect", () => {
 
   afterEach(() => {
     for (const [key, value] of Object.entries(saved)) {
-      if (value === undefined) delete process.env[key];
-      else process.env[key] = value;
+      if (value === undefined) {delete process.env[key];}
+      else {process.env[key] = value;}
       delete saved[key];
     }
   });
@@ -383,9 +384,9 @@ describe("--detect", () => {
     const f = join(env.stateHome, "testlane", `${name}.json`);
     return existsSync(f) ? JSON.parse(readFileSync(f, "utf8")) : null;
   };
-  const onlyGitAnd = (extra: string[]) => {
+  const onlyGitAnd = (extra: Array<string>) => {
     for (const argv of recorded) {
-      if (argv[0] === "git") continue;
+      if (argv[0] === "git") {continue;}
       expect(extra, argv.join(" ")).toContain(argv[0]);
     }
   };
@@ -430,7 +431,7 @@ describe("--detect", () => {
     const r = await env.run(["setup", "--name", "app", "--repo", CLONE, "--default-branch", "main", "--detect"]);
     expect(r.code, r.stderr).toBe(0);
     const text = projectFile();
-    expect(text).toMatch(new RegExp(`^repo = "${CLONE.replace(/[.]/g, "\\.")}"  # detected: setup --repo\\ndefault_branch = "main"  # detected: setup --default-branch\\n`, "m"));
+    expect(text).toMatch(new RegExp(`^repo = "${CLONE.replaceAll(/[.]/g, String.raw`\.`)}"  # detected: setup --repo\\ndefault_branch = "main"  # detected: setup --default-branch\\n`, "m"));
     expect(text).toContain("[commands.dev]");
     expect(r.stderr).toContain("next: testlane config edit app");
     expect((await env.run(["config", "validate", "app"])).code).toBe(0);

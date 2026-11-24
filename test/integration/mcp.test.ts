@@ -9,7 +9,8 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSyn
 import { get } from "node:http";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { makeEnv, makeFixtureOrigin, type Harness, type ProjectSpec } from "../fixtures.ts";
+import { makeEnv, makeFixtureOrigin } from '../fixtures.ts';
+import type { Harness, ProjectSpec } from '../fixtures.ts';
 import { builtCli, McpClient } from "../mcp-client.ts";
 import { fetchBranch } from "../../src/git/repo.ts";
 import { Logger } from "../../src/lib/log.ts";
@@ -36,9 +37,9 @@ const TOOL_NAMES = [
 
 let tmp: string;
 let origin: ReturnType<typeof makeFixtureOrigin>;
-let clients: McpClient[];
+let clients: Array<McpClient>;
 /** Projects whose `start` entries and `bg.pid` files afterEach kills. */
-let envs: Array<{ env: Harness; projects: string[] }>;
+let envs: Array<{ env: Harness; projects: Array<string> }>;
 
 beforeEach(() => {
   tmp = realpathSync(mkdtempSync(join(tmpdir(), "testlane-mcp-")));
@@ -50,9 +51,9 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
-  for (const c of clients) c.kill();
+  for (const c of clients) {c.kill();}
   await Promise.all(clients.map((c) => c.exited));
-  const pids: number[] = [];
+  const pids: Array<number> = [];
   for (const { env, projects } of envs) {
     for (const project of projects) {
       const trees = env.worktreesPath(project);
@@ -60,19 +61,19 @@ afterEach(async () => {
       if (existsSync(data)) {
         for (const slug of readdirSync(data)) {
           const file = join(data, slug, "process.json");
-          if (existsSync(file)) pids.push(Number(JSON.parse(readFileSync(file, "utf8")).pid));
+          if (existsSync(file)) {pids.push(Number(JSON.parse(readFileSync(file, "utf8")).pid));}
         }
       }
       if (existsSync(trees)) {
         for (const slug of readdirSync(trees)) {
           const file = join(trees, slug, "bg.pid");
-          if (existsSync(file)) pids.push(Number(readFileSync(file, "utf8").trim()));
+          if (existsSync(file)) {pids.push(Number(readFileSync(file, "utf8").trim()));}
         }
       }
     }
   }
   for (const pid of pids) {
-    if (!Number.isInteger(pid) || pid <= 1) continue;
+    if (!Number.isInteger(pid) || pid <= 1) {continue;}
     for (const target of [-pid, pid]) {
       try {
         process.kill(target, "SIGKILL");
@@ -103,14 +104,14 @@ function serverEnv(env: Harness): Record<string, string> {
   return { TESTLANE_CONFIG_DIR: env.configDir, XDG_STATE_HOME: env.stateHome };
 }
 
-function connect(env: Harness, preArgs: string[] = []): McpClient {
+function connect(env: Harness, preArgs: Array<string> = []): McpClient {
   const c = new McpClient(serverEnv(env), preArgs);
   clients.push(c);
   return c;
 }
 
 /** The built CLI's `--json` answer, spawned with the server's environment. */
-function cliJson(env: Harness, argv: string[]): { code: number; value: any } {
+function cliJson(env: Harness, argv: Array<string>): { code: number; value: any } {
   const r = spawnSync(process.execPath, [builtCli, ...argv, "--json"], {
     encoding: "utf8",
     env: { ...(process.env as Record<string, string>), NO_COLOR: "1", TESTLANE_DEBUG: "0", ...serverEnv(env) },
@@ -119,18 +120,18 @@ function cliJson(env: Harness, argv: string[]): { code: number; value: any } {
 }
 
 /** Same keys everywhere, and equal values outside `changing`. */
-function expectSameShape(tool: unknown, cli: unknown, changing: string[] = [], path = "$"): void {
+function expectSameShape(tool: unknown, cli: unknown, changing: Array<string> = [], path = "$"): void {
   if (Array.isArray(cli)) {
     expect(Array.isArray(tool), path).toBe(true);
-    expect((tool as unknown[]).length, path).toBe(cli.length);
-    cli.forEach((v, i) => expectSameShape((tool as unknown[])[i], v, changing, `${path}[${i}]`));
+    expect((tool as Array<unknown>).length, path).toBe(cli.length);
+    cli.forEach((v, i) => expectSameShape((tool as Array<unknown>)[i], v, changing, `${path}[${i}]`));
     return;
   }
   if (cli !== null && typeof cli === "object") {
     expect(tool !== null && typeof tool === "object", path).toBe(true);
     expect(Object.keys(tool as object).sort(), path).toEqual(Object.keys(cli).sort());
     for (const [k, v] of Object.entries(cli)) {
-      if (changing.includes(k)) continue;
+      if (changing.includes(k)) {continue;}
       expectSameShape((tool as Record<string, unknown>)[k], v, changing, `${path}.${k}`);
     }
     return;
@@ -158,7 +159,10 @@ function alive(pid: number): boolean {
   }
 }
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms: number) =>
+  new Promise((r) => {
+    setTimeout(r, ms);
+  });
 
 /** Every stdout line is one JSON-RPC 2.0 message. */
 function expectOnlyProtocol(c: McpClient): void {
@@ -197,15 +201,15 @@ describe("protocol", () => {
     const c = connect(env);
     await c.initialize();
     expect((await c.request("ping")).msg.result).toEqual({});
-    expect((await c.request("resources/list")).msg.error?.code).toBe(-32601);
-    expect((await c.request("tools/call", { name: "exec", arguments: {} })).msg.error?.code).toBe(-32602);
+    expect((await c.request("resources/list")).msg.error?.code).toBe(-32_601);
+    expect((await c.request("tools/call", { name: "exec", arguments: {} })).msg.error?.code).toBe(-32_602);
 
     const parseError = c.expect(null);
     c.sendLine("{not json");
-    expect((await parseError).msg.error?.code).toBe(-32700);
+    expect((await parseError).msg.error?.code).toBe(-32_700);
     const batch = c.expect(null);
     c.sendLine(JSON.stringify([{ jsonrpc: "2.0", id: 9, method: "ping" }]));
-    expect((await batch).msg.error?.code).toBe(-32600);
+    expect((await batch).msg.error?.code).toBe(-32_600);
 
     // The server is still there after each of them.
     expect((await c.request("ping")).msg.result).toEqual({});
@@ -228,7 +232,7 @@ describe("tools/list", () => {
       annotations: { readOnlyHint?: boolean; destructiveHint?: boolean };
     }>;
     expect(tools.map((t) => t.name).sort()).toEqual([...TOOL_NAMES].sort());
-    const readOnly = ["projects", "doctor", "config_validate", "list", "ps", "info", "diff", "logs"];
+    const readOnly = new Set(["projects", "doctor", "config_validate", "list", "ps", "info", "diff", "logs"]);
     for (const t of tools) {
       expect(t.description.length, t.name).toBeGreaterThan(0);
       expect(t.inputSchema.type, t.name).toBe("object");
@@ -236,9 +240,9 @@ describe("tools/list", () => {
       for (const banned of ["argv", "args", "passthrough", "force", "exec", "yes"]) {
         expect(Object.keys(t.inputSchema.properties), t.name).not.toContain(banned);
       }
-      if (readOnly.includes(t.name)) expect(t.annotations, t.name).toEqual({ readOnlyHint: true });
-      else if (t.name === "rm") expect(t.annotations).toEqual({ readOnlyHint: false, destructiveHint: true });
-      else expect(t.annotations, t.name).toEqual({ readOnlyHint: false, destructiveHint: false });
+      if (readOnly.has(t.name)) {expect(t.annotations, t.name).toEqual({ readOnlyHint: true });}
+      else if (t.name === "rm") {expect(t.annotations).toEqual({ readOnlyHint: false, destructiveHint: true });}
+      else {expect(t.annotations, t.name).toEqual({ readOnlyHint: false, destructiveHint: false });}
     }
     // Only the two long tools take a timeout.
     const withTimeout = tools.filter((t) => "timeout" in t.inputSchema.properties).map((t) => t.name);
@@ -265,7 +269,7 @@ describe("same shape as the CLI's --json", () => {
     expect(st.value.reused).toBe(false);
     expectSameShape(st.value, cliJson(env, ["shape", "feature-x", "start", "web"]).value, ["reused"]);
 
-    const pairs: Array<[string, Record<string, unknown>, string[], string[]]> = [
+    const pairs: Array<[string, Record<string, unknown>, Array<string>, Array<string>]> = [
       ["projects", {}, ["projects"], []],
       ["doctor", {}, ["doctor"], []],
       ["config_validate", {}, ["config", "validate"], []],
@@ -294,7 +298,7 @@ describe("stop, logs, diff and rm", () => {
     const st = await c.call("start", { project: "text", ref: "feature-x", command: "web", timeout: 20 });
     expect(st.isError, JSON.stringify(st.value)).toBe(false);
     // Three more lines after "listening on".
-    for (const n of [1, 2, 3]) writeFileSync(st.value.log, `line ${n}\n`, { flag: "a" });
+    for (const n of [1, 2, 3]) {writeFileSync(st.value.log, `line ${n}\n`, { flag: "a" });}
 
     const logs = await c.call("logs", { project: "text", ref: "feature-x", lines: 3 });
     expect(logs.isError).toBe(false);
@@ -488,15 +492,15 @@ describe("progress", () => {
       c.call("checkout", { project: "p3", ref: "feature-x", setup: true, timeout: 30 }),
       c.call("start", { project: "p4", ref: "feature-x", command: "web", timeout: 30 }),
     ]);
-    for (const r of [a, b, nc, ns]) expect(r.isError, JSON.stringify(r.value)).toBe(false);
+    for (const r of [a, b, nc, ns]) {expect(r.isError, JSON.stringify(r.value)).toBe(false);}
 
     for (const [token, answer] of [["tok-a", a], [7, b]] as const) {
       const p = c.progress(token);
       expect(p.length, String(token)).toBeGreaterThanOrEqual(2);
       const values = p.map((x) => x.msg.params!.progress as number);
-      for (let i = 1; i < values.length; i++) expect(values[i]!).toBeGreaterThan(values[i - 1]!);
+      for (let i = 1; i < values.length; i++) {expect(values[i]!).toBeGreaterThan(values[i - 1]!);}
       expect(p.every((x) => x.at <= answer.at)).toBe(true);
-      expect(p.some((x) => x.at - sent >= 5_000)).toBe(true);
+      expect(p.some((x) => x.at - sent >= 5000)).toBe(true);
       expect(p.some((x) => x.msg.params!.message === "running setup")).toBe(true);
     }
     const tokens = new Set(
@@ -528,8 +532,8 @@ describe("timeout and cancel", () => {
       expect(r.isError, tool).toBe(true);
       expect(r.value).toMatchObject({ timedOut: true, timeoutSeconds: 2 });
       expect(r.value.stderr).toContain("→ running setup");
-      expect(took, tool).toBeGreaterThanOrEqual(2_000);
-      expect(took, tool).toBeLessThan(6_000);
+      expect(took, tool).toBeGreaterThanOrEqual(2000);
+      expect(took, tool).toBeLessThan(6000);
       // The setup's background child is already dead, with no wait.
       const pid = Number(readFileSync(join(env.worktreesPath(project), "feature-x", "bg.pid"), "utf8"));
       expect(alive(pid), `${tool} bg pid`).toBe(false);
@@ -555,19 +559,19 @@ describe("timeout and cancel", () => {
     void first.then(() => (firstAnswered = true));
     // Wait until the first one is in its setup, holding the start lock.
     const bgFile = join(env.worktreesPath("t3"), "feature-x", "bg.pid");
-    for (let i = 0; i < 100 && !existsSync(bgFile); i++) await sleep(100);
+    for (let i = 0; i < 100 && !existsSync(bgFile); i++) {await sleep(100);}
     expect(existsSync(bgFile)).toBe(true);
 
     const sent = Date.now();
     const second = await c.call("start", { project: "t3", ref: "feature-x", command: "web", timeout: 2 });
-    expect(Date.now() - sent).toBeLessThan(6_000);
+    expect(Date.now() - sent).toBeLessThan(6000);
     expect(second.isError).toBe(true);
     expect(second.value).toMatchObject({ timedOut: true, timeoutSeconds: 2 });
 
     const pid = Number(readFileSync(bgFile, "utf8"));
     expect(alive(pid)).toBe(true);
     c.notify("notifications/cancelled", { requestId: "first", reason: "test" });
-    for (let i = 0; i < 40 && alive(pid); i++) await sleep(100);
+    for (let i = 0; i < 40 && alive(pid); i++) {await sleep(100);}
     expect(alive(pid)).toBe(false);
     // A cancelled request gets no response.
     expect((await c.request("ping")).msg.result).toEqual({});
@@ -803,7 +807,7 @@ describe("a crafted branch ref that differs from origin/main only in case, over 
     for (const name of ["Main", "head"]) {
       expect(spawnSync("git", ["-C", origin.path, "update-ref", `refs/heads/${name}`, evil]).status).toBe(0);
     }
-    const git = (...args: string[]) => spawnSync("git", ["-C", env.repoPath("app"), ...args], { encoding: "utf8" }).stdout.trim();
+    const git = (...args: Array<string>) => spawnSync("git", ["-C", env.repoPath("app"), ...args], { encoding: "utf8" }).stdout.trim();
     const before = git("rev-parse", "refs/remotes/origin/main");
     const ignoresCase = git("config", "--bool", "core.ignorecase") === "true";
 

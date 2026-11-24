@@ -6,7 +6,8 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { makeEnv, makeFixtureOrigin, type Harness } from "../fixtures.ts";
+import { makeEnv, makeFixtureOrigin } from '../fixtures.ts';
+import type { Harness } from '../fixtures.ts';
 import { setProcRecorder } from "../../src/lib/proc.ts";
 
 let tmp: string;
@@ -26,7 +27,7 @@ afterEach(() => {
   rmSync(tmp, { recursive: true, force: true });
 });
 
-function gitOut(dir: string, args: string[]): string {
+function gitOut(dir: string, args: Array<string>): string {
   const res = spawnSync("git", ["-C", dir, ...args]);
   return res.stdout.toString();
 }
