@@ -431,7 +431,7 @@ describe("--detect", () => {
     const r = await env.run(["setup", "--name", "app", "--repo", CLONE, "--default-branch", "main", "--detect"]);
     expect(r.code, r.stderr).toBe(0);
     const text = projectFile();
-    expect(text).toMatch(new RegExp(`^repo = "${CLONE.replace(/[.]/g, "\\.")}"  # detected: setup --repo\\ndefault_branch = "main"  # detected: setup --default-branch\\n`, "m"));
+    expect(text).toMatch(new RegExp(`^repo = "${CLONE.replaceAll(/[.]/g, "\\.")}"  # detected: setup --repo\\ndefault_branch = "main"  # detected: setup --default-branch\\n`, "m"));
     expect(text).toContain("[commands.dev]");
     expect(r.stderr).toContain("next: testlane config edit app");
     expect((await env.run(["config", "validate", "app"])).code).toBe(0);

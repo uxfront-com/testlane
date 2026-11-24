@@ -61,5 +61,5 @@ const XML_ENTITIES: Record<string, string> = {
 };
 
 function escapeXml(value: string) {
-	return value.replace(/[&<>"']/g, (char) => XML_ENTITIES[char]!);
+	return value.replaceAll(/[&<>"']/g, (char) => XML_ENTITIES[char]!);
 }

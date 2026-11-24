@@ -18,12 +18,12 @@ function escapeChar(c: string): string {
 
 /** One value on one line: every control character escaped, newlines included. */
 export function printableLine(text: string): string {
-  return text.replace(UNSAFE_IN_LINE, escapeChar);
+  return text.replaceAll(UNSAFE_IN_LINE, escapeChar);
 }
 
 /** A file or a diff: control characters escaped, line breaks and tabs kept. */
 export function printableBlock(text: string): string {
-  return text.replace(UNSAFE_IN_BLOCK, escapeChar);
+  return text.replaceAll(UNSAFE_IN_BLOCK, escapeChar);
 }
 
 /** Several lines, each escaped as `printableLine`, still on separate lines. */

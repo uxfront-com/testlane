@@ -64,9 +64,9 @@ function rawScalar(text: string): string | null {
   const t = text.trim();
   if (t === "") {return null;}
   const dq = t.match(/^"((?:[^"\\]|\\.)*)"$/);
-  if (dq) {return dq[1]!.replace(/\\(.)/g, "$1");}
+  if (dq) {return dq[1]!.replaceAll(/\\(.)/g, "$1");}
   const sq = t.match(/^'((?:[^']|'')*)'$/);
-  if (sq) {return sq[1]!.replace(/''/g, "'");}
+  if (sq) {return sq[1]!.replaceAll('\'\'', "'");}
   // A plain scalar can't start with an indicator or hold a flow character. A
   // leading `!` is pnpm's exclusion, not a YAML tag, when the rest is a path.
   if (/^[[\]{}&*|>%@`"'?:-]/.test(t)) {return null;}
@@ -140,7 +140,7 @@ export function parseWorkspaceYaml(text: string): WorkspaceYaml {
 
 // `./apps/x/` → `apps/x`, and `apps/x/package.json` → `apps/x`: the directory a pattern names.
 export function normalizePattern(glob: string): string {
-  let p = glob.trim().replace(/\\/g, "/");
+  let p = glob.trim().replaceAll('\\', "/");
   while (p.startsWith("./")) {p = p.slice(2);}
   p = p.replace(/\/package\.json$/, "").replace(/\/+$/, "");
   return p === "" ? "." : p;
@@ -151,7 +151,7 @@ function segmentRegExp(seg: string): RegExp {
   for (const c of seg) {
     if (c === "*") {re += "[^/]*";}
     else if (c === "?") {re += "[^/]";}
-    else {re += c.replace(/[.+^${}()|[\]\\]/g, "\\$&");}
+    else {re += c.replaceAll(/[.+^${}()|[\]\\]/g, "\\$&");}
   }
   return new RegExp(`^${re}$`);
 }

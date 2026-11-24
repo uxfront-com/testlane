@@ -422,7 +422,7 @@ function portVar(i: number): string {
 
 /** Repo text inside a templated value: `{{` keeps a `{` literal (§5.5), so a name can't name a variable. */
 function literal(text: string): string {
-  return text.replace(/\{/g, "{{");
+  return text.replaceAll('{', "{{");
 }
 
 const FORMS: Record<Framework, (port: string) => string> = {
@@ -500,7 +500,7 @@ function commandName(pkg: Pkg, taken: Set<string>): string {
   const clean = (s: string): string =>
     s
       .toLowerCase()
-      .replace(/[^a-z0-9:_-]/g, "-")
+      .replaceAll(/[^a-z0-9:_-]/g, "-")
       .replace(/^[^a-z0-9]+/, "");
   const fromName = pkg.name ? clean(pkg.name.replace(/^@[^/]+\//, "")) : "";
   if (fromName && !taken.has(fromName)) {return fromName;}

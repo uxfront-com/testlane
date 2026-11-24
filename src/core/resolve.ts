@@ -111,9 +111,9 @@ export function slug(spec: RefSpec): string {
 
 function sanitize(name: string): string {
   return name
-    .replace(/[^A-Za-z0-9._-]/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^[-.]+|[-.]+$/g, "")
+    .replaceAll(/[^A-Za-z0-9._-]/g, "-")
+    .replaceAll(/-+/g, "-")
+    .replaceAll(/^[-.]+|[-.]+$/g, "")
     .toLowerCase();
 }
 
