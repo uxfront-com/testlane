@@ -32,7 +32,7 @@ const UNSAFE = /[\\"\u0000-\u001f\u007f-\u009f؜‎‏‪-‮⁦-⁩]/g;
 /** A TOML basic string with every control character escaped as `\uXXXX`. */
 export function tomlText(value: string): string {
   return `"${value.replaceAll(UNSAFE, (c) =>
-    c === "\\" ? "\\\\" : c === '"' ? '\\"' : `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`,
+    c === "\\" ? String.raw`\\` : c === '"' ? String.raw`\"` : `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`,
   )}"`;
 }
 

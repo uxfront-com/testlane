@@ -527,14 +527,14 @@ describe("rule 11: escaping and validation", () => {
     const evil = "web\u001b[2J\nx";
     const d = await draft(repo(PNPM, { "pnpm-workspace.yaml": ws("apps/*"), "apps/web/package.json": pkg(evil, "node s.js") }));
     expect(d.text).not.toContain("\u001b");
-    expect(d.text).toContain("\\u001b");
+    expect(d.text).toContain(String.raw`\u001b`);
     const parsed = parseToml(d.text) as any;
     expect(RawProjectSchema.safeParse(parsed).success).toBe(true);
     expect(parsed.commands.dev.run).toBe(`pnpm --filter 'web\u001b[2J\nx' run dev`);
   });
 
   it("tomlText escapes controls, quotes and backslashes", () => {
-    expect(tomlText('a"b\\c\u0007‮')).toBe('"a\\"b\\\\c\\u0007\\u202e"');
+    expect(tomlText('a"b\\c\u0007‮')).toBe(String.raw`"a\"b\\c\u0007\u202e"`);
   });
 
   it("a draft that doesn't validate is E_INTERNAL, never returned", async () => {

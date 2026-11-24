@@ -731,7 +731,7 @@ describe("integration review fixes", () => {
       expect(r.stderr).toContain("app:.testlane.toml");
       expect(r.stderr).not.toContain("\u001b");
       expect(r.stderr).not.toContain("\u0007");
-      expect(r.stderr).toContain("\\u001b");
+      expect(r.stderr).toContain(String.raw`\u001b`);
     }
     expect(parsed.stderr).toContain("TOML parse error");
     expect(state()?.repoConfig).toBeUndefined();

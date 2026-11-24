@@ -147,11 +147,11 @@ export function normalizePattern(glob: string): string {
 }
 
 function segmentRegExp(seg: string): RegExp {
-  let re = /^[*?]/.test(seg) ? "(?!\\.)" : "";
+  let re = /^[*?]/.test(seg) ? String.raw`(?!\.)` : "";
   for (const c of seg) {
     if (c === "*") {re += "[^/]*";}
     else if (c === "?") {re += "[^/]";}
-    else {re += c.replaceAll(/[.+^${}()|[\]\\]/g, "\\$&");}
+    else {re += c.replaceAll(/[.+^${}()|[\]\\]/g, String.raw`\$&`);}
   }
   return new RegExp(`^${re}$`);
 }

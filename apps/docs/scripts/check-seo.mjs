@@ -124,7 +124,7 @@ export function parseHeaders(text) {
 		if (!/^\s/.test(line)) {
 			const source = line.trim().replace(/^https?:\/\/[^/]+/, "");
 			const pattern = source
-				.replaceAll(/[.+?^${}()|[\]\\]/g, "\\$&")
+				.replaceAll(/[.+?^${}()|[\]\\]/g, String.raw`\$&`)
 				.replaceAll('*', ".*")
 				.replaceAll(/:\w+/g, "[^/]+");
 			rules.push({ pattern: new RegExp(`^${pattern}$`), headers: {} });

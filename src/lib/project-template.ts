@@ -32,5 +32,5 @@ export function defaultProjectTemplate(project: string, repo?: string): string {
 
 /** Minimal TOML basic-string encoder for the values Testlane writes (paths, URLs, refs). */
 export function tomlString(value: string): string {
-  return `"${value.replaceAll('\\', "\\\\").replaceAll('"', '\\"')}"`;
+  return `"${value.replaceAll('\\', String.raw`\\`).replaceAll('"', String.raw`\"`)}"`;
 }
