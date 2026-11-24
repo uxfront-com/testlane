@@ -24,7 +24,6 @@ export default defineConfig({
     "typescript/no-explicit-any": "off",
     "typescript/no-non-null-assertion": "off",
     "unicorn/consistent-function-scoping": "off",
-    "unicorn/no-hex-escape": "off",
     "unicorn/prefer-set-has": "off",
     "unicorn/prefer-top-level-await": "off",
     "unicorn/text-encoding-identifier-case": "off",

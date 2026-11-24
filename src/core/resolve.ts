@@ -81,7 +81,7 @@ export function isValidBranchName(name: string): boolean {
   if (name.endsWith(".lock")) {return false;}
   if (name.includes("..") || name.includes("//") || name.includes("@{")) {return false;}
   // Disallowed characters: control chars, space, and ~ ^ : ? * [ \
-  if (/[\x00-\x20\x7f ~^:?*[\\]/.test(name)) {return false;}
+  if (/[\u0000-\u0020\u007f ~^:?*[\\]/.test(name)) {return false;}
   // No path component may begin with a dot or end with .lock.
   for (const part of name.split("/")) {
     if (part === "" || part.startsWith(".") || part.endsWith(".lock")) {return false;}
