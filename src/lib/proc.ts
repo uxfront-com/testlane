@@ -127,7 +127,7 @@ export interface PassthroughOptions {
 }
 
 /** SIGTERM → SIGKILL grace for a child stopped by an abort signal (ADR-003). */
-export const ABORT_GRACE_MS = 2_000;
+export const ABORT_GRACE_MS = 2000;
 
 export interface DetachOptions {
   cwd?: string;
@@ -304,7 +304,7 @@ export async function stopGroup(pgid: number, graceMs = STOP_GRACE_MS): Promise<
   signalGroup(pgid, "SIGTERM");
   if (await waitGroupGone(pgid, graceMs)) {return "terminated";}
   signalGroup(pgid, "SIGKILL");
-  await waitGroupGone(pgid, 2_000);
+  await waitGroupGone(pgid, 2000);
   return "killed";
 }
 

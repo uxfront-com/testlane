@@ -49,7 +49,7 @@ export const RawProjectSchema = z
     editor: z.string().optional(),
     default_command: z.string().optional(),
     ports: z.number().int().min(1).max(10).optional(),
-    base_port: z.number().int().min(1024).max(65000).optional(),
+    base_port: z.number().int().min(1024).max(65_000).optional(),
     setup: RawSetupSchema.optional(),
     env: envTable.optional(),
     commands: z.record(commandName, RawCommandSchema).optional(),

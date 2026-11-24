@@ -171,7 +171,7 @@ function commandCwd(ws: Workspace, cwd: string | undefined, vars: Record<string,
 function parsePort(value: string | undefined): number | undefined {
   if (value === undefined) {return undefined;}
   const n = Number(value);
-  if (!Number.isInteger(n) || n < 1 || n > 65535) {
+  if (!Number.isInteger(n) || n < 1 || n > 65_535) {
     throw usage(`--port expects a port number (1–65535), got '${value}'`);
   }
   return n;

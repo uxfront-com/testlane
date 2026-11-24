@@ -146,7 +146,7 @@ export class McpClient {
   }
 
   /** End stdin and wait for the server to exit. Kills it after `ms`. */
-  async close(ms = 8_000): Promise<number | null> {
+  async close(ms = 8000): Promise<number | null> {
     this.child.stdin!.end();
     const timer = setTimeout(() => this.child.kill("SIGKILL"), ms);
     const code = await this.exited;

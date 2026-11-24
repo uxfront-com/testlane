@@ -19,7 +19,7 @@ import { slug as slugFor } from "../core/resolve.ts";
 /** How old a cached PR metadata entry may be before `list` revalidates it. */
 const PR_STALE_MS = 60_000;
 /** Wall-clock budget for a single `list`'s gh refresh — render regardless (§7.3). */
-const REFRESH_BUDGET_MS = 2_000;
+const REFRESH_BUDGET_MS = 2000;
 
 type CiState = "pass" | "fail" | "pending" | null;
 

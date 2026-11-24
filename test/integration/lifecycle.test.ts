@@ -122,7 +122,7 @@ function psField(field: string, pid: number): string {
 }
 
 /** Wait until `pid` no longer answers kill(pid, 0); zombies are reaped by Node. */
-async function waitDead(pid: number, ms = 5_000): Promise<boolean> {
+async function waitDead(pid: number, ms = 5000): Promise<boolean> {
   const deadline = Date.now() + ms;
   while (pidAlive(pid)) {
     if (Date.now() >= deadline) {return false;}
@@ -268,7 +268,7 @@ describe("start", () => {
     const r = await env.run([PROJECT, "main", "start", "web", "--timeout", "1"]);
     expect(r.code).toBe(5);
     expect(r.stderr).toContain("timed out waiting for another start");
-    expect(Date.now() - t0).toBeLessThan(5_000);
+    expect(Date.now() - t0).toBeLessThan(5000);
     expect(existsSync(join(dataDir("main"), "process.json"))).toBe(false);
   });
 

@@ -27,7 +27,7 @@ describe("parse — §4.4 canonical examples", () => {
     expect(r.kind).toBe("workspace");
     if (r.kind !== "workspace") {return;}
     expect(r.project).toBe("n8n");
-    expect(r.ref).toEqual({ kind: "pr", number: 19234 });
+    expect(r.ref).toEqual({ kind: "pr", number: 19_234 });
     expect(r.verb).toBe("code");
   });
 
@@ -40,7 +40,7 @@ describe("parse — §4.4 canonical examples", () => {
     const r = p(["n8n", "pr/19234", "run", "dev"]);
     expect(r.kind).toBe("workspace");
     if (r.kind !== "workspace") {return;}
-    expect(r.ref).toEqual({ kind: "pr", number: 19234 });
+    expect(r.ref).toEqual({ kind: "pr", number: 19_234 });
     expect(r.verb).toBe("run");
     expect(r.args).toEqual(["dev"]);
   });
@@ -49,7 +49,7 @@ describe("parse — §4.4 canonical examples", () => {
     const r = p(["n8n", "#19234", "shell"]);
     expect(r.kind).toBe("workspace");
     if (r.kind !== "workspace") {return;}
-    expect(r.ref).toEqual({ kind: "pr", number: 19234 });
+    expect(r.ref).toEqual({ kind: "pr", number: 19_234 });
     expect(r.verb).toBe("shell");
   });
 
@@ -91,7 +91,7 @@ describe("parse — §4.4 canonical examples", () => {
     expect(r.kind).toBe("workspace");
     if (r.kind !== "workspace") {return;}
     expect(r.project).toBe("n8n");
-    expect(r.ref).toEqual({ kind: "pr", number: 19234 });
+    expect(r.ref).toEqual({ kind: "pr", number: 19_234 });
     expect(r.verb).toBe("code");
   });
 

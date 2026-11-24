@@ -13,17 +13,17 @@ import type { Tool, ToolResult } from './tools.ts';
 export const PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"] as const;
 
 /** A heartbeat repeats the last step at least this often while a long call runs. */
-export const HEARTBEAT_MS = 2_500;
+export const HEARTBEAT_MS = 2500;
 /**
  * How long a stopped call may take to wind down before the server answers
  * anyway: the children's grace, then SIGKILL and a little slack.
  */
-const SETTLE_CAP_MS = ABORT_GRACE_MS + 1_500;
+const SETTLE_CAP_MS = ABORT_GRACE_MS + 1500;
 
-const PARSE_ERROR = -32700;
-const INVALID_REQUEST = -32600;
-const METHOD_NOT_FOUND = -32601;
-const INVALID_PARAMS = -32602;
+const PARSE_ERROR = -32_700;
+const INVALID_REQUEST = -32_600;
+const METHOD_NOT_FOUND = -32_601;
+const INVALID_PARAMS = -32_602;
 
 type Id = string | number;
 

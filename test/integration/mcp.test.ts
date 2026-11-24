@@ -198,15 +198,15 @@ describe("protocol", () => {
     const c = connect(env);
     await c.initialize();
     expect((await c.request("ping")).msg.result).toEqual({});
-    expect((await c.request("resources/list")).msg.error?.code).toBe(-32601);
-    expect((await c.request("tools/call", { name: "exec", arguments: {} })).msg.error?.code).toBe(-32602);
+    expect((await c.request("resources/list")).msg.error?.code).toBe(-32_601);
+    expect((await c.request("tools/call", { name: "exec", arguments: {} })).msg.error?.code).toBe(-32_602);
 
     const parseError = c.expect(null);
     c.sendLine("{not json");
-    expect((await parseError).msg.error?.code).toBe(-32700);
+    expect((await parseError).msg.error?.code).toBe(-32_700);
     const batch = c.expect(null);
     c.sendLine(JSON.stringify([{ jsonrpc: "2.0", id: 9, method: "ping" }]));
-    expect((await batch).msg.error?.code).toBe(-32600);
+    expect((await batch).msg.error?.code).toBe(-32_600);
 
     // The server is still there after each of them.
     expect((await c.request("ping")).msg.result).toEqual({});
@@ -497,7 +497,7 @@ describe("progress", () => {
       const values = p.map((x) => x.msg.params!.progress as number);
       for (let i = 1; i < values.length; i++) {expect(values[i]!).toBeGreaterThan(values[i - 1]!);}
       expect(p.every((x) => x.at <= answer.at)).toBe(true);
-      expect(p.some((x) => x.at - sent >= 5_000)).toBe(true);
+      expect(p.some((x) => x.at - sent >= 5000)).toBe(true);
       expect(p.some((x) => x.msg.params!.message === "running setup")).toBe(true);
     }
     const tokens = new Set(
@@ -529,8 +529,8 @@ describe("timeout and cancel", () => {
       expect(r.isError, tool).toBe(true);
       expect(r.value).toMatchObject({ timedOut: true, timeoutSeconds: 2 });
       expect(r.value.stderr).toContain("→ running setup");
-      expect(took, tool).toBeGreaterThanOrEqual(2_000);
-      expect(took, tool).toBeLessThan(6_000);
+      expect(took, tool).toBeGreaterThanOrEqual(2000);
+      expect(took, tool).toBeLessThan(6000);
       // The setup's background child is already dead, with no wait.
       const pid = Number(readFileSync(join(env.worktreesPath(project), "feature-x", "bg.pid"), "utf8"));
       expect(alive(pid), `${tool} bg pid`).toBe(false);
@@ -561,7 +561,7 @@ describe("timeout and cancel", () => {
 
     const sent = Date.now();
     const second = await c.call("start", { project: "t3", ref: "feature-x", command: "web", timeout: 2 });
-    expect(Date.now() - sent).toBeLessThan(6_000);
+    expect(Date.now() - sent).toBeLessThan(6000);
     expect(second.isError).toBe(true);
     expect(second.value).toMatchObject({ timedOut: true, timeoutSeconds: 2 });
 

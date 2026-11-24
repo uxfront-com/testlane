@@ -115,7 +115,7 @@ export function portAccepts(port: number): Promise<boolean> {
       socket.destroy();
       resolve(ok);
     };
-    socket.setTimeout(1_000, () => done(false));
+    socket.setTimeout(1000, () => done(false));
     socket.once("connect", () => done(true));
     socket.once("error", () => done(false));
   });
