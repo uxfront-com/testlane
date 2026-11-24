@@ -50,6 +50,9 @@ catalogs:
     '@uxfront/scene':
       specifier: ^0.5.0
       version: 0.5.0
+    '@uxfront/site-checks':
+      specifier: 0.1.0
+      version: 0.1.0
     '@uxfront/ui':
       specifier: ^0.9.0
       version: 0.9.0
@@ -138,6 +141,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 22.20.5
+      '@uxfront/site-checks':
+        specifier: catalog:uxfront
+        version: 0.1.0
       typescript:
         specifier: catalog:nuxt
         version: 6.0.3
@@ -3827,6 +3833,11 @@ packages:
 
   '@uxfront/scene@0.5.1':
     resolution: {integrity: sha512-SCbqe1f/8TQ5+dcEC8cvxw0sSF1kPojdKop1rTme7FCrjuOAOukhdLbJVrQBi5QB1N+sHMCa1Y+Sl8+GE8ZkvQ==}
+
+  '@uxfront/site-checks@0.1.0':
+    resolution: {integrity: sha512-BKWlKNj6IIvV2AFBY8uVFGZTmq57tMbUC4RQ2Pc2gUy+ptd7H0NqrT8qQ6z78FCC4Ifjmlw45GFZhOa7V+oEqg==}
+    engines: {node: '>=24'}
+    hasBin: true
 
   '@uxfront/typescript-config@0.2.0':
     resolution: {integrity: sha512-gEg9Sk82x60DYmHS/D1EXJ8lx6nMo27Pz2ptEh5kg/zu7Q9OfdOsKdFCk/2ncZSVyS8vUYFQ7hgJY0b6ikP3pg==}
@@ -12388,6 +12399,8 @@ snapshots:
   '@uxfront/scene@0.5.0': {}
 
   '@uxfront/scene@0.5.1': {}
+
+  '@uxfront/site-checks@0.1.0': {}
 
   '@uxfront/typescript-config@0.2.0': {}
 

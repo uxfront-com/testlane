@@ -20,6 +20,7 @@ allowBuilds:
 minimumReleaseAgeExclude:
   - '@uxfront/layer-docs@0.9.1'
   - '@uxfront/oxlint-config@0.2.0'
+  - '@uxfront/site-checks@0.1.0'
   - '@uxfront/typescript-config@0.2.0'
 
 catalog:
@@ -45,4 +46,6 @@ catalogs:
     '@uxfront/layer-docs': ^0.9.1
     '@uxfront/layer-ui': ^0.1.10
     '@uxfront/scene': ^0.5.0
+    # Exact: the SEO check's rules and the Lighthouse thresholds change only on purpose.
+    '@uxfront/site-checks': 0.1.0
     '@uxfront/ui': ^0.9.0

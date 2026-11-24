@@ -9,9 +9,9 @@ Run them from the repository root, since the site shares its lockfile with the w
 ```bash
 pnpm install --filter @uxfront/docs
 pnpm --filter @uxfront/docs dev         # dev server on http://localhost:3000
-pnpm --filter @uxfront/docs test        # the redirects, the structured data, the SEO check's rules, the homepage's samples…
+pnpm --filter @uxfront/docs test        # the redirects, the structured data, the Markdown copies, the homepage's samples…
 pnpm --filter @uxfront/docs build       # nuxt build → .output, every page prerendered into .output/public
-pnpm --filter @uxfront/docs check:seo   # the SEO check on the static build in dist (see Search and AI search)
+pnpm --filter @uxfront/docs check:seo   # @uxfront/site-checks on the static build in dist (see Search and AI search)
 pnpm --filter @uxfront/docs lighthouse  # Lighthouse CI on six pages of the static build in dist (see Deploying)
 ```
 
@@ -206,7 +206,7 @@ WORKERS_CI=1 NODE_OPTIONS=--max-old-space-size=4096 pnpm --filter @uxfront/docs 
 pnpm --filter @uxfront/docs check:seo
 ```
 
-It prints one line per page and file, and under each failing one the rule it breaks:
+It's the `site-checks seo` command of [`@uxfront/site-checks`](https://www.npmjs.com/package/@uxfront/site-checks), the checker the uxfront.com family of sites shares. `site-checks.config.mjs` turns on the rules below, with the options that make it read pages the way search engines read this site. The check prints one line per rule, and under each failing one the pages or files that break it:
 
 - **On every page in the sitemap:** one `<title>` of 60 characters or fewer and one meta description of 70 to 160, both unique. Exactly one `<h1>`, `<html lang="en">` and one canonical URL, equal to the page's sitemap URL. The Open Graph tags `og:title`, `og:description`, `og:type`, `og:url`, which equals the canonical, and `og:image`, whose file in the build measures 1200 × 630px, with tags that say so and `og:image:alt`. The Twitter tags `twitter:card`, which is `summary_large_image`, `twitter:title`, `twitter:description` and `twitter:image`. No `noindex` in the page or in `_headers`.
 - **In the structured data:** every JSON-LD block parses. The homepage has a `WebSite`, a `SoftwareSourceCode` and an `Organization`, and no `Organization` named Testlane. Each docs page has a `TechArticle` whose image is its `og:image` and whose `dateModified` is its sitemap date, and a `BreadcrumbList` whose items are all in the sitemap.
@@ -215,7 +215,7 @@ It prints one line per page and file, and under each failing one the rule it bre
 - **In `llms.txt` and the Markdown copies:** `llms.txt` has its H1, a `> ` summary and a link to each docs page's copy, each docs page has its copy and its `<link rel="alternate">`, and no copy or `llms-full.txt` has a `<table>` or `&#x22;`.
 - **In `_redirects`:** no 302 or 307, since a moved page should pass its ranking on with a permanent redirect.
 
-`test/check-seo.test.ts` runs the check on a small build that breaks each rule in turn.
+The package's tests break each rule in turn, so the site keeps no tests of its own for the check.
 
 ## Deploying
 
@@ -275,7 +275,7 @@ There's no `Content-Security-Policy`, since the scene and Nuxt's inline payload 
 
 ### Lighthouse
 
-CI's `docs build` job builds the static site, runs the SEO check on it and runs `pnpm --filter @uxfront/docs lighthouse` on every pull request that touches the docs. `lighthouserc.json` serves `dist` with `wrangler dev`, the way Cloudflare does, and audits six pages three times each: the homepage, Introduction, Quick Start, Review a Pull Request, Workspace Verbs and Project File. Accessibility or best practices below 0.95, or SEO below 1, fails the job. Performance only warns, since it varies with the runner.
+CI's `docs build` job builds the static site, runs the SEO check on it and runs `pnpm --filter @uxfront/docs lighthouse` on every pull request that touches the docs. `lighthouserc.mjs` builds the config from the shared preset in `@uxfront/site-checks/lighthouse`. It serves `dist` with `wrangler dev`, the way Cloudflare does, and audits six pages three times each: the homepage, Introduction, Quick Start, Review a Pull Request, Workspace Verbs and Project File. Accessibility or best practices below 0.95, or SEO below 1, fails the job. Performance only warns, since it varies with the runner.
 
 To run it locally, build the static site as above first. It needs Google Chrome.
 

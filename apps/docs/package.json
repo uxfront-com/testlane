@@ -14,7 +14,7 @@
 		"typecheck": "nuxt typecheck",
 		"test": "vitest run",
 		"lighthouse": "pnpm dlx @lhci/cli@0.16.1 autorun",
-		"check:seo": "node scripts/check-seo.mjs dist",
+		"check:seo": "site-checks seo dist",
 		"postinstall": "nuxt prepare"
 	},
 	"dependencies": {
@@ -32,6 +32,7 @@
 	"devDependencies": {
 		"@nuxt/kit": "catalog:nuxt",
 		"@types/node": "catalog:",
+		"@uxfront/site-checks": "catalog:uxfront",
 		"typescript": "catalog:nuxt",
 		"vitest": "catalog:",
 		"vue-tsc": "catalog:nuxt"
