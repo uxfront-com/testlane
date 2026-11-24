@@ -324,8 +324,7 @@ function dryRunPlan(ctx: Ctx, project: ProjectConfig, refSpec: RefSpec): EnsureR
   lines.push(`mkdir -p ${project.worktreesPath}`);
 
   if (spec.kind === "branch") {
-    lines.push(shellJoin(fetchBranchArgv(project.repoPath, spec.name)));
-    lines.push(shellJoin(addBranchWorktreeArgv(project.repoPath, dir, spec.name)));
+    lines.push(shellJoin(fetchBranchArgv(project.repoPath, spec.name)), shellJoin(addBranchWorktreeArgv(project.repoPath, dir, spec.name)));
   } else if (spec.kind === "pr") {
     lines.push(
       shellJoin([
@@ -337,11 +336,10 @@ function dryRunPlan(ctx: Ctx, project: ProjectConfig, refSpec: RefSpec): EnsureR
         `+refs/pull/${spec.number}/head:refs/heads/pr/${spec.number}`,
         "--no-tags",
       ]),
+      shellJoin(addPrWorktreeArgv(project.repoPath, dir, spec.number)),
     );
-    lines.push(shellJoin(addPrWorktreeArgv(project.repoPath, dir, spec.number)));
   } else if (spec.kind === "commit") {
-    lines.push(shellJoin(["git", "-C", project.repoPath, "fetch", "origin", spec.sha, "--no-tags"]));
-    lines.push(shellJoin(addCommitWorktreeArgv(project.repoPath, dir, spec.sha)));
+    lines.push(shellJoin(["git", "-C", project.repoPath, "fetch", "origin", spec.sha, "--no-tags"]), shellJoin(addCommitWorktreeArgv(project.repoPath, dir, spec.sha)));
   }
   lines.push(`mkdir -p ${dataDir}`);
 
