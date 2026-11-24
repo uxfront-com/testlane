@@ -152,7 +152,7 @@ export function parse(argv: string[], deps: ParseDeps): ParseResult {
   }
 
   // 3b. URL form.
-  if (/^https?:\/\//.test(p0) || /^git@/.test(p0)) {
+  if (/^https?:\/\//.test(p0) || p0.startsWith("git@")) {
     const match = deps.resolveUrlProject(p0);
     if (!match) {
       throw resolveError(`no configured project matches URL '${p0}'`, `configured projects: ${deps.knownProjects().join(", ") || "(none)"}`);
@@ -274,8 +274,8 @@ function nearest(input: string, candidates: string[]): string | undefined {
 function levenshtein(a: string, b: string): number {
   const m = a.length;
   const n = b.length;
-  const prev = new Array<number>(n + 1);
-  const curr = new Array<number>(n + 1);
+  const prev = Array.from({ length: n + 1 }, () => 0);
+  const curr = Array.from({ length: n + 1 }, () => 0);
   for (let j = 0; j <= n; j++) prev[j] = j;
   for (let i = 1; i <= m; i++) {
     curr[0] = i;

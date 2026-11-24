@@ -1,7 +1,7 @@
 // Config discovery, TOML parse, defaults merge, aggregate error reporting (§5).
 
 import { parse as parseToml } from "smol-toml";
-import { z } from "zod";
+import type { z } from "zod";
 import { isAbsolute, join, relative, sep } from "node:path";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { TestlaneError } from "../lib/errors.ts";
