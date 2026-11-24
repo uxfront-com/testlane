@@ -27,6 +27,27 @@ const INVALID_PARAMS = -32_602;
 
 type Id = string | number;
 
+/** The `result` of each response the server sends. */
+type Result =
+  | {
+      protocolVersion: string;
+      capabilities: { tools: { listChanged: boolean } };
+      serverInfo: { name: string; version: string };
+    }
+  | Record<string, never>
+  | { tools: ReturnType<typeof toolList> }
+  | { content: Array<{ type: "text"; text: string }>; isError: boolean };
+
+/** A message the server writes: a response, an error or a progress notification. */
+type Outgoing =
+  | { jsonrpc: "2.0"; id: Id | null; result: Result }
+  | { jsonrpc: "2.0"; id: Id | null; error: { code: number; message: string } }
+  | {
+      jsonrpc: "2.0";
+      method: "notifications/progress";
+      params: { progressToken: Id; progress: number; message: string };
+    };
+
 export interface ServerOptions {
   configDir: string;
   version: string;
@@ -82,12 +103,12 @@ export class McpServer {
     this.closed = true;
   }
 
-  private write(message: object): void {
+  private write(message: Outgoing): void {
     if (this.closed) {return;}
     this.opts.send(JSON.stringify(message) + "\n");
   }
 
-  private reply(id: Id | null, result: object): void {
+  private reply(id: Id | null, result: Result): void {
     this.write({ jsonrpc: "2.0", id, result });
   }
 
@@ -278,7 +299,7 @@ class Progress {
   private readonly timer: NodeJS.Timeout;
 
   constructor(
-    private readonly send: (message: object) => void,
+    private readonly send: (message: Outgoing) => void,
     private readonly token: Id,
   ) {
     this.timer = setInterval(() => this.emit(), HEARTBEAT_MS);

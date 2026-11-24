@@ -138,7 +138,12 @@ interface CallEnv {
   err: BufferSink;
 }
 
-const envelope = (value: object, isError: boolean): ToolResult => ({ text: JSON.stringify(value), isError });
+/** What a tool answers with when its verb printed no JSON of its own. */
+type Envelope =
+  | { error: { errCode: string; exitCode: number; message: string; hint: string | null }; stderr: string }
+  | { exitCode: number; stdout: string; stderr: string; truncated?: boolean; removed?: boolean };
+
+const envelope = (value: Envelope, isError: boolean): ToolResult => ({ text: JSON.stringify(value), isError });
 
 /** A thrown error as `{error: {errCode, exitCode, message, hint}, stderr}`. */
 export function errorResult(e: unknown, stderr: string): ToolResult {
@@ -157,7 +162,7 @@ function jsonResult(code: number, out: BufferSink, err: BufferSink): ToolResult 
 }
 
 /** A verb without `--json`: `{exitCode, stdout, stderr}`. */
-function textResult(code: number, stdout: string, err: BufferSink, extra: object = {}): ToolResult {
+function textResult(code: number, stdout: string, err: BufferSink, extra: { truncated?: boolean } = {}): ToolResult {
   return envelope({ exitCode: code, stdout, stderr: err.text(), ...extra }, code !== 0);
 }
 

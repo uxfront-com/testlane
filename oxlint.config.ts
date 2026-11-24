@@ -12,7 +12,6 @@ export default defineConfig({
     "no-promise-executor-return": "off",
     "quality/no-conditional-empty-object-spread": "off",
     "quality/no-known-value-widening": "off",
-    "quality/no-object-parameters": "off",
     "quality/no-unsafe-dictionary-type": "off",
     "typescript/no-non-null-assertion": "off",
     "unicorn/consistent-function-scoping": "off",
