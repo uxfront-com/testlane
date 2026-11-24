@@ -291,7 +291,7 @@ describe("rule 3: pnpm-workspace.yaml and workspaces", () => {
 const PNPM = { packageManager: "pnpm@9.0.0" };
 const ws = (dirs: string): string => `packages:\n${dirs.split(" ").map((d) => `  - ${d}`).join("\n")}\n`;
 const pkg = (name: string, dev?: string, deps: Record<string, string> = {}): string =>
-  json({ name, ...(dev ? { scripts: { dev } } : {}), dependencies: deps });
+  json({ name, ...(dev && { scripts: { dev } }), dependencies: deps });
 
 describe("rules 4–6: apps", () => {
   it("prefers packages under apps/, and skips task-runner dev scripts", async () => {

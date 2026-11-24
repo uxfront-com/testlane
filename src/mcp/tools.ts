@@ -90,7 +90,7 @@ function jsonSchema(params: Record<string, Param>): object {
     properties[name] = schema;
     if (isRequired) {required.push(name);}
   }
-  return { type: "object", properties, ...(required.length ? { required } : {}), additionalProperties: false };
+  return { type: "object", properties, ...(required.length > 0 && { required }), additionalProperties: false };
 }
 
 function zodSchema(params: Record<string, Param>): z.ZodType<Record<string, unknown>> {

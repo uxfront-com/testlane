@@ -96,7 +96,7 @@ export class McpClient {
   /** Send a request and wait for its response. */
   request(method: string, params?: Record<string, unknown>, id: string | number = this.nextId++): Promise<Received> {
     const answer = this.expect(id);
-    this.sendLine(JSON.stringify({ jsonrpc: "2.0", id, method, ...(params ? { params } : {}) }));
+    this.sendLine(JSON.stringify({ jsonrpc: "2.0", id, method, ...(params && { params }) }));
     return answer;
   }
 
@@ -106,7 +106,7 @@ export class McpClient {
   }
 
   notify(method: string, params?: Record<string, unknown>): void {
-    this.sendLine(JSON.stringify({ jsonrpc: "2.0", method, ...(params ? { params } : {}) }));
+    this.sendLine(JSON.stringify({ jsonrpc: "2.0", method, ...(params && { params }) }));
   }
 
   async initialize(protocolVersion = "2025-11-25"): Promise<Received> {
