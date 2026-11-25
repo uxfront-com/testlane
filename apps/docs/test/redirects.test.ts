@@ -1,18 +1,11 @@
 import { readdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { describe, expect, it } from "vitest";
-import {
-	DOCS_ENTRY,
-	GROUP_ENTRY_PAGES,
-	MOVED_PAGES,
-	REDIRECTS,
-	redirectRules,
-} from "../redirects";
 
-const contentRoot = resolve(
-	import.meta.dirname,
-	"../content/docs",
-);
+import { describe, expect, it } from "vitest";
+
+import { DOCS_ENTRY, GROUP_ENTRY_PAGES, MOVED_PAGES, REDIRECTS, redirectRules } from "../redirects";
+
+const contentRoot = resolve(import.meta.dirname, "../content/docs");
 
 /** `1.getting-started/1.introduction.md` → `/docs/getting-started/introduction` */
 const strip = (name: string) => name.replace(/^\d+\./, "").replace(/\.md$/, "");
@@ -43,9 +36,7 @@ describe("docs redirects", () => {
 	});
 
 	it("gives every group root its first page", () => {
-		expect(Object.keys(GROUP_ENTRY_PAGES)).toEqual(
-			groups.map((group) => strip(group)),
-		);
+		expect(Object.keys(GROUP_ENTRY_PAGES)).toEqual(groups.map((group) => strip(group)));
 		for (const group of Object.keys(GROUP_ENTRY_PAGES)) {
 			const first = REDIRECTS[`/docs/${group}`];
 			expect(first).toMatch(new RegExp(`^/docs/${group}/`));

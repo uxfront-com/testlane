@@ -283,9 +283,20 @@ const lifespan = [
 ];
 
 const stack = [
-	{ term: "Node and git", detail: "Node 22 or newer and git 2.38 or newer. Install it with npm, pnpm or yarn." },
-	{ term: "GitHub CLI", detail: "Optional. With it you get pull request status, CI results and true pull request diffs." },
-	{ term: "One file", detail: "Your commands, environment and hooks live in one TOML file per project, which Testlane can check for mistakes." },
+	{
+		term: "Node and git",
+		detail: "Node 22 or newer and git 2.38 or newer. Install it with npm, pnpm or yarn.",
+	},
+	{
+		term: "GitHub CLI",
+		detail:
+			"Optional. With it you get pull request status, CI results and true pull request diffs.",
+	},
+	{
+		term: "One file",
+		detail:
+			"Your commands, environment and hooks live in one TOML file per project, which Testlane can check for mistakes.",
+	},
 ];
 
 const family = [
@@ -318,12 +329,7 @@ const family = [
 			</UxAnchor>
 		</template>
 		<template #header>
-			<UxHeader
-				brand="Testlane"
-				:nav="nav"
-				nav-label="How it works"
-				:github="GITHUB_URL"
-			>
+			<UxHeader brand="Testlane" :nav="nav" nav-label="How it works" :github="GITHUB_URL">
 				<template #mark />
 				<template #brand>Testlane</template>
 				<template #byline>
@@ -352,9 +358,9 @@ const family = [
 				<UxHeroLine>in one command</UxHeroLine>
 			</template>
 			<template #lead>
-				Point Testlane at a pull request, a branch or a link someone pasted in
-				chat. You get the code checked out, dependencies installed and a port of
-				your own, while the work you already have open stays where it is.
+				Point Testlane at a pull request, a branch or a link someone pasted in chat. You get the
+				code checked out, dependencies installed and a port of your own, while the work you already
+				have open stays where it is.
 				<br />
 				<span class="hero-actions">
 					<UxPillLink variant="filled" :href="DOCS_URL" label="Get started" />
@@ -365,16 +371,15 @@ const family = [
 
 		<UxChapter v-bind="chapters.pipeline" :steps="3" align="end">
 			<template #lead>
-				Learn it once and the whole tool is predictable. There is no special
-				case to remember.
+				Learn it once and the whole tool is predictable. There is no special case to remember.
 			</template>
 			<UxTraits :items="steps" />
 		</UxChapter>
 
 		<UxSplit v-bind="chapters.refs" :steps="2">
 			<template #lead>
-				If you can point at it, Testlane can run it. No cloning, no stashing,
-				no "let me finish what I'm doing first".
+				If you can point at it, Testlane can run it. No cloning, no stashing, no "let me finish what
+				I'm doing first".
 			</template>
 			<UxTraits :items="refKinds" />
 			<template #aside>
@@ -384,16 +389,16 @@ const family = [
 
 		<UxChapter v-bind="chapters.isolation" :steps="3">
 			<template #lead>
-				Three branches can run at the same time without fighting over a port, a
-				node_modules folder or a database file.
+				Three branches can run at the same time without fighting over a port, a node_modules folder
+				or a database file.
 			</template>
 			<UxTraits :items="isolated" />
 		</UxChapter>
 
 		<UxSplit v-bind="chapters.environment" :steps="3">
 			<template #lead>
-				Paths, ports and your own variables are worked out before anything runs,
-				so one command behaves the same in every workspace.
+				Paths, ports and your own variables are worked out before anything runs, so one command
+				behaves the same in every workspace.
 			</template>
 			<UxTraits :items="placeholders" />
 			<template #aside>
@@ -403,8 +408,8 @@ const family = [
 
 		<UxChapter v-bind="chapters.lifecycle" :steps="6" align="end">
 			<template #lead>
-				A workspace has a lifespan. Testlane covers all of it, and clears up
-				after itself at the end.
+				A workspace has a lifespan. Testlane covers all of it, and clears up after itself at the
+				end.
 			</template>
 			<UxTraits :items="lifespan" />
 		</UxChapter>
@@ -415,12 +420,10 @@ const family = [
 		</UxChapter>
 
 		<UxFinale kicker="Part of UXFront" :cards="family">
-			<template #title>
-				Try it on the next <strong>pull request</strong> you review.
-			</template>
+			<template #title> Try it on the next <strong>pull request</strong> you review. </template>
 			<template #lead>
-				One setup command writes your config, scaffolds your first project and
-				tells you what to run next.
+				One setup command writes your config, scaffolds your first project and tells you what to run
+				next.
 			</template>
 			<template #actions>
 				<UxPillLink variant="filled" :href="DOCS_URL" label="Get started" />

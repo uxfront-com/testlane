@@ -1,4 +1,5 @@
 import { queryCollection } from "@nuxt/content/server";
+
 import { MARKDOWN_SOURCES } from "#markdown-sources";
 
 // The fields read below. Nitro's types don't see the collections Docus defines.

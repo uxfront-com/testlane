@@ -1,52 +1,69 @@
 // `doctor` — diagnose the environment & configs (§9.11).
 
-import { accessSync, constants, existsSync, readdirSync, readFileSync, realpathSync } from "node:fs";
-import { basename, dirname, join } from "node:path";
-import { ExitCode } from "../lib/errors.ts";
-import { stateDir } from "../lib/paths.ts";
-import { checkGitVersion, fetchRefspecConfigured, hooksPathConfigured, isBareRepo, isInitialized, MIN_GIT_VERSION } from "../git/repo.ts";
-import { listWorktrees } from "../git/worktree.ts";
 import {
-  listProjectNames,
-  loadDefaults,
-  loadEffectiveProjectWithSources,
-  loadProject,
-  ConfigValidationError,
+	accessSync,
+	constants,
+	existsSync,
+	readdirSync,
+	readFileSync,
+	realpathSync,
+} from "node:fs";
+import { basename, dirname, join } from "node:path";
+
+import { isWorkspaceVerb } from "../cli/verbs.ts";
+import {
+	listProjectNames,
+	loadDefaults,
+	loadEffectiveProjectWithSources,
+	loadProject,
+	ConfigValidationError,
 } from "../config/load.ts";
 import { REPO_FILE } from "../config/repo.ts";
 import type { ProjectConfig } from "../config/schema.ts";
+import { stdoutOf } from "../config/schema.ts";
+import { presetBinary, isPreset } from "../core/editor.ts";
 import { loadState, readRepoApproval } from "../core/state.ts";
 import { readRepoTip, repoConfigBranch } from "../core/trust.ts";
-import { presetBinary, isPreset } from "../core/editor.ts";
-import { isWorkspaceVerb } from "../cli/verbs.ts";
-import { which } from "../lib/which.ts";
+import {
+	checkGitVersion,
+	fetchRefspecConfigured,
+	hooksPathConfigured,
+	isBareRepo,
+	isInitialized,
+	MIN_GIT_VERSION,
+} from "../git/repo.ts";
+import { listWorktrees } from "../git/worktree.ts";
+import { ExitCode } from "../lib/errors.ts";
 import type { Sink } from "../lib/log.ts";
-import { stdoutOf } from "../config/schema.ts";
+import { stateDir } from "../lib/paths.ts";
+import { which } from "../lib/which.ts";
 import type { TopInput } from "./types.ts";
 
 type Status = "ok" | "warn" | "fail";
 
 interface Check {
-  name: string;
-  status: Status;
-  detail: string;
+	name: string;
+	status: Status;
+	detail: string;
 }
 
 function canWriteDir(dir: string): boolean {
-  // Walk up to the nearest existing ancestor; a writable ancestor means we can
-  // create the missing leaf. Checked via fs.accessSync W_OK below.
-  let cur = dir;
-  while (!existsSync(cur)) {
-    const parent = dirname(cur);
-    if (parent === cur) {return false;}
-    cur = parent;
-  }
-  try {
-    accessSync(cur, constants.W_OK);
-    return true;
-  } catch {
-    return false;
-  }
+	// Walk up to the nearest existing ancestor; a writable ancestor means we can
+	// create the missing leaf. Checked via fs.accessSync W_OK below.
+	let cur = dir;
+	while (!existsSync(cur)) {
+		const parent = dirname(cur);
+		if (parent === cur) {
+			return false;
+		}
+		cur = parent;
+	}
+	try {
+		accessSync(cur, constants.W_OK);
+		return true;
+	} catch {
+		return false;
+	}
 }
 
 /**
@@ -55,8 +72,10 @@ function canWriteDir(dir: string): boolean {
  * never find it and would warn on every healthy machine.
  */
 function resolveBinary(bin: string): string | null {
-  if (!bin.includes("/") && !bin.includes("\\")) {return which(bin);}
-  return existsSync(bin) ? bin : null;
+	if (!bin.includes("/") && !bin.includes("\\")) {
+		return which(bin);
+	}
+	return existsSync(bin) ? bin : null;
 }
 
 /**
@@ -65,213 +84,255 @@ function resolveBinary(bin: string): string | null {
  * normalizes to the path git would have printed for it.
  */
 function canonical(dir: string): string {
-  let cur = dir;
-  const tail: Array<string> = [];
-  while (!existsSync(cur)) {
-    const parent = dirname(cur);
-    if (parent === cur) {return dir;}
-    tail.unshift(basename(cur));
-    cur = parent;
-  }
-  try {
-    return join(realpathSync(cur), ...tail);
-  } catch {
-    return dir;
-  }
+	let cur = dir;
+	const tail: Array<string> = [];
+	while (!existsSync(cur)) {
+		const parent = dirname(cur);
+		if (parent === cur) {
+			return dir;
+		}
+		tail.unshift(basename(cur));
+		cur = parent;
+	}
+	try {
+		return join(realpathSync(cur), ...tail);
+	} catch {
+		return dir;
+	}
 }
 
 export async function doctor(input: TopInput): Promise<number> {
-  const { ctx } = input;
-  const checks: Array<Check> = [];
+	const { ctx } = input;
+	const checks: Array<Check> = [];
 
-  // ── git version ────────────────────────────────────────────────────────────
-  const git = await checkGitVersion();
-  checks.push({
-    name: "git version",
-    status: git.ok ? "ok" : "fail",
-    detail: git.ok ? `git ${git.version}` : `git ${git.version || "not found"} < ${MIN_GIT_VERSION} required`,
-  });
+	// ── git version ────────────────────────────────────────────────────────────
+	const git = await checkGitVersion();
+	checks.push({
+		name: "git version",
+		status: git.ok ? "ok" : "fail",
+		detail: git.ok
+			? `git ${git.version}`
+			: `git ${git.version || "not found"} < ${MIN_GIT_VERSION} required`,
+	});
 
-  // ── gh present + authed ─────────────────────────────────────────────────────
-  const ghOk = await ctx.gh.available();
-  checks.push({
-    name: "gh (github cli)",
-    status: ghOk ? "ok" : "warn",
-    detail: ghOk
-      ? "authenticated"
-      : "missing or unauthenticated — PR metadata & push-back wiring degrade gracefully",
-  });
+	// ── gh present + authed ─────────────────────────────────────────────────────
+	const ghOk = await ctx.gh.available();
+	checks.push({
+		name: "gh (github cli)",
+		status: ghOk ? "ok" : "warn",
+		detail: ghOk
+			? "authenticated"
+			: "missing or unauthenticated — PR metadata & push-back wiring degrade gracefully",
+	});
 
-  // ── config dir exists & readable ────────────────────────────────────────────
-  const cfgReadable = existsSync(ctx.configDir) && isReadable(ctx.configDir);
-  checks.push({
-    name: "config dir",
-    status: cfgReadable ? "ok" : "fail",
-    detail: cfgReadable ? ctx.configDir : `not readable: ${ctx.configDir} — create it and add <project>.toml files`,
-  });
+	// ── config dir exists & readable ────────────────────────────────────────────
+	const cfgReadable = existsSync(ctx.configDir) && isReadable(ctx.configDir);
+	checks.push({
+		name: "config dir",
+		status: cfgReadable ? "ok" : "fail",
+		detail: cfgReadable
+			? ctx.configDir
+			: `not readable: ${ctx.configDir} — create it and add <project>.toml files`,
+	});
 
-  // ── state dir writable ──────────────────────────────────────────────────────
-  const sdir = stateDir();
-  const stateWritable = canWriteDir(sdir);
-  checks.push({
-    name: "state dir",
-    status: stateWritable ? "ok" : "fail",
-    detail: stateWritable ? sdir : `not writable: ${sdir}`,
-  });
+	// ── state dir writable ──────────────────────────────────────────────────────
+	const sdir = stateDir();
+	const stateWritable = canWriteDir(sdir);
+	checks.push({
+		name: "state dir",
+		status: stateWritable ? "ok" : "fail",
+		detail: stateWritable ? sdir : `not writable: ${sdir}`,
+	});
 
-  // ── stale lock files ────────────────────────────────────────────────────────
-  const stale = staleLocks(sdir);
-  if (stale.length) {
-    checks.push({
-      name: "locks",
-      status: "warn",
-      detail: `${stale.length} stale lock(s): ${stale.join(", ")} — a fresh run will steal them`,
-    });
-  }
+	// ── stale lock files ────────────────────────────────────────────────────────
+	const stale = staleLocks(sdir);
+	if (stale.length) {
+		checks.push({
+			name: "locks",
+			status: "warn",
+			detail: `${stale.length} stale lock(s): ${stale.join(", ")} — a fresh run will steal them`,
+		});
+	}
 
-  // ── per-project checks ──────────────────────────────────────────────────────
-  const defaults = loadDefaults(ctx.configDir);
-  for (const name of cfgReadable ? listProjectNames(ctx.configDir) : []) {
-    await checkProject(ctx.configDir, name, defaults, checks);
-  }
+	// ── per-project checks ──────────────────────────────────────────────────────
+	const defaults = loadDefaults(ctx.configDir);
+	for (const name of cfgReadable ? listProjectNames(ctx.configDir) : []) {
+		await checkProject(ctx.configDir, name, defaults, checks);
+	}
 
-  return report(stdoutOf(ctx), ctx.flags.json, checks);
+	return report(stdoutOf(ctx), ctx.flags.json, checks);
 }
 
 async function checkProject(
-  configDir: string,
-  name: string,
-  defaults: ReturnType<typeof loadDefaults>,
-  checks: Array<Check>,
+	configDir: string,
+	name: string,
+	defaults: ReturnType<typeof loadDefaults>,
+	checks: Array<Check>,
 ): Promise<void> {
-  let project: ProjectConfig;
-  try {
-    project = loadProject(configDir, name, defaults);
-  } catch (error) {
-    checks.push({ name: `project ${name}: config`, status: "fail", detail: issueDetail(error) });
-    return;
-  }
-  checks.push({ name: `project ${name}: config`, status: "ok", detail: "schema-valid" });
+	let project: ProjectConfig;
+	try {
+		project = loadProject(configDir, name, defaults);
+	} catch (error) {
+		checks.push({ name: `project ${name}: config`, status: "fail", detail: issueDetail(error) });
+		return;
+	}
+	checks.push({ name: `project ${name}: config`, status: "ok", detail: "schema-valid" });
 
-  // The approved repo-config snapshot merged in (§5.7); its failure belongs to
-  // the repo-file check below, since the user file itself is fine.
-  let snapshotError: unknown;
-  try {
-    const loaded = loadEffectiveProjectWithSources(configDir, name, defaults);
-    project = loaded.project;
-    snapshotError = loaded.snapshotError;
-  } catch (error) {
-    snapshotError = error;
-  }
-  checks.push(await repoFileCheck(name, project, snapshotError));
+	// The approved repo-config snapshot merged in (§5.7); its failure belongs to
+	// the repo-file check below, since the user file itself is fine.
+	let snapshotError: unknown;
+	try {
+		const loaded = loadEffectiveProjectWithSources(configDir, name, defaults);
+		project = loaded.project;
+		snapshotError = loaded.snapshotError;
+	} catch (error) {
+		snapshotError = error;
+	}
+	checks.push(await repoFileCheck(name, project, snapshotError));
 
-  // repo_path parent writable / repo healthy
-  if (isInitialized(project.repoPath)) {
-    const bare = await isBareRepo(project.repoPath);
-    checks.push({
-      name: `project ${name}: repo`,
-      status: bare ? "ok" : "fail",
-      detail: bare ? `bare repo at ${project.repoPath}` : `not a bare repository: ${project.repoPath}`,
-    });
-    const refspec = await fetchRefspecConfigured(project.repoPath);
-    checks.push({
-      name: `project ${name}: fetch refspec`,
-      status: refspec ? "ok" : "fail",
-      detail: refspec
-        ? "remote.origin.fetch configured"
-        : `missing — run: git -C ${project.repoPath} config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'`,
-    });
+	// repo_path parent writable / repo healthy
+	if (isInitialized(project.repoPath)) {
+		const bare = await isBareRepo(project.repoPath);
+		checks.push({
+			name: `project ${name}: repo`,
+			status: bare ? "ok" : "fail",
+			detail: bare
+				? `bare repo at ${project.repoPath}`
+				: `not a bare repository: ${project.repoPath}`,
+		});
+		const refspec = await fetchRefspecConfigured(project.repoPath);
+		checks.push({
+			name: `project ${name}: fetch refspec`,
+			status: refspec ? "ok" : "fail",
+			detail: refspec
+				? "remote.origin.fetch configured"
+				: `missing — run: git -C ${project.repoPath} config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'`,
+		});
 
-    // orphaned worktrees (§9.11): reconcile git's worktree list with state, both
-    // directions. Git-known dirs Testlane doesn't track, and tracked (non-adopted)
-    // paths git no longer knows, both warrant a `clean --prune-state` nudge.
-    await checkOrphans(name, project.repoPath, checks);
+		// orphaned worktrees (§9.11): reconcile git's worktree list with state, both
+		// directions. Git-known dirs Testlane doesn't track, and tracked (non-adopted)
+		// paths git no longer knows, both warrant a `clean --prune-state` nudge.
+		await checkOrphans(name, project.repoPath, checks);
 
-    // core.hooksPath / husky (§9.11, §19.4–5): relative hook paths resolve wrong
-    // from worktrees. Warn, don't fix.
-    const hooks = await hooksPathConfigured(project.repoPath);
-    if (hooks) {
-      checks.push({
-        name: `project ${name}: hooks`,
-        status: "warn",
-        detail: `core.hooksPath=${hooks} — hooks may misbehave in worktrees (husky/relative paths)`,
-      });
-    }
-  } else {
-    const writable = canWriteDir(project.repoPath);
-    checks.push({
-      name: `project ${name}: repo`,
-      status: writable ? "ok" : "fail",
-      detail: writable ? `not yet cloned; parent writable (${project.repoPath})` : `parent not writable: ${project.repoPath}`,
-    });
-  }
+		// core.hooksPath / husky (§9.11, §19.4–5): relative hook paths resolve wrong
+		// from worktrees. Warn, don't fix.
+		const hooks = await hooksPathConfigured(project.repoPath);
+		if (hooks) {
+			checks.push({
+				name: `project ${name}: hooks`,
+				status: "warn",
+				detail: `core.hooksPath=${hooks} — hooks may misbehave in worktrees (husky/relative paths)`,
+			});
+		}
+	} else {
+		const writable = canWriteDir(project.repoPath);
+		checks.push({
+			name: `project ${name}: repo`,
+			status: writable ? "ok" : "fail",
+			detail: writable
+				? `not yet cloned; parent writable (${project.repoPath})`
+				: `parent not writable: ${project.repoPath}`,
+		});
+	}
 
-  // editor binary resolvable (presets only; custom templates are opaque)
-  if (isPreset(project.editor)) {
-    const bin = presetBinary(project.editor);
-    const found = bin ? resolveBinary(bin) : null;
-    checks.push({
-      name: `project ${name}: editor`,
-      status: found ? "ok" : "warn",
-      detail: found
-        ? `${project.editor} (${found})`
-        : `${project.editor} → '${bin}' not found; opening a workspace will fail until installed`,
-    });
-  }
+	// editor binary resolvable (presets only; custom templates are opaque)
+	if (isPreset(project.editor)) {
+		const bin = presetBinary(project.editor);
+		const found = bin ? resolveBinary(bin) : null;
+		checks.push({
+			name: `project ${name}: editor`,
+			status: found ? "ok" : "warn",
+			detail: found
+				? `${project.editor} (${found})`
+				: `${project.editor} → '${bin}' not found; opening a workspace will fail until installed`,
+		});
+	}
 
-  // configured command shadows a built-in verb
-  const shadows = Object.keys(project.commands).filter((c) => isWorkspaceVerb(c));
-  if (shadows.length) {
-    checks.push({
-      name: `project ${name}: commands`,
-      status: "warn",
-      detail: `command(s) shadow built-in verbs (built-in wins): ${shadows.join(", ")}`,
-    });
-  }
+	// configured command shadows a built-in verb
+	const shadows = Object.keys(project.commands).filter((c) => isWorkspaceVerb(c));
+	if (shadows.length) {
+		checks.push({
+			name: `project ${name}: commands`,
+			status: "warn",
+			detail: `command(s) shadow built-in verbs (built-in wins): ${shadows.join(", ")}`,
+		});
+	}
 
-  // state file parses
-  try {
-    loadState(name);
-  } catch (error) {
-    checks.push({ name: `project ${name}: state`, status: "fail", detail: String((error as Error).message) });
-  }
+	// state file parses
+	try {
+		loadState(name);
+	} catch (error) {
+		checks.push({
+			name: `project ${name}: state`,
+			status: "fail",
+			detail: String((error as Error).message),
+		});
+	}
 }
 
 function issueDetail(e: unknown): string {
-  return e instanceof ConfigValidationError ? e.issues.map((i) => i.message).join("; ") : String((e as Error)?.message ?? e);
+	return e instanceof ConfigValidationError
+		? e.issues.map((i) => i.message).join("; ")
+		: String((e as Error)?.message ?? e);
 }
 
 /**
  * Is there a `.testlane.toml` on origin/<default>, and is it trusted (§9.11)?
  * Compares git blob ids only, so it needs no network.
  */
-async function repoFileCheck(name: string, project: ProjectConfig, snapshotError: unknown): Promise<Check> {
-  const check = (status: Status, detail: string): Check => ({ name: `project ${name}: repo file`, status, detail });
-  if (snapshotError !== undefined) {
-    return check("fail", `the stored approval is unusable (${issueDetail(snapshotError)}) — run \`testlane config trust ${name}\``);
-  }
-  if (!isInitialized(project.repoPath)) {return check("ok", "not cloned yet");}
-  const approval = readRepoApproval(name);
-  const branch = await repoConfigBranch(project);
-  let tip;
-  try {
-    tip = branch ? await readRepoTip(project.repoPath, branch, name) : { kind: "no-ref" as const };
-  } catch (error) {
-    return check("warn", issueDetail(error));
-  }
-  const trustHint = `run \`testlane config trust ${name}\``;
-  switch (tip.kind) {
-    case "no-ref":
-      return check("ok", `origin/${branch ?? "<default>"} not fetched yet`);
-    case "no-file":
-      return approval
-        ? check("warn", `removed upstream from origin/${branch}, but an approval is stored; the next run drops it`)
-        : check("ok", `no ${REPO_FILE} on origin/${branch}`);
-    case "file":
-      if (!approval) {return check("warn", `untrusted ${REPO_FILE} on origin/${branch} — ${trustHint}`);}
-      if (approval.blob !== tip.blob) {return check("warn", `${REPO_FILE} on origin/${branch} changed since approval — ${trustHint}`);}
-      return check("ok", `trusted (sha256 ${approval.sha256.slice(0, 12)}, approved ${approval.approvedAt})`);
-  }
+async function repoFileCheck(
+	name: string,
+	project: ProjectConfig,
+	snapshotError: unknown,
+): Promise<Check> {
+	const check = (status: Status, detail: string): Check => ({
+		name: `project ${name}: repo file`,
+		status,
+		detail,
+	});
+	if (snapshotError !== undefined) {
+		return check(
+			"fail",
+			`the stored approval is unusable (${issueDetail(snapshotError)}) — run \`testlane config trust ${name}\``,
+		);
+	}
+	if (!isInitialized(project.repoPath)) {
+		return check("ok", "not cloned yet");
+	}
+	const approval = readRepoApproval(name);
+	const branch = await repoConfigBranch(project);
+	let tip;
+	try {
+		tip = branch ? await readRepoTip(project.repoPath, branch, name) : { kind: "no-ref" as const };
+	} catch (error) {
+		return check("warn", issueDetail(error));
+	}
+	const trustHint = `run \`testlane config trust ${name}\``;
+	switch (tip.kind) {
+		case "no-ref":
+			return check("ok", `origin/${branch ?? "<default>"} not fetched yet`);
+		case "no-file":
+			return approval
+				? check(
+						"warn",
+						`removed upstream from origin/${branch}, but an approval is stored; the next run drops it`,
+					)
+				: check("ok", `no ${REPO_FILE} on origin/${branch}`);
+		case "file":
+			if (!approval) {
+				return check("warn", `untrusted ${REPO_FILE} on origin/${branch} — ${trustHint}`);
+			}
+			if (approval.blob !== tip.blob) {
+				return check(
+					"warn",
+					`${REPO_FILE} on origin/${branch} changed since approval — ${trustHint}`,
+				);
+			}
+			return check(
+				"ok",
+				`trusted (sha256 ${approval.sha256.slice(0, 12)}, approved ${approval.approvedAt})`,
+			);
+	}
 }
 
 /**
@@ -289,78 +350,90 @@ async function repoFileCheck(name: string, project: ProjectConfig, snapshotError
  * would otherwise mismatch every entry and warn permanently.
  */
 async function checkOrphans(name: string, repoPath: string, checks: Array<Check>): Promise<void> {
-  let tracked: Set<string>;
-  try {
-    const st = loadState(name);
-    tracked = new Set(
-      Object.values(st.workspaces).filter((w) => w.kind !== "path").map((w) => canonical(w.path)),
-    );
-  } catch {
-    return;
-  }
-  const repo = canonical(repoPath);
-  const gitDirs = (await listWorktrees(repoPath)).map(canonical).filter((d) => d !== repo);
-  const gitSet = new Set(gitDirs);
-  const untracked = gitDirs.filter((d) => !tracked.has(d));
-  const missing = [...tracked].filter((d) => !gitSet.has(d) || !existsSync(d));
-  if (untracked.length === 0 && missing.length === 0) {return;}
-  const bits: Array<string> = [];
-  if (untracked.length) {bits.push(`${untracked.length} git worktree(s) not in state`);}
-  if (missing.length) {
-    bits.push(
-      `${missing.length} state entr${missing.length === 1 ? "y" : "ies"} with no live worktree (deleted on disk or unknown to git)`,
-    );
-  }
-  checks.push({
-    name: `project ${name}: worktrees`,
-    status: "warn",
-    detail: `${bits.join("; ")} — reconcile with \`testlane ${name} clean --prune-state\``,
-  });
+	let tracked: Set<string>;
+	try {
+		const st = loadState(name);
+		tracked = new Set(
+			Object.values(st.workspaces)
+				.filter((w) => w.kind !== "path")
+				.map((w) => canonical(w.path)),
+		);
+	} catch {
+		return;
+	}
+	const repo = canonical(repoPath);
+	const gitDirs = (await listWorktrees(repoPath)).map(canonical).filter((d) => d !== repo);
+	const gitSet = new Set(gitDirs);
+	const untracked = gitDirs.filter((d) => !tracked.has(d));
+	const missing = [...tracked].filter((d) => !gitSet.has(d) || !existsSync(d));
+	if (untracked.length === 0 && missing.length === 0) {
+		return;
+	}
+	const bits: Array<string> = [];
+	if (untracked.length) {
+		bits.push(`${untracked.length} git worktree(s) not in state`);
+	}
+	if (missing.length) {
+		bits.push(
+			`${missing.length} state entr${missing.length === 1 ? "y" : "ies"} with no live worktree (deleted on disk or unknown to git)`,
+		);
+	}
+	checks.push({
+		name: `project ${name}: worktrees`,
+		status: "warn",
+		detail: `${bits.join("; ")} — reconcile with \`testlane ${name} clean --prune-state\``,
+	});
 }
 
 function isReadable(path: string): boolean {
-  try {
-    readdirSync(path);
-    return true;
-  } catch {
-    return false;
-  }
+	try {
+		readdirSync(path);
+		return true;
+	} catch {
+		return false;
+	}
 }
 
 function staleLocks(sdir: string): Array<string> {
-  if (!existsSync(sdir)) {return [];}
-  const out: Array<string> = [];
-  for (const f of readdirSync(sdir)) {
-    if (!f.endsWith(".lock")) {continue;}
-    const p = join(sdir, f);
-    try {
-      const { pid } = JSON.parse(readFileSync(p, "utf8")) as { pid: number };
-      if (!pidAlive(pid)) {out.push(f);}
-    } catch {
-      out.push(f); // unreadable lock ⇒ stale
-    }
-  }
-  return out;
+	if (!existsSync(sdir)) {
+		return [];
+	}
+	const out: Array<string> = [];
+	for (const f of readdirSync(sdir)) {
+		if (!f.endsWith(".lock")) {
+			continue;
+		}
+		const p = join(sdir, f);
+		try {
+			const { pid } = JSON.parse(readFileSync(p, "utf8")) as { pid: number };
+			if (!pidAlive(pid)) {
+				out.push(f);
+			}
+		} catch {
+			out.push(f); // unreadable lock ⇒ stale
+		}
+	}
+	return out;
 }
 
 function pidAlive(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    return (error as NodeJS.ErrnoException).code === "EPERM";
-  }
+	try {
+		process.kill(pid, 0);
+		return true;
+	} catch (error) {
+		return (error as NodeJS.ErrnoException).code === "EPERM";
+	}
 }
 
 function report(out: Sink, json: boolean, checks: Array<Check>): number {
-  const failed = checks.some((c) => c.status === "fail");
-  if (json) {
-    out.write(JSON.stringify({ ok: !failed, checks }) + "\n");
-    return failed ? ExitCode.INTERNAL : ExitCode.SUCCESS;
-  }
-  for (const c of checks) {
-    const tag = c.status.toUpperCase().padEnd(4);
-    out.write(`${tag} ${c.name}: ${c.detail}\n`);
-  }
-  return failed ? ExitCode.INTERNAL : ExitCode.SUCCESS;
+	const failed = checks.some((c) => c.status === "fail");
+	if (json) {
+		out.write(JSON.stringify({ ok: !failed, checks }) + "\n");
+		return failed ? ExitCode.INTERNAL : ExitCode.SUCCESS;
+	}
+	for (const c of checks) {
+		const tag = c.status.toUpperCase().padEnd(4);
+		out.write(`${tag} ${c.name}: ${c.detail}\n`);
+	}
+	return failed ? ExitCode.INTERNAL : ExitCode.SUCCESS;
 }

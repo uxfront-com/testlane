@@ -11,8 +11,8 @@
  * commands, run by people in a workspace, still keep the repo tidy.
  */
 const GIT_CONFIG: ReadonlyArray<readonly [string, string]> = [
-  ["maintenance.auto", "false"],
-  ["gc.auto", "0"],
+	["maintenance.auto", "false"],
+	["gc.auto", "0"],
 ];
 
 /**
@@ -21,14 +21,14 @@ const GIT_CONFIG: ReadonlyArray<readonly [string, string]> = [
  * the caller already set, so theirs still apply.
  */
 export function gitEnv(base: NodeJS.ProcessEnv = process.env): Record<string, string> {
-  const env = { ...base, GIT_TERMINAL_PROMPT: "0" } as Record<string, string>;
-  const count = base.GIT_CONFIG_COUNT ?? "";
-  let n = /^\d+$/.test(count) ? Number(count) : 0;
-  for (const [key, value] of GIT_CONFIG) {
-    env[`GIT_CONFIG_KEY_${n}`] = key;
-    env[`GIT_CONFIG_VALUE_${n}`] = value;
-    n++;
-  }
-  env.GIT_CONFIG_COUNT = String(n);
-  return env;
+	const env = { ...base, GIT_TERMINAL_PROMPT: "0" } as Record<string, string>;
+	const count = base.GIT_CONFIG_COUNT ?? "";
+	let n = /^\d+$/.test(count) ? Number(count) : 0;
+	for (const [key, value] of GIT_CONFIG) {
+		env[`GIT_CONFIG_KEY_${n}`] = key;
+		env[`GIT_CONFIG_VALUE_${n}`] = value;
+		n++;
+	}
+	env.GIT_CONFIG_COUNT = String(n);
+	return env;
 }

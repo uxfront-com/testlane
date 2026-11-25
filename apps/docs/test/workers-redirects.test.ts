@@ -1,12 +1,11 @@
 import { describe, expect, it } from "vitest";
+
 import { toWorkersRedirects } from "../modules/workers-redirects";
 
 describe("toWorkersRedirects", () => {
 	it("removes the 404 rule that Workers reject", () => {
 		expect(
-			toWorkersRedirects(
-				"/docs\t/docs/old/getting-started/introduction\t307\n/* /404.html 404",
-			),
+			toWorkersRedirects("/docs\t/docs/old/getting-started/introduction\t307\n/* /404.html 404"),
 		).toBe("/docs\t/docs/old/getting-started/introduction\t307");
 	});
 

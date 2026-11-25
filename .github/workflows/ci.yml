@@ -59,7 +59,7 @@ jobs:
       matrix:
         include:
           - name: 22 (floor)
-            node-version: '22'
+            node-version: "22"
           - name: current (.node-version)
             node-version-file: .node-version
     steps:
@@ -181,7 +181,7 @@ jobs:
         if: steps.filter.outputs.changed == 'true'
         env:
           NODE_OPTIONS: --max-old-space-size=4096
-          NUXT_TELEMETRY_DISABLED: '1'
+          NUXT_TELEMETRY_DISABLED: "1"
         run: pnpm --filter @uxfront/docs run build
 
       # The production build: what Workers Builds deploys to testlane.dev, and
@@ -192,9 +192,9 @@ jobs:
       - name: Build the static site
         if: steps.filter.outputs.changed == 'true'
         env:
-          WORKERS_CI: '1'
+          WORKERS_CI: "1"
           NODE_OPTIONS: --max-old-space-size=4096
-          NUXT_TELEMETRY_DISABLED: '1'
+          NUXT_TELEMETRY_DISABLED: "1"
         run: |
           rm -rf apps/docs/.output
           pnpm --filter @uxfront/docs run generate

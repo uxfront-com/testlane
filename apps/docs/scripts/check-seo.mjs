@@ -43,11 +43,11 @@ export function decode(text) {
 	return text
 		.replaceAll(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
 		.replaceAll(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(Number.parseInt(n, 16)))
-		.replaceAll('&quot;', '"')
+		.replaceAll("&quot;", '"')
 		.replaceAll(/&#39;|&apos;/g, "'")
-		.replaceAll('&lt;', "<")
-		.replaceAll('&gt;', ">")
-		.replaceAll('&amp;', "&");
+		.replaceAll("&lt;", "<")
+		.replaceAll("&gt;", ">")
+		.replaceAll("&amp;", "&");
 }
 
 /**
@@ -58,7 +58,8 @@ export function decode(text) {
  * @returns {Record<string, string>[]}
  */
 export function tagsOf(html, name) {
-	const tags = html.match(new RegExp(`<${name}(?=[\\s/>])(?:[^>"']|"[^"]*"|'[^']*')*>`, "gi")) ?? [];
+	const tags =
+		html.match(new RegExp(`<${name}(?=[\\s/>])(?:[^>"']|"[^"]*"|'[^']*')*>`, "gi")) ?? [];
 	return tags.map((tag) => {
 		/** @type {Record<string, string>} */
 		const attributes = {};
@@ -90,7 +91,10 @@ const length = (text) => [...text].length;
  * @returns {{ type: "png" | "jpeg", width: number, height: number } | undefined}
  */
 export function imageSize(bytes) {
-	if (bytes.length >= 24 && bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
+	if (
+		bytes.length >= 24 &&
+		bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+	) {
 		return { type: "png", width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
 	}
 	if (bytes.length >= 4 && bytes[0] === 0xff && bytes[1] === 0xd8) {
@@ -102,7 +106,11 @@ export function imageSize(bytes) {
 			const marker = bytes[offset + 1];
 			// SOF0 to SOF15 hold the frame's size, except DHT, JPG and DAC.
 			if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) {
-				return { type: "jpeg", height: bytes.readUInt16BE(offset + 5), width: bytes.readUInt16BE(offset + 7) };
+				return {
+					type: "jpeg",
+					height: bytes.readUInt16BE(offset + 5),
+					width: bytes.readUInt16BE(offset + 7),
+				};
 			}
 			offset += 2 + bytes.readUInt16BE(offset + 2);
 		}
@@ -125,7 +133,7 @@ export function parseHeaders(text) {
 			const source = line.trim().replace(/^https?:\/\/[^/]+/, "");
 			const pattern = source
 				.replaceAll(/[.+?^${}()|[\]\\]/g, String.raw`\$&`)
-				.replaceAll('*', ".*")
+				.replaceAll("*", ".*")
 				.replaceAll(/:\w+/g, "[^/]+");
 			rules.push({ pattern: new RegExp(`^${pattern}$`), headers: {} });
 			continue;
@@ -215,7 +223,10 @@ export function lastmodProblem(lastmod, now) {
 		return `<lastmod> ${lastmod} isn't a W3C date like 2026-11-16`;
 	}
 	const date = new Date(lastmod.length === 10 ? `${lastmod}T00:00:00Z` : lastmod);
-	if (Number.isNaN(date.getTime()) || (lastmod.length === 10 && date.toISOString().slice(0, 10) !== lastmod)) {
+	if (
+		Number.isNaN(date.getTime()) ||
+		(lastmod.length === 10 && date.toISOString().slice(0, 10) !== lastmod)
+	) {
 		return `<lastmod> ${lastmod} isn't a real date`;
 	}
 	if (date.getTime() > now.getTime() + CLOCK_SKEW_MS) {
@@ -294,12 +305,18 @@ function indexability(file, html, url, headers) {
  * @param {ReturnType<typeof parseHeaders>} headers
  */
 function noindex(metas, url, headers) {
-	const meta = metas.find((m) => ["robots", "googlebot"].includes(m.name?.toLowerCase() ?? "") && /noindex|none/i.test(m.content ?? ""));
+	const meta = metas.find(
+		(m) =>
+			["robots", "googlebot"].includes(m.name?.toLowerCase() ?? "") &&
+			/noindex|none/i.test(m.content ?? ""),
+	);
 	if (meta) {
 		return `<meta name="${meta.name}" content="${meta.content}">`;
 	}
 	const path = url.slice(SITE_URL.length) || "/";
-	const rule = headers.find((r) => r.pattern.test(path) && /noindex|none/i.test(r.headers["x-robots-tag"] ?? ""));
+	const rule = headers.find(
+		(r) => r.pattern.test(path) && /noindex|none/i.test(r.headers["x-robots-tag"] ?? ""),
+	);
 	return rule ? `X-Robots-Tag: ${rule.headers["x-robots-tag"]} in _headers` : undefined;
 }
 
@@ -316,7 +333,9 @@ export function checkPage({ dist, url, html, sitemap, headers }) {
 	const links = tagsOf(head, "link");
 	const path = url.slice(SITE_URL.length) || "/";
 
-	const titles = [...head.matchAll(/<title[^>]*>([^<]*)<\/title>/gi)].map((m) => decode(m[1]).trim());
+	const titles = [...head.matchAll(/<title[^>]*>([^<]*)<\/title>/gi)].map((m) =>
+		decode(m[1]).trim(),
+	);
 	if (titles.length !== 1) {
 		fail("title", `${titles.length} <title> tags, needs one`);
 	} else if (!titles[0]) {
@@ -350,7 +369,17 @@ export function checkPage({ dist, url, html, sitemap, headers }) {
 		fail("canonical", `${canonicals[0]} isn't the page's sitemap URL ${url}`);
 	}
 
-	for (const key of ["og:title", "og:description", "og:url", "og:type", "og:image", "og:image:alt", "twitter:title", "twitter:description", "twitter:image"]) {
+	for (const key of [
+		"og:title",
+		"og:description",
+		"og:url",
+		"og:type",
+		"og:image",
+		"og:image:alt",
+		"twitter:title",
+		"twitter:description",
+		"twitter:image",
+	]) {
 		const values = metaValues(metas, key);
 		if (!values.length || !values[0].trim()) {
 			fail(key, "missing");
@@ -365,8 +394,14 @@ export function checkPage({ dist, url, html, sitemap, headers }) {
 	if (og("twitter:card") !== "summary_large_image") {
 		fail("twitter:card", `"${og("twitter:card") ?? ""}", needs summary_large_image`);
 	}
-	if (og("og:image:width") !== String(OG_IMAGE.width) || og("og:image:height") !== String(OG_IMAGE.height)) {
-		fail("og:image size", `the tags say ${og("og:image:width") ?? "?"}×${og("og:image:height") ?? "?"}, needs ${OG_IMAGE.width}×${OG_IMAGE.height}`);
+	if (
+		og("og:image:width") !== String(OG_IMAGE.width) ||
+		og("og:image:height") !== String(OG_IMAGE.height)
+	) {
+		fail(
+			"og:image size",
+			`the tags say ${og("og:image:width") ?? "?"}×${og("og:image:height") ?? "?"}, needs ${OG_IMAGE.width}×${OG_IMAGE.height}`,
+		);
 	}
 	const image = og("og:image");
 	if (image) {
@@ -380,7 +415,10 @@ export function checkPage({ dist, url, html, sitemap, headers }) {
 			} else if (!size) {
 				fail("og:image", `${image} isn't a PNG or JPEG`);
 			} else if (size.width !== OG_IMAGE.width || size.height !== OG_IMAGE.height) {
-				fail("og:image size", `the image is ${size.width}×${size.height}, needs ${OG_IMAGE.width}×${OG_IMAGE.height}`);
+				fail(
+					"og:image size",
+					`the image is ${size.width}×${size.height}, needs ${OG_IMAGE.width}×${OG_IMAGE.height}`,
+				);
 			}
 		}
 	}
@@ -393,7 +431,9 @@ export function checkPage({ dist, url, html, sitemap, headers }) {
 	const docs = path.startsWith("/docs/");
 	if (docs) {
 		const markdown = `${SITE_URL}/raw${path}.md`;
-		const alternates = links.filter((l) => l.rel?.toLowerCase() === "alternate" && l.type === "text/markdown").map((l) => l.href);
+		const alternates = links
+			.filter((l) => l.rel?.toLowerCase() === "alternate" && l.type === "text/markdown")
+			.map((l) => l.href);
 		if (!alternates.includes(markdown)) {
 			fail("markdown link", `no <link rel="alternate" type="text/markdown" href="${markdown}">`);
 		}
@@ -404,11 +444,18 @@ export function checkPage({ dist, url, html, sitemap, headers }) {
 
 	/** @type {Record<string, any>[]} */
 	const nodes = [];
-	for (const [index, script] of [...html.matchAll(/<script[^>]*type=["']?application\/ld\+json["']?[^>]*>([\s\S]*?)<\/script>/gi)].entries()) {
+	for (const [index, script] of [
+		...html.matchAll(
+			/<script[^>]*type=["']?application\/ld\+json["']?[^>]*>([\s\S]*?)<\/script>/gi,
+		),
+	].entries()) {
 		try {
 			nodes.push(...nodesOf(JSON.parse(script[1])));
 		} catch (error) {
-			fail("json-ld", `block ${index + 1} doesn't parse: ${error instanceof Error ? error.message : error}`);
+			fail(
+				"json-ld",
+				`block ${index + 1} doesn't parse: ${error instanceof Error ? error.message : error}`,
+			);
 		}
 	}
 	if (path === "/") {
@@ -430,7 +477,10 @@ export function checkPage({ dist, url, html, sitemap, headers }) {
 				fail("json-ld", `the TechArticle's image ${article.image} isn't the og:image`);
 			}
 			if (sitemap.has(url) && article.dateModified !== sitemap.get(url)) {
-				fail("json-ld", `the TechArticle's dateModified ${article.dateModified} isn't the sitemap's ${sitemap.get(url)}`);
+				fail(
+					"json-ld",
+					`the TechArticle's dateModified ${article.dateModified} isn't the sitemap's ${sitemap.get(url)}`,
+				);
 			}
 		}
 		const breadcrumbs = nodes.find((n) => isType(n, "BreadcrumbList"));
@@ -440,7 +490,10 @@ export function checkPage({ dist, url, html, sitemap, headers }) {
 			for (const item of breadcrumbs.itemListElement ?? []) {
 				const target = typeof item.item === "string" ? item.item : item.item?.["@id"];
 				if (!sitemap.has(target)) {
-					fail("json-ld", `breadcrumb "${item.name}" points at ${target}, which isn't in the sitemap`);
+					fail(
+						"json-ld",
+						`breadcrumb "${item.name}" points at ${target}, which isn't in the sitemap`,
+					);
 				}
 			}
 		}
@@ -456,7 +509,8 @@ export function checkPage({ dist, url, html, sitemap, headers }) {
  * @returns {{ name: string, problems: string[] }[]}
  */
 export function checkDist(dist, { now = new Date() } = {}) {
-	const read = (file) => (existsSync(join(dist, file)) ? readFileSync(join(dist, file), "utf8") : undefined);
+	const read = (file) =>
+		existsSync(join(dist, file)) ? readFileSync(join(dist, file), "utf8") : undefined;
 	const headers = parseHeaders(read("_headers") ?? "");
 	/** @type {{ name: string, problems: string[] }[]} */
 	const results = [];
@@ -503,17 +557,25 @@ export function checkDist(dist, { now = new Date() } = {}) {
 		const head = html.match(/<head[\s>][\s\S]*?<\/head>/i)?.[0] ?? "";
 		const title = decode(head.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1] ?? "").trim();
 		const description = metaValues(tagsOf(head, "meta"), "description")[0];
-		for (const [map, value] of [[titles, title], [descriptions, description]]) {
+		for (const [map, value] of [
+			[titles, title],
+			[descriptions, description],
+		]) {
 			if (value) {
 				map.set(value, [...(map.get(value) ?? []), name]);
 			}
 		}
 		results.push({ name, problems });
 	}
-	for (const [rule, map] of [["title", titles], ["description", descriptions]]) {
+	for (const [rule, map] of [
+		["title", titles],
+		["description", descriptions],
+	]) {
 		for (const pages of map.values()) {
 			for (const name of pages.length > 1 ? pages : []) {
-				results.find((r) => r.name === name)?.problems.push(`${rule}: the same as on ${pages.filter((p) => p !== name).join(", ")}`);
+				results
+					.find((r) => r.name === name)
+					?.problems.push(`${rule}: the same as on ${pages.filter((p) => p !== name).join(", ")}`);
 			}
 		}
 	}
@@ -549,7 +611,7 @@ export function checkDist(dist, { now = new Date() } = {}) {
 			llmsProblems.push("heading: the first line isn't an H1");
 		}
 		if (!lines.some((line) => line.startsWith("> "))) {
-			llmsProblems.push("summary: no \"> \" line");
+			llmsProblems.push('summary: no "> " line');
 		}
 		for (const url of sitemap.keys()) {
 			const path = url.slice(SITE_URL.length);
@@ -568,7 +630,9 @@ export function checkDist(dist, { now = new Date() } = {}) {
 					.map((file) => join("raw", file))
 			: []),
 	];
-	const markdownProblems = existsSync(join(dist, "llms-full.txt")) ? [] : ["llms-full.txt: missing"];
+	const markdownProblems = existsSync(join(dist, "llms-full.txt"))
+		? []
+		: ["llms-full.txt: missing"];
 	for (const file of markdownFiles.filter((f) => existsSync(join(dist, f))).sort()) {
 		const text = readFileSync(join(dist, file), "utf8");
 		const name = relative(dist, join(dist, file)).split(sep).join("/");
@@ -584,7 +648,8 @@ export function checkDist(dist, { now = new Date() } = {}) {
 	const redirects = read("_redirects");
 	results.push({
 		name: "_redirects",
-		problems: redirects === undefined ? [] : redirectProblems(redirects).map((p) => `redirect: ${p}`),
+		problems:
+			redirects === undefined ? [] : redirectProblems(redirects).map((p) => `redirect: ${p}`),
 	});
 
 	return results;
@@ -593,7 +658,9 @@ export function checkDist(dist, { now = new Date() } = {}) {
 function main() {
 	const dist = process.argv[2] ?? "dist";
 	if (!existsSync(join(dist, "index.html"))) {
-		console.error(`No build in ${dist}. Run WORKERS_CI=1 pnpm --filter @uxfront/docs run generate first.`);
+		console.error(
+			`No build in ${dist}. Run WORKERS_CI=1 pnpm --filter @uxfront/docs run generate first.`,
+		);
 		process.exit(2);
 	}
 
