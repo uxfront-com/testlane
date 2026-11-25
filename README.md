@@ -341,6 +341,7 @@ Testlane's CLI is TypeScript, compiled to `dist/`, and its tests run on Vitest. 
 
 ```bash
 pnpm install
+git config blame.ignoreRevsFile .git-blame-ignore-revs  # once: blame skips the reformat
 pnpm test                       # unit and integration tests
 pnpm run typecheck              # tsc --noEmit
 pnpm run build                  # writes dist/

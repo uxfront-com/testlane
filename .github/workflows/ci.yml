@@ -88,11 +88,13 @@ jobs:
       - name: Test
         run: pnpm test
 
-  # oxlint with the shared uxfront config (oxlint.config.ts), over the whole
-  # repository, apps/docs included. Errors fail the job, and warnings are only
-  # reported. `--format=github` turns each finding into an annotation on the PR.
+  # oxfmt and oxlint with the shared uxfront configs (oxfmt.config.ts,
+  # oxlint.config.ts), over the whole repository, apps/docs included. The format
+  # step fails on any file oxfmt would change, and lint errors fail the lint step,
+  # while warnings are only reported. `--format=github` turns each lint finding
+  # into an annotation on the PR.
   lint:
-    name: Lint
+    name: Lint and format
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -106,11 +108,17 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
 
-      # oxlint needs only the root's dev dependencies, even for apps/docs.
+      # oxfmt and oxlint need only the root's dev dependencies, even for apps/docs.
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --filter @uxfront/testlane
 
+      - name: Format
+        id: format
+        run: pnpm run format:check
+
+      # Runs after a failed format step too, so one run reports both.
       - name: Lint
+        if: success() || steps.format.outcome == 'failure'
         run: pnpm run lint --format=github
 
   # The `test` job above runs the root scripts only, never apps/docs' build or
