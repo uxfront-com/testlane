@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { absoluteLinks, stripFrontmatter, toMarkdownCopy } from "../server/utils/markdown-copy";
 
 const SITE = "https://testlane.dev";
@@ -31,9 +32,27 @@ describe("absoluteLinks", () => {
 	});
 
 	it("leaves code blocks alone", () => {
-		const text = ["```md", "[a](/docs)", "```", "[b](/docs)", "~~~", "```", "[c](/docs)", "~~~"].join("\n");
+		const text = [
+			"```md",
+			"[a](/docs)",
+			"```",
+			"[b](/docs)",
+			"~~~",
+			"```",
+			"[c](/docs)",
+			"~~~",
+		].join("\n");
 		expect(absoluteLinks(text, SITE)).toBe(
-			["```md", "[a](/docs)", "```", "[b](https://testlane.dev/docs)", "~~~", "```", "[c](/docs)", "~~~"].join("\n"),
+			[
+				"```md",
+				"[a](/docs)",
+				"```",
+				"[b](https://testlane.dev/docs)",
+				"~~~",
+				"```",
+				"[c](/docs)",
+				"~~~",
+			].join("\n"),
 		);
 	});
 });
@@ -74,6 +93,8 @@ describe("toMarkdownCopy", () => {
 	});
 
 	it("keeps a body's own H1", () => {
-		expect(toMarkdownCopy({ title: "A", description: "B", body: "# Own\n\nText", siteUrl: SITE })).toBe("# Own\n\nText\n");
+		expect(
+			toMarkdownCopy({ title: "A", description: "B", body: "# Own\n\nText", siteUrl: SITE }),
+		).toBe("# Own\n\nText\n");
 	});
 });

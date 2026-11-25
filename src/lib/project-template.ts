@@ -8,29 +8,29 @@
  * body: they default to `{root}/<project>/{repo,trees}` (§5.4).
  */
 export function defaultProjectTemplate(project: string, repo?: string): string {
-  return [
-    `# testlane project config for "${project}" — check with \`testlane config validate ${project}\``,
-    `repo = ${repo === undefined ? `"git@github.com:ORG/REPO.git"` : tomlString(repo)}   # required`,
-    ``,
-    `# editor = "code"            # optional; $VISUAL/$EDITOR wins when unset`,
-    `# default_command = "code"   # optional; default action for \`testlane ${project} <ref>\``,
-    ``,
-    `# repo_path / worktrees_path default to {root}/${project}/{repo,trees}.`,
-    "# Set `root` in defaults.toml, or uncomment these to override:",
-    `# repo_path = "/abs/path/to/repo"`,
-    `# worktrees_path = "/abs/path/to/trees"`,
-    ``,
-    `# [setup]`,
-    `# run = "pnpm install --frozen-lockfile"`,
-    `# cache_key = ["pnpm-lock.yaml"]`,
-    ``,
-    `# [commands.dev]`,
-    `# run = "pnpm dev"`,
-    ``,
-  ].join("\n");
+	return [
+		`# testlane project config for "${project}" — check with \`testlane config validate ${project}\``,
+		`repo = ${repo === undefined ? `"git@github.com:ORG/REPO.git"` : tomlString(repo)}   # required`,
+		``,
+		`# editor = "code"            # optional; $VISUAL/$EDITOR wins when unset`,
+		`# default_command = "code"   # optional; default action for \`testlane ${project} <ref>\``,
+		``,
+		`# repo_path / worktrees_path default to {root}/${project}/{repo,trees}.`,
+		"# Set `root` in defaults.toml, or uncomment these to override:",
+		`# repo_path = "/abs/path/to/repo"`,
+		`# worktrees_path = "/abs/path/to/trees"`,
+		``,
+		`# [setup]`,
+		`# run = "pnpm install --frozen-lockfile"`,
+		`# cache_key = ["pnpm-lock.yaml"]`,
+		``,
+		`# [commands.dev]`,
+		`# run = "pnpm dev"`,
+		``,
+	].join("\n");
 }
 
 /** Minimal TOML basic-string encoder for the values Testlane writes (paths, URLs, refs). */
 export function tomlString(value: string): string {
-  return `"${value.replaceAll('\\', String.raw`\\`).replaceAll('"', String.raw`\"`)}"`;
+	return `"${value.replaceAll("\\", String.raw`\\`).replaceAll('"', String.raw`\"`)}"`;
 }

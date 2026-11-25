@@ -1,11 +1,7 @@
 import { describe, expect, it } from "vitest";
+
 import { parseRef } from "../../../src/core/resolve";
-import {
-	REF_SAMPLES,
-	WORKSPACES,
-	configCode,
-	refsCode,
-} from "../app/data/samples";
+import { REF_SAMPLES, WORKSPACES, configCode, refsCode } from "../app/data/samples";
 
 describe("the homepage's samples", () => {
 	it("parses every sample the way its comment says", () => {
@@ -16,7 +12,9 @@ describe("the homepage's samples", () => {
 
 	it("shows each sample as itself, or as its start and an ellipsis", () => {
 		for (const { ref, shown } of REF_SAMPLES) {
-			if (shown === undefined) {continue;}
+			if (shown === undefined) {
+				continue;
+			}
 			expect(shown.endsWith("…"), shown).toBe(true);
 			expect(ref.startsWith(shown.slice(0, -1)), shown).toBe(true);
 		}

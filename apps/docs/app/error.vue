@@ -26,11 +26,7 @@ const goHome = (event: MouseEvent) => {
 	<UxErrorPage
 		:code="code"
 		:title="title"
-		:lead="
-			notFound
-				? 'No lane leads here.'
-				: 'Please try again in a moment.'
-		"
+		:lead="notFound ? 'No lane leads here.' : 'Please try again in a moment.'"
 		home-label="Back to Testlane"
 		@home="goHome"
 	/>

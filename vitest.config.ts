@@ -5,16 +5,16 @@ import { defineConfig } from "vitest/config";
 // parallel file execution these routinely exceed the 5s default, and a timed-out
 // in-process run leaks async work that mutates shared env. Give git room.
 export default defineConfig({
-  test: {
-    testTimeout: 30_000,
-    hookTimeout: 30_000,
-    // Builds dist/ once, before any file that spawns the built CLI runs.
-    globalSetup: ["test/global-setup.ts"],
-    // The root suite covers the `testlane` CLI only. Workspace apps under `apps/*`
-    // (e.g. the Nuxt `apps/docs` site) own their own test runners and configs,
-    // so they are excluded here — otherwise the root `vitest run` would try to
-    // collect their tests without a prepared framework environment.
-    include: ["test/**/*.test.ts"],
-    exclude: ["**/node_modules/**", "dist/**", "apps/**"],
-  },
+	test: {
+		testTimeout: 30_000,
+		hookTimeout: 30_000,
+		// Builds dist/ once, before any file that spawns the built CLI runs.
+		globalSetup: ["test/global-setup.ts"],
+		// The root suite covers the `testlane` CLI only. Workspace apps under `apps/*`
+		// (e.g. the Nuxt `apps/docs` site) own their own test runners and configs,
+		// so they are excluded here — otherwise the root `vitest run` would try to
+		// collect their tests without a prepared framework environment.
+		include: ["test/**/*.test.ts"],
+		exclude: ["**/node_modules/**", "dist/**", "apps/**"],
+	},
 });

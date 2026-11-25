@@ -2,9 +2,11 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
 import { afterEach, describe, expect, it } from "vitest";
-import { readGitDates } from '../modules/git-dates';
-import type { Git } from '../modules/git-dates';
+
+import { readGitDates } from "../modules/git-dates";
+import type { Git } from "../modules/git-dates";
 
 /** A fake git that answers from a table, and records what it ran. */
 function fakeGit(answers: Record<string, string | Error>) {
@@ -41,8 +43,14 @@ describe("readGitDates", () => {
 			"log -1 --format=%cs -- a.md": "2026-11-14",
 		});
 
-		expect(await readGitDates(["a.md"], git)).toEqual({ dates: { "a.md": "2026-11-14" }, undated: [] });
-		expect(calls.slice(0, 2)).toEqual(["rev-parse --is-shallow-repository", "fetch --unshallow --quiet"]);
+		expect(await readGitDates(["a.md"], git)).toEqual({
+			dates: { "a.md": "2026-11-14" },
+			undated: [],
+		});
+		expect(calls.slice(0, 2)).toEqual([
+			"rev-parse --is-shallow-repository",
+			"fetch --unshallow --quiet",
+		]);
 	});
 
 	it("gives no dates when a shallow clone can't fetch its history", async () => {
@@ -52,7 +60,8 @@ describe("readGitDates", () => {
 		});
 
 		expect(await readGitDates(["a.md"], git)).toEqual({
-			error: "the clone is shallow and `git fetch --unshallow` failed: could not read from remote repository",
+			error:
+				"the clone is shallow and `git fetch --unshallow` failed: could not read from remote repository",
 		});
 		expect(calls.some((call) => call.startsWith("log"))).toBe(false);
 	});
@@ -86,7 +95,9 @@ describe("readGitDates", () => {
 			"log -1 --format=%cs": new Error("fatal: bad object HEAD"),
 		});
 
-		expect(await readGitDates(["a.md"], git)).toEqual({ error: "git log failed: fatal: bad object HEAD" });
+		expect(await readGitDates(["a.md"], git)).toEqual({
+			error: "git log failed: fatal: bad object HEAD",
+		});
 	});
 });
 

@@ -3,27 +3,27 @@
 // at generation time; workspace slugs are completed dynamically by shelling out
 // to `testlane <project> list --json` from the emitted script.
 
-import { ExitCode, usage } from "../lib/errors.ts";
-import { listProjectNames } from "../config/load.ts";
 import { TOP_LEVEL_VERBS, PROJECT_VERBS, WORKSPACE_VERBS } from "../cli/verbs.ts";
+import { listProjectNames } from "../config/load.ts";
+import { ExitCode, usage } from "../lib/errors.ts";
 import type { TopInput } from "./types.ts";
 
 type Shell = "bash" | "zsh" | "fish";
 
 export async function completions(input: TopInput): Promise<number> {
-  const { ctx } = input;
-  const shell = input.args[0];
-  if (shell === undefined) {
-    throw usage("completions requires a shell", "one of: bash, zsh, fish");
-  }
-  if (shell !== "bash" && shell !== "zsh" && shell !== "fish") {
-    throw usage(`unsupported shell '${shell}'`, "one of: bash, zsh, fish");
-  }
+	const { ctx } = input;
+	const shell = input.args[0];
+	if (shell === undefined) {
+		throw usage("completions requires a shell", "one of: bash, zsh, fish");
+	}
+	if (shell !== "bash" && shell !== "zsh" && shell !== "fish") {
+		throw usage(`unsupported shell '${shell}'`, "one of: bash, zsh, fish");
+	}
 
-  const projects = listProjectNames(ctx.configDir);
-  const script = render(shell, projects);
-  process.stdout.write(script);
-  return ExitCode.SUCCESS;
+	const projects = listProjectNames(ctx.configDir);
+	const script = render(shell, projects);
+	process.stdout.write(script);
+	return ExitCode.SUCCESS;
 }
 
 /** Verb vocabularies baked into the script, space-joined for the shell word lists. */
@@ -32,9 +32,13 @@ const PROJECT = PROJECT_VERBS.join(" ");
 const WORKSPACE = WORKSPACE_VERBS.join(" ");
 
 function render(shell: Shell, projects: Array<string>): string {
-  if (shell === "bash") {return bash(projects);}
-  if (shell === "zsh") {return zsh(projects);}
-  return fish(projects);
+	if (shell === "bash") {
+		return bash(projects);
+	}
+	if (shell === "zsh") {
+		return zsh(projects);
+	}
+	return fish(projects);
 }
 
 /**
@@ -43,8 +47,8 @@ function render(shell: Shell, projects: Array<string>): string {
  * workspace slugs from `testlane <project> list --json`.
  */
 function bash(projects: Array<string>): string {
-  const projWords = projects.join(" ");
-  return `# testlane bash completion — eval "$(testlane completions bash)"
+	const projWords = projects.join(" ");
+	return `# testlane bash completion — eval "$(testlane completions bash)"
 _testlane() {
   local cur prev words cword
   _init_completion &>/dev/null || {
@@ -82,8 +86,8 @@ complete -F _testlane testlane
  * bash — top verbs/projects first, then project verbs + live slugs.
  */
 function zsh(projects: Array<string>): string {
-  const projWords = projects.join(" ");
-  return `#compdef testlane
+	const projWords = projects.join(" ");
+	return `#compdef testlane
 # testlane zsh completion — eval "$(testlane completions zsh)"
 _testlane() {
   local -a top projects pverbs
@@ -115,9 +119,11 @@ _testlane "$@"
  * that inspects `commandline` for the project token.
  */
 function fish(projects: Array<string>): string {
-  const projLines = projects.map((p) => `complete -c testlane -n '__fish_testlane_no_project' -a '${p}'`).join("\n");
-  const topLine = `complete -c testlane -n '__fish_testlane_no_project' -a '${TOP}'`;
-  return `# testlane fish completion — testlane completions fish | source
+	const projLines = projects
+		.map((p) => `complete -c testlane -n '__fish_testlane_no_project' -a '${p}'`)
+		.join("\n");
+	const topLine = `complete -c testlane -n '__fish_testlane_no_project' -a '${TOP}'`;
+	return `# testlane fish completion — testlane completions fish | source
 function __fish_testlane_no_project
   set -l toks (commandline -opc)
   test (count $toks) -le 1

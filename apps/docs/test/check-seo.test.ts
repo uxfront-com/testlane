@@ -1,7 +1,9 @@
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
 import {
 	checkDist,
 	imageSize,
@@ -42,12 +44,14 @@ interface Page {
 const HOME: Page = {
 	path: "/",
 	title: "Testlane: run any pull request locally",
-	description: "Point Testlane at a pull request, branch, commit or link to get it checked out in a worktree.",
+	description:
+		"Point Testlane at a pull request, branch, commit or link to get it checked out in a worktree.",
 };
 const DOC: Page = {
 	path: "/docs/cli/exit-codes",
 	title: "CLI Exit Codes and Error Names - Testlane",
-	description: "Every Testlane exit code and its error name, what each one means and the error output around it.",
+	description:
+		"Every Testlane exit code and its error name, what each one means and the error output around it.",
 };
 
 function head(page: Page, extra = "") {
@@ -56,7 +60,13 @@ function head(page: Page, extra = "") {
 	const docs = page.path !== "/";
 	const jsonLd = docs
 		? [
-				{ "@context": "https://schema.org", "@type": "TechArticle", headline: page.title, image, dateModified: "2026-11-15" },
+				{
+					"@context": "https://schema.org",
+					"@type": "TechArticle",
+					headline: page.title,
+					image,
+					dateModified: "2026-11-15",
+				},
 				{
 					"@context": "https://schema.org",
 					"@type": "BreadcrumbList",
@@ -90,8 +100,12 @@ function head(page: Page, extra = "") {
 		`<meta name="twitter:description" content="${page.description}">`,
 		`<meta name="twitter:image" content="${image}">`,
 		'<meta name="robots" content="index, follow">',
-		...(docs ? [`<link rel="alternate" type="text/markdown" href="${SITE}/raw${page.path}.md">`] : []),
-		...jsonLd.map((block) => `<script type="application/ld+json">${JSON.stringify(block)}</script>`),
+		...(docs
+			? [`<link rel="alternate" type="text/markdown" href="${SITE}/raw${page.path}.md">`]
+			: []),
+		...jsonLd.map(
+			(block) => `<script type="application/ld+json">${JSON.stringify(block)}</script>`,
+		),
 		extra,
 	].join("\n");
 }
@@ -104,9 +118,17 @@ const ROBOTS = [
 	"User-agent: *",
 	"Allow: /",
 	"",
-	...["OAI-SearchBot", "ChatGPT-User", "PerplexityBot", "Claude-SearchBot", "Claude-User", "GPTBot", "ClaudeBot", "Google-Extended", "CCBot"].flatMap(
-		(agent) => [`User-agent: ${agent}`, "Allow: /", ""],
-	),
+	...[
+		"OAI-SearchBot",
+		"ChatGPT-User",
+		"PerplexityBot",
+		"Claude-SearchBot",
+		"Claude-User",
+		"GPTBot",
+		"ClaudeBot",
+		"Google-Extended",
+		"CCBot",
+	].flatMap((agent) => [`User-agent: ${agent}`, "Allow: /", ""]),
 	`Sitemap: ${SITE}/sitemap.xml`,
 ].join("\n");
 
@@ -118,7 +140,10 @@ function writeBuild(dist: string) {
 	};
 	write("index.html", html(HOME));
 	write("docs/cli/exit-codes.html", html(DOC));
-	write("docs/cli.html", '<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0; url=/docs/cli/overview"></head></html>');
+	write(
+		"docs/cli.html",
+		'<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0; url=/docs/cli/overview"></head></html>',
+	);
 	write("404.html", "<html><head><title>Not found</title></head><body><h1>404</h1></body></html>");
 	write("200.html", "<html><head></head><body></body></html>");
 	write("og.jpg", jpeg(1200, 630));
@@ -134,7 +159,10 @@ function writeBuild(dist: string) {
 		].join("\n"),
 	);
 	write("robots.txt", ROBOTS);
-	write("llms.txt", `# Testlane\n\n> Any git ref, running locally.\n\n## Docs\n\n- [Exit Codes](${SITE}/raw/docs/cli/exit-codes.md): Every code.\n`);
+	write(
+		"llms.txt",
+		`# Testlane\n\n> Any git ref, running locally.\n\n## Docs\n\n- [Exit Codes](${SITE}/raw/docs/cli/exit-codes.md): Every code.\n`,
+	);
 	write("llms-full.txt", "# Exit Codes\n\n| Code | Name |\n| --- | --- |\n");
 	write("raw/docs/cli/exit-codes.md", "# Exit Codes\n\n| Code | Name |\n| --- | --- |\n");
 	write("_redirects", "/docs/cli\t/docs/cli/overview\t301\n");
@@ -150,7 +178,9 @@ describe("checkDist", () => {
 	afterEach(() => rmSync(dist, { recursive: true, force: true }));
 
 	const problems = () =>
-		checkDist(dist, { now: NOW }).flatMap(({ name, problems }) => problems.map((p: string) => `${name}  ${p}`));
+		checkDist(dist, { now: NOW }).flatMap(({ name, problems }) =>
+			problems.map((p: string) => `${name}  ${p}`),
+		);
 	const edit = (file: string, change: (text: string) => string) =>
 		writeFileSync(join(dist, file), change(readFileSync(join(dist, file), "utf8")));
 
@@ -168,13 +198,21 @@ describe("checkDist", () => {
 	});
 
 	it("names the page with a description out of range", () => {
-		edit("docs/cli/exit-codes.html", (t) => t.replace(DOC.description, DOC.description.slice(0, 50)));
-		expect(problems()).toContain("/docs/cli/exit-codes  description: 50 characters, needs 70 to 160");
+		edit("docs/cli/exit-codes.html", (t) =>
+			t.replace(DOC.description, DOC.description.slice(0, 50)),
+		);
+		expect(problems()).toContain(
+			"/docs/cli/exit-codes  description: 50 characters, needs 70 to 160",
+		);
 	});
 
 	it("names the page with a title over 60 characters, and duplicate titles", () => {
-		edit("index.html", (t) => t.replace(`<title>${HOME.title}</title>`, `<title>${DOC.title}${"x".repeat(20)}</title>`));
-		expect(problems()).toContain(`/  title: 61 characters, needs 60 or fewer: ${DOC.title}${"x".repeat(20)}`);
+		edit("index.html", (t) =>
+			t.replace(`<title>${HOME.title}</title>`, `<title>${DOC.title}${"x".repeat(20)}</title>`),
+		);
+		expect(problems()).toContain(
+			`/  title: 61 characters, needs 60 or fewer: ${DOC.title}${"x".repeat(20)}`,
+		);
 		edit("index.html", (t) => t.replace(`${DOC.title}${"x".repeat(20)}`, DOC.title));
 		expect(problems()).toContain("/  title: the same as on /docs/cli/exit-codes");
 	});
@@ -186,26 +224,43 @@ describe("checkDist", () => {
 
 	it("names a page that left the sitemap", () => {
 		edit("sitemap.xml", (t) => t.replace(/<url><loc>[^<]*exit-codes<\/loc>.*<\/url>\n/, ""));
-		expect(problems()).toContain(`sitemap.xml  sitemap: ${SITE}/docs/cli/exit-codes is indexable but not in the sitemap`);
+		expect(problems()).toContain(
+			`sitemap.xml  sitemap: ${SITE}/docs/cli/exit-codes is indexable but not in the sitemap`,
+		);
 	});
 
 	it("names a sitemap URL with no page, or a page that's noindex", () => {
-		edit("docs/cli/exit-codes.html", (t) => t.replace('content="index, follow"', 'content="noindex, nofollow"'));
-		expect(problems()).toContain(`sitemap.xml  sitemap: ${SITE}/docs/cli/exit-codes isn't an indexable page in the build`);
+		edit("docs/cli/exit-codes.html", (t) =>
+			t.replace('content="index, follow"', 'content="noindex, nofollow"'),
+		);
+		expect(problems()).toContain(
+			`sitemap.xml  sitemap: ${SITE}/docs/cli/exit-codes isn't an indexable page in the build`,
+		);
 	});
 
 	it("names a page that _headers keeps out of search", () => {
 		edit("_headers", (t) => `${t}/docs/cli/*\n  X-Robots-Tag: noindex\n`);
-		expect(problems()).toContain(`sitemap.xml  sitemap: ${SITE}/docs/cli/exit-codes isn't an indexable page in the build`);
+		expect(problems()).toContain(
+			`sitemap.xml  sitemap: ${SITE}/docs/cli/exit-codes isn't an indexable page in the build`,
+		);
 	});
 
 	it("names the page with a JSON-LD block that doesn't parse", () => {
-		edit("docs/cli/exit-codes.html", (t) => t.replace('"@type":"BreadcrumbList",', '"@type":"BreadcrumbList",,'));
-		expect(problems().some((p) => p.startsWith("/docs/cli/exit-codes  json-ld: block 2 doesn't parse"))).toBe(true);
+		edit("docs/cli/exit-codes.html", (t) =>
+			t.replace('"@type":"BreadcrumbList",', '"@type":"BreadcrumbList",,'),
+		);
+		expect(
+			problems().some((p) => p.startsWith("/docs/cli/exit-codes  json-ld: block 2 doesn't parse")),
+		).toBe(true);
 	});
 
 	it("names a homepage that calls Testlane an Organization or misses a node", () => {
-		edit("index.html", (t) => t.replace('{"@type":"SoftwareSourceCode","name":"Testlane"}', '{"@type":"Organization","name":"Testlane"}'));
+		edit("index.html", (t) =>
+			t.replace(
+				'{"@type":"SoftwareSourceCode","name":"Testlane"}',
+				'{"@type":"Organization","name":"Testlane"}',
+			),
+		);
 		expect(problems()).toEqual([
 			"/  json-ld: no SoftwareSourceCode",
 			"/  json-ld: an Organization named Testlane, which is software",
@@ -213,8 +268,12 @@ describe("checkDist", () => {
 	});
 
 	it("names a breadcrumb that points outside the sitemap", () => {
-		edit("docs/cli/exit-codes.html", (t) => t.replace(`"item":"${SITE}/docs/cli/exit-codes"`, `"item":"${SITE}/docs/cli"`));
-		expect(problems()).toContain(`/docs/cli/exit-codes  json-ld: breadcrumb "Exit Codes" points at ${SITE}/docs/cli, which isn't in the sitemap`);
+		edit("docs/cli/exit-codes.html", (t) =>
+			t.replace(`"item":"${SITE}/docs/cli/exit-codes"`, `"item":"${SITE}/docs/cli"`),
+		);
+		expect(problems()).toContain(
+			`/docs/cli/exit-codes  json-ld: breadcrumb "Exit Codes" points at ${SITE}/docs/cli, which isn't in the sitemap`,
+		);
 	});
 
 	it("names an AI crawler robots.txt dropped", () => {
@@ -223,23 +282,31 @@ describe("checkDist", () => {
 	});
 
 	it("names a robots.txt that disallows the site or has no sitemap", () => {
-		edit("robots.txt", (t) => t.replace("User-agent: *\nAllow: /", "User-agent: *\nDisallow: /").replace(/Sitemap:.*/, ""));
+		edit("robots.txt", (t) =>
+			t.replace("User-agent: *\nAllow: /", "User-agent: *\nDisallow: /").replace(/Sitemap:.*/, ""),
+		);
 		expect(problems()).toEqual([
 			`robots.txt  sitemap: no "Sitemap: ${SITE}/sitemap.xml" line`,
-			"robots.txt  disallow: \"Disallow: /\" for *",
+			'robots.txt  disallow: "Disallow: /" for *',
 		]);
 	});
 
 	it("names an Open Graph image of the wrong size, in the tags or the file", () => {
 		writeFileSync(join(dist, "_og/s/o_1.png"), png(1200, 600));
-		expect(problems()).toEqual(["/docs/cli/exit-codes  og:image size: the image is 1200×600, needs 1200×630"]);
-		edit("index.html", (t) => t.replace('og:image:height" content="630"', 'og:image:height" content="600"'));
+		expect(problems()).toEqual([
+			"/docs/cli/exit-codes  og:image size: the image is 1200×600, needs 1200×630",
+		]);
+		edit("index.html", (t) =>
+			t.replace('og:image:height" content="630"', 'og:image:height" content="600"'),
+		);
 		expect(problems()).toContain("/  og:image size: the tags say 1200×600, needs 1200×630");
 	});
 
 	it("names missing social tags and an og:url that isn't the canonical", () => {
 		edit("docs/cli/exit-codes.html", (t) =>
-			t.replace(/<meta name="twitter:title"[^>]*>/, "").replace(`og:url" content="${SITE}/docs/cli/exit-codes"`, `og:url" content="${SITE}/x"`),
+			t
+				.replace(/<meta name="twitter:title"[^>]*>/, "")
+				.replace(`og:url" content="${SITE}/docs/cli/exit-codes"`, `og:url" content="${SITE}/x"`),
 		);
 		expect(problems()).toEqual([
 			"/docs/cli/exit-codes  twitter:title: missing",
@@ -248,7 +315,9 @@ describe("checkDist", () => {
 	});
 
 	it("names a canonical that isn't the sitemap URL, and a missing lang", () => {
-		edit("index.html", (t) => t.replace(`href="${SITE}/"`, 'href="https://www.testlane.dev/"').replace(' lang="en"', ""));
+		edit("index.html", (t) =>
+			t.replace(`href="${SITE}/"`, 'href="https://www.testlane.dev/"').replace(' lang="en"', ""),
+		);
 		expect(problems()).toEqual([
 			'/  lang: <html lang="">, needs lang="en"',
 			`/  canonical: https://www.testlane.dev/ isn't the page's sitemap URL ${SITE}/`,
@@ -279,7 +348,10 @@ describe("checkDist", () => {
 	});
 
 	it("names Markdown copies with HTML tables or MDC residue", () => {
-		writeFileSync(join(dist, "raw/docs/cli/exit-codes.md"), "<table>\n<tr><td>0</td></tr>\n</table>\n");
+		writeFileSync(
+			join(dist, "raw/docs/cli/exit-codes.md"),
+			"<table>\n<tr><td>0</td></tr>\n</table>\n",
+		);
 		writeFileSync(join(dist, "llms-full.txt"), '[a](https://x){rel="&#x22;nofollow&#x22;"}');
 		expect(problems()).toEqual([
 			"markdown copies  mdc residue: llms-full.txt has &#x22;",
@@ -322,7 +394,11 @@ describe("lastmodProblem", () => {
 
 describe("parseRobots", () => {
 	it("groups consecutive user agents and reads the sitemap lines", () => {
-		expect(parseRobots("User-agent: a\nUser-agent: B\nAllow: /\n\nUser-agent: c\nDisallow: /x # no\nSitemap: https://x/s.xml")).toEqual({
+		expect(
+			parseRobots(
+				"User-agent: a\nUser-agent: B\nAllow: /\n\nUser-agent: c\nDisallow: /x # no\nSitemap: https://x/s.xml",
+			),
+		).toEqual({
 			groups: [
 				{ agents: ["a", "b"], rules: [{ field: "allow", value: "/" }] },
 				{ agents: ["c"], rules: [{ field: "disallow", value: "/x" }] },

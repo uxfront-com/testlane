@@ -9,24 +9,31 @@
 const BIDI = "\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069";
 const UNSAFE_IN_LINE = new RegExp(`[\u0000-\u001f\u007f-\u009f${BIDI}]`, "g");
 // In a block, tab, newline and a CR that ends a CRLF line stay as they are.
-const UNSAFE_IN_BLOCK = new RegExp(`[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f${BIDI}]|\r(?!\n)`, "g");
-const NAMED: Record<string, string> = { "\t": String.raw`\t`, "\n": String.raw`\n`, "\r": String.raw`\r` };
+const UNSAFE_IN_BLOCK = new RegExp(
+	`[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f${BIDI}]|\r(?!\n)`,
+	"g",
+);
+const NAMED: Record<string, string> = {
+	"\t": String.raw`\t`,
+	"\n": String.raw`\n`,
+	"\r": String.raw`\r`,
+};
 
 function escapeChar(c: string): string {
-  return NAMED[c] ?? `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`;
+	return NAMED[c] ?? `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`;
 }
 
 /** One value on one line: every control character escaped, newlines included. */
 export function printableLine(text: string): string {
-  return text.replaceAll(UNSAFE_IN_LINE, escapeChar);
+	return text.replaceAll(UNSAFE_IN_LINE, escapeChar);
 }
 
 /** A file or a diff: control characters escaped, line breaks and tabs kept. */
 export function printableBlock(text: string): string {
-  return text.replaceAll(UNSAFE_IN_BLOCK, escapeChar);
+	return text.replaceAll(UNSAFE_IN_BLOCK, escapeChar);
 }
 
 /** Several lines, each escaped as `printableLine`, still on separate lines. */
 export function printableLines(text: string): string {
-  return text.split("\n").map(printableLine).join("\n");
+	return text.split("\n").map(printableLine).join("\n");
 }

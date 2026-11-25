@@ -42,10 +42,7 @@ export const REDIRECTS: Record<string, string> = {
 	),
 	// Pages that moved keep their old URLs.
 	...Object.fromEntries(
-		Object.entries(MOVED_PAGES).map(([from, to]) => [
-			`/docs/${from}`,
-			`/docs/${to}`,
-		]),
+		Object.entries(MOVED_PAGES).map(([from, to]) => [`/docs/${from}`, `/docs/${to}`]),
 	),
 };
 
@@ -53,14 +50,8 @@ export const REDIRECTS: Record<string, string> = {
  * The map as Nitro route rules. Each is a 301, since the pages moved for good:
  * Nitro's string form, `{ redirect: "/…" }`, answers 307.
  */
-export function redirectRules(): Record<
-	string,
-	{ redirect: { to: string; statusCode: 301 } }
-> {
+export function redirectRules(): Record<string, { redirect: { to: string; statusCode: 301 } }> {
 	return Object.fromEntries(
-		Object.entries(REDIRECTS).map(([from, to]) => [
-			from,
-			{ redirect: { to, statusCode: 301 } },
-		]),
+		Object.entries(REDIRECTS).map(([from, to]) => [from, { redirect: { to, statusCode: 301 } }]),
 	);
 }

@@ -1,39 +1,41 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+
 import { describe, expect, it } from "vitest";
+
 import { HELP, PKG_NAME, version } from "../../src/cli/help.ts";
 
 const root = join(import.meta.dirname, "..", "..");
 const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as {
-  name: string;
-  version: string;
+	name: string;
+	version: string;
 };
 
 describe("version — resolved from Testlane's own package.json", () => {
-  // Regression: the lookup matched the name "testlane" while the manifest says
-  // "@uxfront/testlane", so every run fell through to the "0.0.0" fallback.
-  it("matches the name declared in package.json", () => {
-    expect(PKG_NAME).toBe(pkg.name);
-  });
+	// Regression: the lookup matched the name "testlane" while the manifest says
+	// "@uxfront/testlane", so every run fell through to the "0.0.0" fallback.
+	it("matches the name declared in package.json", () => {
+		expect(PKG_NAME).toBe(pkg.name);
+	});
 
-  it("returns the version from package.json, not the fallback", () => {
-    expect(version()).toBe(pkg.version);
-    expect(version()).not.toBe("0.0.0");
-  });
+	it("returns the version from package.json, not the fallback", () => {
+		expect(version()).toBe(pkg.version);
+		expect(version()).not.toBe("0.0.0");
+	});
 });
 
 describe("help — verb lists", () => {
-  it("P1-C9 — lists start, stop and logs as workspace verbs and ps as a project verb", () => {
-    const section = (name: string) => HELP.split(`${name}\n`)[1]!.split("\n\n")[0]!;
-    for (const verb of ["start", "stop", "logs"]) {
-      expect(section("WORKSPACE VERBS")).toMatch(new RegExp(`^  ${verb}\\b`, "m"));
-    }
-    expect(section("PROJECT VERBS")).toMatch(/^ {2}ps\b/m);
-    expect(HELP).toContain("testlane <project> [list|clean|ps] [flags]");
-  });
+	it("P1-C9 — lists start, stop and logs as workspace verbs and ps as a project verb", () => {
+		const section = (name: string) => HELP.split(`${name}\n`)[1]!.split("\n\n")[0]!;
+		for (const verb of ["start", "stop", "logs"]) {
+			expect(section("WORKSPACE VERBS")).toMatch(new RegExp(`^  ${verb}\\b`, "m"));
+		}
+		expect(section("PROJECT VERBS")).toMatch(/^ {2}ps\b/m);
+		expect(HELP).toContain("testlane <project> [list|clean|ps] [flags]");
+	});
 
-  it("C2 — help lists mcp as a top-level verb", () => {
-    const section = HELP.split("TOP-LEVEL VERBS\n")[1]!.split("\n\n")[0]!;
-    expect(section).toMatch(/^ {2}mcp\b/m);
-  });
+	it("C2 — help lists mcp as a top-level verb", () => {
+		const section = HELP.split("TOP-LEVEL VERBS\n")[1]!.split("\n\n")[0]!;
+		expect(section).toMatch(/^ {2}mcp\b/m);
+	});
 });

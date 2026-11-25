@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { SITE_URL } from "../app/data/site";
 
 describe("SITE_URL", () => {

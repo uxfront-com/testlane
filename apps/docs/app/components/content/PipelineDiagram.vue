@@ -10,8 +10,14 @@
  * steps out by the width of the content column, not the screen: in a row when
  * the column has room, stacked when it doesn't.
  */
-import { PIPELINE_REFS, PIPELINE_STEPS, PIPELINE_SUBSTEPS, PIPELINE_VERBS, noteParts } from '~/data/pipeline';
-import type { PipelineVariant } from '~/data/pipeline';
+import {
+	PIPELINE_REFS,
+	PIPELINE_STEPS,
+	PIPELINE_SUBSTEPS,
+	PIPELINE_VERBS,
+	noteParts,
+} from "~/data/pipeline";
+import type { PipelineVariant } from "~/data/pipeline";
 
 const props = withDefaults(defineProps<{ variant?: PipelineVariant }>(), {
 	variant: "compact",
@@ -67,7 +73,16 @@ const steps = [PIPELINE_STEPS.resolve, PIPELINE_STEPS.materialize, PIPELINE_STEP
 				</div>
 
 				<span v-if="index < steps.length - 1" class="pipeline-arrow" aria-hidden="true">
-					<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<svg
+						viewBox="0 0 24 24"
+						width="20"
+						height="20"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
 						<path d="M5 12h14M13 6l6 6-6 6" />
 					</svg>
 				</span>
@@ -75,9 +90,7 @@ const steps = [PIPELINE_STEPS.resolve, PIPELINE_STEPS.materialize, PIPELINE_STEP
 		</ol>
 
 		<figcaption class="pipeline-figcaption">
-			<template v-if="detail">
-				The three steps in detail, with when each sub-step runs.
-			</template>
+			<template v-if="detail"> The three steps in detail, with when each sub-step runs. </template>
 			<template v-else>
 				Every command that opens a workspace runs these three steps, in order.
 			</template>

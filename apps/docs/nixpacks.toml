@@ -6,9 +6,7 @@
 #   env NIXPACKS_CONFIG_FILE=apps/docs/nixpacks.toml, container port 3000.
 
 [phases.install]
-cmds = [
-    'pnpm install --frozen-lockfile --filter @uxfront/docs',
-]
+cmds = ['pnpm install --frozen-lockfile --filter @uxfront/docs']
 
 [phases.build]
 dependsOn = ['install']
