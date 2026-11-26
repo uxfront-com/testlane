@@ -49,8 +49,8 @@ jobs:
           exit 1
 
   # Two legs: the floor that `engines.node` in package.json promises, and the
-  # line the repository runs on, read from .node-version. setup-node ignores
-  # whichever of the two inputs a leg leaves empty.
+  # line the repository runs on. The setup action reads .node-version unless a
+  # leg sets node-version.
   test:
     name: node ${{ matrix.name }}
     runs-on: ubuntu-latest
@@ -61,23 +61,15 @@ jobs:
           - name: 22 (floor)
             node-version: "22"
           - name: current (.node-version)
-            node-version-file: .node-version
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up pnpm
-        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
-
-      - name: Set up Node ${{ matrix.name }}
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: ${{ matrix.node-version }}
-          node-version-file: ${{ matrix.node-version-file }}
-          cache: pnpm
-
       # The CLI only, as the `docs build` job installs apps/docs only.
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile --filter @uxfront/testlane
+      - name: Setup
+        uses: uxfront-com/.github/.github/actions/setup@35f7cdaf9b3c62c04b411c6c454c6f75ae43e54b # main
+        with:
+          filter: "@uxfront/testlane"
+          node-version: ${{ matrix.node-version }}
 
       - name: Typecheck
         run: pnpm run typecheck
@@ -99,18 +91,11 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up pnpm
-        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
-
-      - name: Set up Node
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: .node-version
-          cache: pnpm
-
       # oxfmt and oxlint need only the root's dev dependencies, even for apps/docs.
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile --filter @uxfront/testlane
+      - name: Setup
+        uses: uxfront-com/.github/.github/actions/setup@35f7cdaf9b3c62c04b411c6c454c6f75ae43e54b # main
+        with:
+          filter: "@uxfront/testlane"
 
       - name: Format
         id: format
@@ -160,24 +145,15 @@ jobs:
             echo "No apps/docs changes — skipping the docs build."
           fi
 
-      - name: Set up pnpm
-        if: steps.filter.outputs.changed == 'true'
-        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
-
       # .node-version names the Node line the docs image ships on (the
       # `node:<line>-slim` images in apps/docs/Dockerfile), so keep the two in step.
-      - name: Set up Node
+      # The install's `--frozen-lockfile` is half the gate: it fails when a
+      # dependency bump in apps/docs/package.json never made it into pnpm-lock.yaml.
+      - name: Setup
         if: steps.filter.outputs.changed == 'true'
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        uses: uxfront-com/.github/.github/actions/setup@35f7cdaf9b3c62c04b411c6c454c6f75ae43e54b # main
         with:
-          node-version-file: .node-version
-          cache: pnpm
-
-      # `--frozen-lockfile` is half the gate: it fails when a dependency bump in
-      # apps/docs/package.json never made it into pnpm-lock.yaml.
-      - name: Install dependencies
-        if: steps.filter.outputs.changed == 'true'
-        run: pnpm install --frozen-lockfile --filter @uxfront/docs
+          filter: "@uxfront/docs"
 
       - name: Test
         if: steps.filter.outputs.changed == 'true'
