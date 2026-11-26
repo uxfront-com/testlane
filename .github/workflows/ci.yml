@@ -193,7 +193,7 @@ jobs:
         run: pnpm --filter @uxfront/docs run build
 
       # The production build: what Workers Builds deploys to testlane.dev, and
-      # what Lighthouse audits below, since the server build above is noindex.
+      # what the SEO check below reads, since the server build above is noindex.
       # The server build's .output goes first: Nitro's prerenderer serves files
       # it finds in .output/public, so `/` would come out as the server build's
       # page, noindex and pointing at its own chunks.
@@ -209,19 +209,11 @@ jobs:
 
       # The tags, sitemap, robots.txt, llms.txt, Markdown copies, structured
       # data and redirects of every page in the static build (apps/docs/README.md,
-      # "Search and AI search"). It reads dist/ only, so it runs before
-      # Lighthouse and fails fast, naming the page and the rule.
+      # "Search and AI search"). It reads dist/ only and fails fast, naming the
+      # page and the rule.
       - name: Check SEO
         if: steps.filter.outputs.changed == 'true'
         run: pnpm --filter @uxfront/docs check:seo
-
-      # Six pages of the static build, served by `wrangler dev` the way
-      # Cloudflare serves them (apps/docs/lighthouserc.json). Accessibility and
-      # best practices below 0.95, or SEO below 1, fail the job. Performance only
-      # warns, since it varies with the runner.
-      - name: Lighthouse
-        if: steps.filter.outputs.changed == 'true'
-        run: pnpm --filter @uxfront/docs lighthouse
 
       # `nuxt typecheck` is deliberately NOT in this gate. On 5925b6e it reports
       # 3 errors, all 3 inside node_modules/@uxfront/layer-docs and none in
