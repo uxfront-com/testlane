@@ -21,7 +21,6 @@ minimumReleaseAgeExclude:
   - "@uxfront/layer-docs@0.9.1"
   - "@uxfront/oxfmt-config@0.2.0"
   - "@uxfront/oxlint-config@0.2.0"
-  - "@uxfront/site-checks@0.1.0"
   - "@uxfront/typescript-config@0.2.0"
 
 catalog:
