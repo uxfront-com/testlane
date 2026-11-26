@@ -1,11 +1,8 @@
 import { hold } from "@uxfront/scene";
 import { describe, expect, it } from "vitest";
+
 import { lanes } from "../app/lib/formations/lanes";
-import {
-	LANES,
-	LANE_APPROACH,
-	laneProgress,
-} from "../app/lib/formations/lanes.geometry";
+import { LANES, LANE_APPROACH, laneProgress } from "../app/lib/formations/lanes.geometry";
 
 const approaches = [0, 0.25, 0.5, 0.75, 1];
 
@@ -37,10 +34,7 @@ describe("the lanes formation", () => {
 		const out: [number, number, number] = [0, 0, 0];
 		for (const anchor of held.anchors) {
 			for (const approach of approaches) {
-				const shown = anchor.place(
-					{ stage: 0, local: 1, approach, presence: 1, time: 0 },
-					out,
-				);
+				const shown = anchor.place({ stage: 0, local: 1, approach, presence: 1, time: 0 }, out);
 				expect(shown, `${anchor.id} at approach ${approach}`).toBe(1);
 			}
 		}

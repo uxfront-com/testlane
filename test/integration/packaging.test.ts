@@ -8,82 +8,94 @@
 // The whole suite runs against src/, so nothing was red. These tests exercise
 // the built entrypoint instead — the thing users actually install.
 
-import { describe, expect, it } from "vitest";
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
-import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { describe, expect, it } from "vitest";
 
 const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
 const builtCli = join(repoRoot, "dist", "bin", "testlane.js");
 
 // Spelled out, not imported from TOP_LEVEL_VERBS: a list derived from the table
 // cannot detect a verb missing from the table.
-const PROMISED_VERBS = ["setup", "projects", "doctor", "config", "completions", "help", "version", "mcp"];
+const PROMISED_VERBS = [
+	"setup",
+	"projects",
+	"doctor",
+	"config",
+	"completions",
+	"help",
+	"version",
+	"mcp",
+];
 
 // dist/ is built once for the whole run, in test/global-setup.ts.
 
 /** Run the built CLI against a config dir that does not exist yet. */
 function runBuilt(argv: Array<string>): { code: number; stdout: string; stderr: string } {
-  const tmp = mkdtempSync(join(tmpdir(), "testlane-packaging-"));
-  try {
-    const res = spawnSync("node", [builtCli, "--config-dir", join(tmp, "config"), ...argv], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-      env: { ...process.env, NO_COLOR: "1" },
-    });
-    return { code: res.status ?? -1, stdout: res.stdout, stderr: res.stderr };
-  } finally {
-    rmSync(tmp, { recursive: true, force: true });
-  }
+	const tmp = mkdtempSync(join(tmpdir(), "testlane-packaging-"));
+	try {
+		const res = spawnSync("node", [builtCli, "--config-dir", join(tmp, "config"), ...argv], {
+			encoding: "utf8",
+			stdio: ["ignore", "pipe", "pipe"],
+			env: { ...process.env, NO_COLOR: "1" },
+		});
+		return { code: res.status ?? -1, stdout: res.stdout, stderr: res.stderr };
+	} finally {
+		rmSync(tmp, { recursive: true, force: true });
+	}
 }
 
 describe("packaging — the built CLI ships every command", () => {
-  it("emits a module for every command main() dispatches", () => {
-    expect(existsSync(builtCli)).toBe(true);
-    // setup.js was the file missing from the published tarball.
-    expect(existsSync(join(repoRoot, "dist", "src", "commands", "setup.js"))).toBe(true);
-  });
+	it("emits a module for every command main() dispatches", () => {
+		expect(existsSync(builtCli)).toBe(true);
+		// setup.js was the file missing from the published tarball.
+		expect(existsSync(join(repoRoot, "dist", "src", "commands", "setup.js"))).toBe(true);
+	});
 
-  it("ships `testlane` as the only binary, at dist/bin/testlane.js", () => {
-    const pkg = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8")) as {
-      name: string;
-      version: string;
-      bin: Record<string, string>;
-    };
-    expect(pkg.name).toBe("@uxfront/testlane");
-    expect(pkg.bin).toEqual({ testlane: "./dist/bin/testlane.js" });
-    expect(join(repoRoot, pkg.bin.testlane!)).toBe(builtCli);
-  });
+	it("ships `testlane` as the only binary, at dist/bin/testlane.js", () => {
+		const pkg = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8")) as {
+			name: string;
+			version: string;
+			bin: Record<string, string>;
+		};
+		expect(pkg.name).toBe("@uxfront/testlane");
+		expect(pkg.bin).toEqual({ testlane: "./dist/bin/testlane.js" });
+		expect(join(repoRoot, pkg.bin.testlane!)).toBe(builtCli);
+	});
 
-  it("prints `testlane <version>` from the built entrypoint", () => {
-    const pkg = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8")) as { version: string };
-    const r = runBuilt(["version"]);
-    expect(r.code).toBe(0);
-    expect(r.stdout).toBe(`testlane ${pkg.version}\n`);
-  });
+	it("prints `testlane <version>` from the built entrypoint", () => {
+		const pkg = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8")) as {
+			version: string;
+		};
+		const r = runBuilt(["version"]);
+		expect(r.code).toBe(0);
+		expect(r.stdout).toBe(`testlane ${pkg.version}\n`);
+	});
 
-  it.each(PROMISED_VERBS)("resolves '%s' as a verb, not as a project name", (verb) => {
-    const r = runBuilt([verb]);
-    // The verb may still fail for its own reasons (missing config dir, missing
-    // required flag). It must never be mistaken for a project.
-    expect(r.stderr).not.toContain(`unknown project '${verb}'`);
-  });
+	it.each(PROMISED_VERBS)("resolves '%s' as a verb, not as a project name", (verb) => {
+		const r = runBuilt([verb]);
+		// The verb may still fail for its own reasons (missing config dir, missing
+		// required flag). It must never be mistaken for a project.
+		expect(r.stderr).not.toContain(`unknown project '${verb}'`);
+	});
 
-  it("runs `setup` end-to-end from the built entrypoint", () => {
-    const r = runBuilt([
-      "--dry-run",
-      "setup",
-      "--name",
-      "demo",
-      "--repo",
-      "git@github.com:uxfront-com/testlane.git",
-      "--root",
-      "/tmp/testlane-packaging-root",
-    ]);
-    expect(r.stderr).toBe("");
-    expect(r.code).toBe(0);
-    expect(r.stdout).toContain("demo.toml");
-  });
+	it("runs `setup` end-to-end from the built entrypoint", () => {
+		const r = runBuilt([
+			"--dry-run",
+			"setup",
+			"--name",
+			"demo",
+			"--repo",
+			"git@github.com:uxfront-com/testlane.git",
+			"--root",
+			"/tmp/testlane-packaging-root",
+		]);
+		expect(r.stderr).toBe("");
+		expect(r.code).toBe(0);
+		expect(r.stdout).toContain("demo.toml");
+	});
 });

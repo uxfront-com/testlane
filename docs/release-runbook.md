@@ -1,12 +1,14 @@
 # Release runbook
 
 `@uxfront/testlane` is published by `.github/workflows/changesets.yml`, which runs on
-every push to `main`. Releases are driven by [Changesets](https://github.com/changesets/changesets);
+every push to `main`. It calls the shared release workflow, `release.yml` in
+[`uxfront-com/.github`](https://github.com/uxfront-com/.github), pinned by commit
+SHA, and that workflow runs every job. Releases are driven by [Changesets](https://github.com/changesets/changesets);
 `.changeset/README.md` covers the day-to-day author workflow.
 
 **Nobody cuts a tag, and nobody runs `npm publish`.** `changeset version` writes
-the version commit, and `changeset publish` pushes the git tag and creates the
-GitHub release. A hand-pushed tag releases nothing.
+the version commit, and the shared workflow's publish job pushes the git tag and
+creates the GitHub release. A hand-pushed tag releases nothing.
 
 | Step | Who |
 |---|---|
@@ -37,18 +39,27 @@ entirely by whether `.changeset/` holds any changesets.
 
 ## What gates the publish
 
-The job fails, and nothing reaches npm, if any of these fail.
+The shared workflow splits the publish in two. Its **Pack packages** job builds
+and packs `@uxfront/testlane` with read-only access, and only then does the
+**Publish to npm** job, the one job that holds the OIDC token, publish the
+tarball. Nothing reaches npm if any of these fail in the pack job:
 
-1. **`pnpm install --frozen-lockfile`** — the lockfile must match
+1. **`pnpm install --frozen-lockfile`**: the lockfile must match
    `package.json`.
 2. **`pnpm run typecheck`**.
-3. **`pnpm test`** — the full suite, including the packaging guard.
-4. **`pnpm run guard:packaging`** — run again by the `release` script as the
-   last thing before `changeset publish`. It rebuilds, runs the *built*
-   entrypoint, and asserts that every promised verb resolves as a verb rather
-   than as a project name, and that `dist/src/commands/setup.js` exists. This is
-   the gate the `1.0.0` defect would have tripped. It lives in the `release`
-   script on purpose, so editing the workflow cannot bypass it.
+3. **`pnpm test`**: the full suite, including the packaging guard.
+4. **`pnpm run build`**: compiles `dist/`, which is what the tarball ships.
+5. **`pnpm run guard:packaging`**: run again as the last step of the build. It
+   rebuilds, runs the *built* entrypoint, and asserts that every promised verb
+   resolves as a verb rather than as a project name, and that
+   `dist/src/commands/setup.js` exists. This is the gate the `1.0.0` defect
+   would have tripped.
+
+Steps 2 to 5 are the `build` input in `changesets.yml`, so a change that drops
+one of them shows in that file's diff. The shared workflow takes the pnpm
+version from `packageManager` in `package.json` and the Node version from
+`.node-version`, so `changesets.yml` passes no `pnpm-version` or
+`node-version`.
 
 `testlane version` reads `version` from the package's own `package.json` at runtime,
 so the published CLI reports whatever `changeset version` wrote. The two cannot
@@ -62,7 +73,11 @@ credential that expires with the run.
 
 The trusted publisher is bound to the workflow **filename**. Renaming or moving
 `.github/workflows/changesets.yml` revokes the credential, and the release then
-fails with a `404` that reads like a missing package.
+fails with a `404` that reads like a missing package. npm checks the calling
+workflow's filename, not `release.yml`'s, which is why the caller keeps its name.
+
+Trusted publishing needs npm 11.5.1 or later, so the publish job stops before
+publishing when the npm that comes with `.node-version`'s Node is older.
 
 The repository is public, so every release from CI carries a provenance
 statement, and npm accepts it only when `repository.url` in `package.json`
@@ -86,7 +101,7 @@ names this repository.
 ## After the merge
 
 1. **Watch the run.** `gh run watch` on the `Changesets` workflow. A failure
-   before `changeset publish` means nothing was published; fix it and push to
+   before the **Publish to npm** job means nothing was published; fix it and push to
    `main` again, and the same publish path re-runs.
 
 2. **Smoke the published artifact** (≤5 minutes), against a clean prefix so you
@@ -151,7 +166,8 @@ and the release is never that urgent.
 
 **`404` on publish.** Almost always the trusted publisher, not the package.
 Check that the publisher registered on npmjs.com still names
-`.github/workflows/changesets.yml`, and that `pnpm/action-setup` is v6 or later.
+`.github/workflows/changesets.yml`, and that the shared `release.yml` it pins
+uses `pnpm/action-setup` v6 or later.
 Check two more settings on the same page. **Allowed actions** must include
 `npm publish`: a publisher created after 2026-09-03 allows only
 `npm stage publish` until you tick it. And a new publisher expires if its first

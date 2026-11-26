@@ -1,8 +1,15 @@
-import { addServerTemplate, addTemplate, addTypeTemplate, defineNuxtModule, useLogger } from "@nuxt/kit";
 import { execFile } from "node:child_process";
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import { promisify } from "node:util";
+
+import {
+	addServerTemplate,
+	addTemplate,
+	addTypeTemplate,
+	defineNuxtModule,
+	useLogger,
+} from "@nuxt/kit";
 
 /** Runs git in a directory and returns what it printed, trimmed. */
 export type Git = (args: Array<string>) => Promise<string>;
@@ -65,7 +72,9 @@ export async function readGitDates(files: Array<string>, git: Git): Promise<GitD
 /** What git said, or the error's own first line when it said nothing. */
 function message(error: unknown) {
 	const stderr = (error as { stderr?: unknown } | null)?.stderr;
-	const text = (typeof stderr === "string" && stderr.trim()) || (error instanceof Error ? error.message : String(error));
+	const text =
+		(typeof stderr === "string" && stderr.trim()) ||
+		(error instanceof Error ? error.message : String(error));
 	return text.trim().split("\n")[0] ?? text;
 }
 
@@ -123,8 +132,7 @@ export default defineNuxtModule({
 			}
 		}
 
-		const getContents = () =>
-			`export const GIT_DATES = ${JSON.stringify(dates, null, "\t")};\n`;
+		const getContents = () => `export const GIT_DATES = ${JSON.stringify(dates, null, "\t")};\n`;
 		addTemplate({ filename: "git-dates.mjs", getContents });
 		addServerTemplate({ filename: "#git-dates", getContents });
 		addTypeTemplate(

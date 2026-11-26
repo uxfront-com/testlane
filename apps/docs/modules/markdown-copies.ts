@@ -1,6 +1,8 @@
-import { addServerTemplate, addTypeTemplate, defineNuxtModule } from "@nuxt/kit";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+
+import { addServerTemplate, addTypeTemplate, defineNuxtModule } from "@nuxt/kit";
+
 import { stripFrontmatter } from "../server/utils/markdown-copy";
 
 /**

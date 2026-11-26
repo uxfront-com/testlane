@@ -1,308 +1,360 @@
-import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { parse } from '../../src/cli/parse.ts';
-import type { ParseDeps } from '../../src/cli/parse.ts';
+
+import { describe, expect, it } from "vitest";
+
+import { parse } from "../../src/cli/parse.ts";
+import type { ParseDeps } from "../../src/cli/parse.ts";
 import { TOP_LEVEL_VERBS } from "../../src/cli/verbs.ts";
 import { parseUrlInput } from "../../src/core/resolve.ts";
 
 const deps: ParseDeps = {
-  projectExists: (n) => n === "n8n" || n === "styleframe",
-  knownProjects: () => ["n8n", "styleframe"],
-  projectCommandNames: (p) => (p === "n8n" ? ["dev", "test"] : []),
-  projectDefaultCommand: () => "code",
-  resolveUrlProject: (url) => {
-    const parsed = parseUrlInput(url);
-    if (parsed && parsed.coords.owner === "n8n-io" && parsed.coords.repo === "n8n") {
-      return { project: "n8n", ref: parsed.ref };
-    }
-    return null;
-  },
+	projectExists: (n) => n === "n8n" || n === "styleframe",
+	knownProjects: () => ["n8n", "styleframe"],
+	projectCommandNames: (p) => (p === "n8n" ? ["dev", "test"] : []),
+	projectDefaultCommand: () => "code",
+	resolveUrlProject: (url) => {
+		const parsed = parseUrlInput(url);
+		if (parsed && parsed.coords.owner === "n8n-io" && parsed.coords.repo === "n8n") {
+			return { project: "n8n", ref: parsed.ref };
+		}
+		return null;
+	},
 };
 
 const p = (argv: Array<string>) => parse(argv, deps);
 
 describe("parse — §4.4 canonical examples", () => {
-  it("bare PR → default_command (code)", () => {
-    const r = p(["n8n", "19234"]);
-    expect(r.kind).toBe("workspace");
-    if (r.kind !== "workspace") {return;}
-    expect(r.project).toBe("n8n");
-    expect(r.ref).toEqual({ kind: "pr", number: 19_234 });
-    expect(r.verb).toBe("code");
-  });
+	it("bare PR → default_command (code)", () => {
+		const r = p(["n8n", "19234"]);
+		expect(r.kind).toBe("workspace");
+		if (r.kind !== "workspace") {
+			return;
+		}
+		expect(r.project).toBe("n8n");
+		expect(r.ref).toEqual({ kind: "pr", number: 19_234 });
+		expect(r.verb).toBe("code");
+	});
 
-  it("explicit code verb", () => {
-    const r = p(["n8n", "19234", "code"]);
-    expect(r.kind === "workspace" && r.verb).toBe("code");
-  });
+	it("explicit code verb", () => {
+		const r = p(["n8n", "19234", "code"]);
+		expect(r.kind === "workspace" && r.verb).toBe("code");
+	});
 
-  it("pr/<n> run dev", () => {
-    const r = p(["n8n", "pr/19234", "run", "dev"]);
-    expect(r.kind).toBe("workspace");
-    if (r.kind !== "workspace") {return;}
-    expect(r.ref).toEqual({ kind: "pr", number: 19_234 });
-    expect(r.verb).toBe("run");
-    expect(r.args).toEqual(["dev"]);
-  });
+	it("pr/<n> run dev", () => {
+		const r = p(["n8n", "pr/19234", "run", "dev"]);
+		expect(r.kind).toBe("workspace");
+		if (r.kind !== "workspace") {
+			return;
+		}
+		expect(r.ref).toEqual({ kind: "pr", number: 19_234 });
+		expect(r.verb).toBe("run");
+		expect(r.args).toEqual(["dev"]);
+	});
 
-  it("#<n> shell", () => {
-    const r = p(["n8n", "#19234", "shell"]);
-    expect(r.kind).toBe("workspace");
-    if (r.kind !== "workspace") {return;}
-    expect(r.ref).toEqual({ kind: "pr", number: 19_234 });
-    expect(r.verb).toBe("shell");
-  });
+	it("#<n> shell", () => {
+		const r = p(["n8n", "#19234", "shell"]);
+		expect(r.kind).toBe("workspace");
+		if (r.kind !== "workspace") {
+			return;
+		}
+		expect(r.ref).toEqual({ kind: "pr", number: 19_234 });
+		expect(r.verb).toBe("shell");
+	});
 
-  it("branch checkout", () => {
-    const r = p(["n8n", "ai/fix-canvas-drag", "checkout"]);
-    expect(r.kind).toBe("workspace");
-    if (r.kind !== "workspace") {return;}
-    expect(r.ref).toEqual({ kind: "branch", name: "ai/fix-canvas-drag" });
-    expect(r.verb).toBe("checkout");
-  });
+	it("branch checkout", () => {
+		const r = p(["n8n", "ai/fix-canvas-drag", "checkout"]);
+		expect(r.kind).toBe("workspace");
+		if (r.kind !== "workspace") {
+			return;
+		}
+		expect(r.ref).toEqual({ kind: "branch", name: "ai/fix-canvas-drag" });
+		expect(r.verb).toBe("checkout");
+	});
 
-  it("command-name sugar → run", () => {
-    const r = p(["n8n", "ai/fix-canvas-drag", "dev"]);
-    expect(r.kind).toBe("workspace");
-    if (r.kind !== "workspace") {return;}
-    expect(r.verb).toBe("run");
-    expect(r.commandName).toBe("dev");
-    expect(r.args).toEqual(["dev"]);
-  });
+	it("command-name sugar → run", () => {
+		const r = p(["n8n", "ai/fix-canvas-drag", "dev"]);
+		expect(r.kind).toBe("workspace");
+		if (r.kind !== "workspace") {
+			return;
+		}
+		expect(r.verb).toBe("run");
+		expect(r.commandName).toBe("dev");
+		expect(r.args).toEqual(["dev"]);
+	});
 
-  it("last-used ref '-'", () => {
-    const r = p(["n8n", "-", "run", "test"]);
-    expect(r.kind).toBe("workspace");
-    if (r.kind !== "workspace") {return;}
-    expect(r.ref).toEqual({ kind: "last" });
-    expect(r.verb).toBe("run");
-    expect(r.args).toEqual(["test"]);
-  });
+	it("last-used ref '-'", () => {
+		const r = p(["n8n", "-", "run", "test"]);
+		expect(r.kind).toBe("workspace");
+		if (r.kind !== "workspace") {
+			return;
+		}
+		expect(r.ref).toEqual({ kind: "last" });
+		expect(r.verb).toBe("run");
+		expect(r.args).toEqual(["test"]);
+	});
 
-  it("adopt path ref", () => {
-    const r = p(["n8n", "~/agents/wt-3", "run", "test"]);
-    expect(r.kind).toBe("workspace");
-    if (r.kind !== "workspace") {return;}
-    expect(r.ref).toEqual({ kind: "path", path: "~/agents/wt-3" });
-  });
+	it("adopt path ref", () => {
+		const r = p(["n8n", "~/agents/wt-3", "run", "test"]);
+		expect(r.kind).toBe("workspace");
+		if (r.kind !== "workspace") {
+			return;
+		}
+		expect(r.ref).toEqual({ kind: "path", path: "~/agents/wt-3" });
+	});
 
-  it("URL form — PR", () => {
-    const r = p(["https://github.com/n8n-io/n8n/pull/19234", "code"]);
-    expect(r.kind).toBe("workspace");
-    if (r.kind !== "workspace") {return;}
-    expect(r.project).toBe("n8n");
-    expect(r.ref).toEqual({ kind: "pr", number: 19_234 });
-    expect(r.verb).toBe("code");
-  });
+	it("URL form — PR", () => {
+		const r = p(["https://github.com/n8n-io/n8n/pull/19234", "code"]);
+		expect(r.kind).toBe("workspace");
+		if (r.kind !== "workspace") {
+			return;
+		}
+		expect(r.project).toBe("n8n");
+		expect(r.ref).toEqual({ kind: "pr", number: 19_234 });
+		expect(r.verb).toBe("code");
+	});
 
-  it("URL form — tree/branch", () => {
-    const r = p(["https://github.com/n8n-io/n8n/tree/ai/fix-canvas-drag", "diff"]);
-    expect(r.kind).toBe("workspace");
-    if (r.kind !== "workspace") {return;}
-    expect(r.ref).toEqual({ kind: "branch", name: "ai/fix-canvas-drag" });
-    expect(r.verb).toBe("diff");
-  });
+	it("URL form — tree/branch", () => {
+		const r = p(["https://github.com/n8n-io/n8n/tree/ai/fix-canvas-drag", "diff"]);
+		expect(r.kind).toBe("workspace");
+		if (r.kind !== "workspace") {
+			return;
+		}
+		expect(r.ref).toEqual({ kind: "branch", name: "ai/fix-canvas-drag" });
+		expect(r.verb).toBe("diff");
+	});
 
-  it("exec with passthrough", () => {
-    const r = p(["n8n", "19234", "exec", "--", "pnpm", "why", "lodash"]);
-    expect(r.kind).toBe("workspace");
-    if (r.kind !== "workspace") {return;}
-    expect(r.verb).toBe("exec");
-    expect(r.passthrough).toEqual(["pnpm", "why", "lodash"]);
-  });
+	it("exec with passthrough", () => {
+		const r = p(["n8n", "19234", "exec", "--", "pnpm", "why", "lodash"]);
+		expect(r.kind).toBe("workspace");
+		if (r.kind !== "workspace") {
+			return;
+		}
+		expect(r.verb).toBe("exec");
+		expect(r.passthrough).toEqual(["pnpm", "why", "lodash"]);
+	});
 
-  it("run dev with passthrough appended", () => {
-    const r = p(["n8n", "19234", "run", "dev", "--", "--host", "0.0.0.0"]);
-    expect(r.kind).toBe("workspace");
-    if (r.kind !== "workspace") {return;}
-    expect(r.verb).toBe("run");
-    expect(r.args).toEqual(["dev"]);
-    expect(r.passthrough).toEqual(["--host", "0.0.0.0"]);
-  });
+	it("run dev with passthrough appended", () => {
+		const r = p(["n8n", "19234", "run", "dev", "--", "--host", "0.0.0.0"]);
+		expect(r.kind).toBe("workspace");
+		if (r.kind !== "workspace") {
+			return;
+		}
+		expect(r.verb).toBe("run");
+		expect(r.args).toEqual(["dev"]);
+		expect(r.passthrough).toEqual(["--host", "0.0.0.0"]);
+	});
 
-  it("list --json", () => {
-    const r = p(["n8n", "list", "--json"]);
-    expect(r.kind).toBe("project");
-    if (r.kind !== "project") {return;}
-    expect(r.verb).toBe("list");
-    expect(r.global.json).toBe(true);
-  });
+	it("list --json", () => {
+		const r = p(["n8n", "list", "--json"]);
+		expect(r.kind).toBe("project");
+		if (r.kind !== "project") {
+			return;
+		}
+		expect(r.verb).toBe("list");
+		expect(r.global.json).toBe(true);
+	});
 
-  it("bare project → list", () => {
-    const r = p(["n8n"]);
-    expect(r.kind).toBe("project");
-    if (r.kind !== "project") {return;}
-    expect(r.verb).toBe("list");
-  });
+	it("bare project → list", () => {
+		const r = p(["n8n"]);
+		expect(r.kind).toBe("project");
+		if (r.kind !== "project") {
+			return;
+		}
+		expect(r.verb).toBe("list");
+	});
 
-  it("sync --fresh", () => {
-    const r = p(["n8n", "19234", "sync", "--fresh"]);
-    expect(r.kind === "workspace" && r.verb).toBe("sync");
-    if (r.kind === "workspace") {expect(r.args).toEqual(["--fresh"]);}
-  });
+	it("sync --fresh", () => {
+		const r = p(["n8n", "19234", "sync", "--fresh"]);
+		expect(r.kind === "workspace" && r.verb).toBe("sync");
+		if (r.kind === "workspace") {
+			expect(r.args).toEqual(["--fresh"]);
+		}
+	});
 
-  it("top-level projects / doctor", () => {
-    expect(p(["projects"]).kind).toBe("top");
-    const d = p(["doctor"]);
-    expect(d.kind === "top" && d.verb).toBe("doctor");
-  });
+	it("top-level projects / doctor", () => {
+		expect(p(["projects"]).kind).toBe("top");
+		const d = p(["doctor"]);
+		expect(d.kind === "top" && d.verb).toBe("doctor");
+	});
 
-  it("config edit n8n", () => {
-    const r = p(["config", "edit", "n8n"]);
-    expect(r.kind).toBe("top");
-    if (r.kind !== "top") {return;}
-    expect(r.verb).toBe("config");
-    expect(r.args).toEqual(["edit", "n8n"]);
-  });
+	it("config edit n8n", () => {
+		const r = p(["config", "edit", "n8n"]);
+		expect(r.kind).toBe("top");
+		if (r.kind !== "top") {
+			return;
+		}
+		expect(r.verb).toBe("config");
+		expect(r.args).toEqual(["edit", "n8n"]);
+	});
 
-  it("no args → help", () => {
-    const r = p([]);
-    expect(r.kind === "top" && r.verb).toBe("help");
-  });
+	it("no args → help", () => {
+		const r = p([]);
+		expect(r.kind === "top" && r.verb).toBe("help");
+	});
 });
 
 describe("parse — global flags & disambiguators", () => {
-  it("--dry-run anywhere before verb", () => {
-    const r = p(["--dry-run", "n8n", "19234", "checkout"]);
-    expect(r.global.dryRun).toBe(true);
-  });
+	it("--dry-run anywhere before verb", () => {
+		const r = p(["--dry-run", "n8n", "19234", "checkout"]);
+		expect(r.global.dryRun).toBe(true);
+	});
 
-  it("--branch forces a numeric branch name", () => {
-    const r = p(["n8n", "--branch", "1234", "code"]);
-    expect(r.kind).toBe("workspace");
-    if (r.kind !== "workspace") {return;}
-    expect(r.ref).toEqual({ kind: "branch", name: "1234" });
-    expect(r.verb).toBe("code");
-  });
+	it("--branch forces a numeric branch name", () => {
+		const r = p(["n8n", "--branch", "1234", "code"]);
+		expect(r.kind).toBe("workspace");
+		if (r.kind !== "workspace") {
+			return;
+		}
+		expect(r.ref).toEqual({ kind: "branch", name: "1234" });
+		expect(r.verb).toBe("code");
+	});
 
-  it("--pr forces PR interpretation", () => {
-    const r = p(["n8n", "--pr", "42", "shell"]);
-    expect(r.kind === "workspace" && r.ref).toEqual({ kind: "pr", number: 42 });
-  });
+	it("--pr forces PR interpretation", () => {
+		const r = p(["n8n", "--pr", "42", "shell"]);
+		expect(r.kind === "workspace" && r.ref).toEqual({ kind: "pr", number: 42 });
+	});
 });
 
 describe("parse — top-level verbs precede project lookup (UXF-265)", () => {
-  // Spelled out on purpose. Iterating TOP_LEVEL_VERBS would make this a
-  // tautology: dropping a verb from the table would delete its own test, which
-  // is exactly how `setup` shipped unreachable.
-  const PROMISED_VERBS = [
-    "setup",
-    "projects",
-    "doctor",
-    "config",
-    "completions",
-    "help",
-    "version",
-    "mcp",
-  ];
+	// Spelled out on purpose. Iterating TOP_LEVEL_VERBS would make this a
+	// tautology: dropping a verb from the table would delete its own test, which
+	// is exactly how `setup` shipped unreachable.
+	const PROMISED_VERBS = [
+		"setup",
+		"projects",
+		"doctor",
+		"config",
+		"completions",
+		"help",
+		"version",
+		"mcp",
+	];
 
-  it.each(PROMISED_VERBS)("'%s' parses as a top-level verb, not a project name", (verb) => {
-    const r = p([verb]);
-    expect(r.kind).toBe("top");
-    expect(r.kind === "top" && r.verb).toBe(verb);
-  });
+	it.each(PROMISED_VERBS)("'%s' parses as a top-level verb, not a project name", (verb) => {
+		const r = p([verb]);
+		expect(r.kind).toBe("top");
+		expect(r.kind === "top" && r.verb).toBe(verb);
+	});
 
-  it("main() dispatches every promised verb", () => {
-    // A verb in the table but absent from the dispatch switch falls off the end
-    // of main(). Keeps the two lists in step.
-    const dispatchSource = readFileSync(new URL("../../src/main.ts", import.meta.url), "utf8");
-    for (const verb of PROMISED_VERBS) {
-      if (verb === "help" || verb === "version") {continue;} // handled inline, no command module
-      expect(dispatchSource).toContain(`case "${verb}":`);
-    }
-  });
+	it("main() dispatches every promised verb", () => {
+		// A verb in the table but absent from the dispatch switch falls off the end
+		// of main(). Keeps the two lists in step.
+		const dispatchSource = readFileSync(new URL("../../src/main.ts", import.meta.url), "utf8");
+		for (const verb of PROMISED_VERBS) {
+			if (verb === "help" || verb === "version") {
+				continue;
+			} // handled inline, no command module
+			expect(dispatchSource).toContain(`case "${verb}":`);
+		}
+	});
 
-  it("the verb table carries no verb the promised list omits", () => {
-    // The reverse direction: a new verb must be added to PROMISED_VERBS above,
-    // which forces the parse + packaging coverage to grow with it.
-    expect([...TOP_LEVEL_VERBS].sort()).toEqual([...PROMISED_VERBS].sort());
-  });
+	it("the verb table carries no verb the promised list omits", () => {
+		// The reverse direction: a new verb must be added to PROMISED_VERBS above,
+		// which forces the parse + packaging coverage to grow with it.
+		expect([...TOP_LEVEL_VERBS].sort()).toEqual([...PROMISED_VERBS].sort());
+	});
 });
 
 describe("parse — start, stop, logs and ps", () => {
-  // "start" and "ps" are configured commands here too: the built-in verbs win.
-  const withCommands: ParseDeps = { ...deps, projectCommandNames: () => ["dev", "start", "logs", "ps"] };
-  const q = (argv: Array<string>) => parse(argv, withCommands);
+	// "start" and "ps" are configured commands here too: the built-in verbs win.
+	const withCommands: ParseDeps = {
+		...deps,
+		projectCommandNames: () => ["dev", "start", "logs", "ps"],
+	};
+	const q = (argv: Array<string>) => parse(argv, withCommands);
 
-  it("P1-C8 — start is a workspace verb and passes --port through for start to reject", () => {
-    const r = q(["n8n", "main", "start", "dev", "--port", "1"]);
-    expect(r.kind === "workspace" && r.verb).toBe("start");
-    if (r.kind !== "workspace") {return;}
-    expect(r.commandName).toBeUndefined();
-    expect(r.args).toEqual(["dev", "--port", "1"]);
-  });
+	it("P1-C8 — start is a workspace verb and passes --port through for start to reject", () => {
+		const r = q(["n8n", "main", "start", "dev", "--port", "1"]);
+		expect(r.kind === "workspace" && r.verb).toBe("start");
+		if (r.kind !== "workspace") {
+			return;
+		}
+		expect(r.commandName).toBeUndefined();
+		expect(r.args).toEqual(["dev", "--port", "1"]);
+	});
 
-  it.each(["stop", "logs"])("P1-C9 — %s is a workspace verb, not the configured command", (verb) => {
-    const r = q(["n8n", "pr/7", verb]);
-    expect(r.kind === "workspace" && r.verb).toBe(verb);
-    if (r.kind !== "workspace") {return;}
-    expect(r.commandName).toBeUndefined();
-  });
+	it.each(["stop", "logs"])(
+		"P1-C9 — %s is a workspace verb, not the configured command",
+		(verb) => {
+			const r = q(["n8n", "pr/7", verb]);
+			expect(r.kind === "workspace" && r.verb).toBe(verb);
+			if (r.kind !== "workspace") {
+				return;
+			}
+			expect(r.commandName).toBeUndefined();
+		},
+	);
 
-  it("P1-C9 — ps is a project verb", () => {
-    const r = q(["n8n", "ps", "--json"]);
-    expect(r.kind === "project" && r.verb).toBe("ps");
-    expect(r.global.json).toBe(true);
-  });
+	it("P1-C9 — ps is a project verb", () => {
+		const r = q(["n8n", "ps", "--json"]);
+		expect(r.kind === "project" && r.verb).toBe("ps");
+		expect(r.global.json).toBe(true);
+	});
 
-  it("P1-C9 — run <name> still reaches a configured command named like a verb", () => {
-    const r = q(["n8n", "main", "run", "start"]);
-    expect(r.kind === "workspace" && r.verb).toBe("run");
-    if (r.kind !== "workspace") {return;}
-    expect(r.args).toEqual(["start"]);
-  });
+	it("P1-C9 — run <name> still reaches a configured command named like a verb", () => {
+		const r = q(["n8n", "main", "run", "start"]);
+		expect(r.kind === "workspace" && r.verb).toBe("run");
+		if (r.kind !== "workspace") {
+			return;
+		}
+		expect(r.args).toEqual(["start"]);
+	});
 });
 
 describe("parse — error cases", () => {
-  it("unknown project throws (exit 3)", () => {
-    expect(() => p(["nope", "19234"])).toThrow(/unknown project/);
-  });
+	it("unknown project throws (exit 3)", () => {
+		expect(() => p(["nope", "19234"])).toThrow(/unknown project/);
+	});
 
-  it("unknown command throws (exit 2)", () => {
-    expect(() => p(["n8n", "main", "frobnicate"])).toThrow(/unknown command/);
-  });
+	it("unknown command throws (exit 2)", () => {
+		expect(() => p(["n8n", "main", "frobnicate"])).toThrow(/unknown command/);
+	});
 
-  it("flag before command throws", () => {
-    expect(() => p(["--nope", "n8n"])).toThrow(/unexpected flag/);
-  });
+	it("flag before command throws", () => {
+		expect(() => p(["--nope", "n8n"])).toThrow(/unexpected flag/);
+	});
 
-  it("URL with no matching project throws (exit 4)", () => {
-    expect(() => p(["https://github.com/other/repo/pull/1", "code"])).toThrow(/no configured project/);
-  });
+	it("URL with no matching project throws (exit 4)", () => {
+		expect(() => p(["https://github.com/other/repo/pull/1", "code"])).toThrow(
+			/no configured project/,
+		);
+	});
 
-  it("two disambiguators throw", () => {
-    expect(() => p(["n8n", "--pr", "1", "--branch", "x", "code"])).toThrow(/only one ref disambiguator/);
-  });
+	it("two disambiguators throw", () => {
+		expect(() => p(["n8n", "--pr", "1", "--branch", "x", "code"])).toThrow(
+			/only one ref disambiguator/,
+		);
+	});
 });
 
 describe("parse — mcp (ADR-003)", () => {
-  it("C2 — parse(['mcp']) is the top-level verb mcp", () => {
-    const r = p(["mcp"]);
-    expect(r.kind).toBe("top");
-    expect(r.kind === "top" && r.verb).toBe("mcp");
-    expect(r.kind === "top" && r.args).toEqual([]);
-  });
+	it("C2 — parse(['mcp']) is the top-level verb mcp", () => {
+		const r = p(["mcp"]);
+		expect(r.kind).toBe("top");
+		expect(r.kind === "top" && r.verb).toBe("mcp");
+		expect(r.kind === "top" && r.args).toEqual([]);
+	});
 
-  it("C2 — mcp with an argument exits 2", async () => {
-    const { main } = await import("../../src/main.ts");
-    const { mkdtempSync, rmSync } = await import("node:fs");
-    const { tmpdir } = await import("node:os");
-    const { join } = await import("node:path");
-    const tmp = mkdtempSync(join(tmpdir(), "testlane-mcp-args-"));
-    let err = "";
-    const orig = process.stderr.write.bind(process.stderr);
-    process.stderr.write = ((chunk: string | Uint8Array) => {
-      err += typeof chunk === "string" ? chunk : Buffer.from(chunk).toString();
-      return true;
-    }) as typeof process.stderr.write;
-    try {
-      expect(await main(["--config-dir", join(tmp, "missing"), "mcp", "extra"])).toBe(2);
-      expect(await main(["--config-dir", join(tmp, "missing"), "mcp", "--port", "1"])).toBe(2);
-    } finally {
-      process.stderr.write = orig;
-      rmSync(tmp, { recursive: true, force: true });
-    }
-    expect(err).toContain("error(E_USAGE): mcp takes no arguments, got 'extra'");
-    expect(err).toContain("error(E_USAGE): unknown flag '--port'");
-  });
+	it("C2 — mcp with an argument exits 2", async () => {
+		const { main } = await import("../../src/main.ts");
+		const { mkdtempSync, rmSync } = await import("node:fs");
+		const { tmpdir } = await import("node:os");
+		const { join } = await import("node:path");
+		const tmp = mkdtempSync(join(tmpdir(), "testlane-mcp-args-"));
+		let err = "";
+		const orig = process.stderr.write.bind(process.stderr);
+		process.stderr.write = ((chunk: string | Uint8Array) => {
+			err += typeof chunk === "string" ? chunk : Buffer.from(chunk).toString();
+			return true;
+		}) as typeof process.stderr.write;
+		try {
+			expect(await main(["--config-dir", join(tmp, "missing"), "mcp", "extra"])).toBe(2);
+			expect(await main(["--config-dir", join(tmp, "missing"), "mcp", "--port", "1"])).toBe(2);
+		} finally {
+			process.stderr.write = orig;
+			rmSync(tmp, { recursive: true, force: true });
+		}
+		expect(err).toContain("error(E_USAGE): mcp takes no arguments, got 'extra'");
+		expect(err).toContain("error(E_USAGE): unknown flag '--port'");
+	});
 });

@@ -24,8 +24,7 @@ async function copy(text: string) {
 }
 
 const markdownLink = computed(
-	() =>
-		`${window?.location?.origin}${appBaseURL.replace(/\/?$/, "/")}raw${route.path}.md`,
+	() => `${window?.location?.origin}${appBaseURL.replace(/\/?$/, "/")}raw${route.path}.md`,
 );
 const items = computed(() => [
 	[

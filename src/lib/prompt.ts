@@ -5,33 +5,44 @@
 
 import { readSync } from "node:fs";
 
-export function promptLine(message: string, out: NodeJS.WritableStream = process.stdout): string | null {
-  out.write(`${message} `);
+export function promptLine(
+	message: string,
+	out: NodeJS.WritableStream = process.stdout,
+): string | null {
+	out.write(`${message} `);
 
-  const buf = Buffer.alloc(256);
-  let input = "";
-  let readAny = false;
+	const buf = Buffer.alloc(256);
+	let input = "";
+	let readAny = false;
 
-  for (;;) {
-    let bytes: number;
-    try {
-      bytes = readSync(0, buf, 0, buf.length, null);
-    } catch (error) {
-      const code = (error as NodeJS.ErrnoException).code;
-      if (code === "EAGAIN") {continue;} // stdin not ready yet; retry
-      if (code === "EOF") {break;}
-      throw error;
-    }
-    if (bytes === 0) {break;} // EOF
-    readAny = true;
-    input += buf.toString("utf8", 0, bytes);
-    const nl = input.indexOf("\n");
-    if (nl !== -1) {
-      input = input.slice(0, nl);
-      return input.replace(/\r$/, "");
-    }
-  }
+	for (;;) {
+		let bytes: number;
+		try {
+			bytes = readSync(0, buf, 0, buf.length, null);
+		} catch (error) {
+			const code = (error as NodeJS.ErrnoException).code;
+			if (code === "EAGAIN") {
+				continue;
+			} // stdin not ready yet; retry
+			if (code === "EOF") {
+				break;
+			}
+			throw error;
+		}
+		if (bytes === 0) {
+			break;
+		} // EOF
+		readAny = true;
+		input += buf.toString("utf8", 0, bytes);
+		const nl = input.indexOf("\n");
+		if (nl !== -1) {
+			input = input.slice(0, nl);
+			return input.replace(/\r$/, "");
+		}
+	}
 
-  if (!readAny) {return null;} // EOF before any input
-  return input.replace(/\r$/, "");
+	if (!readAny) {
+		return null;
+	} // EOF before any input
+	return input.replace(/\r$/, "");
 }

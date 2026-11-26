@@ -1,7 +1,8 @@
-import { defineNuxtModule } from "@nuxt/kit";
 import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+
+import { defineNuxtModule } from "@nuxt/kit";
 
 /**
  * Turns the `_redirects` file that Nitro writes into one that Workers accept.
@@ -26,9 +27,7 @@ export function toWorkersRedirects(redirects: string): string {
 				return line;
 			}
 
-			return [source, `${target.slice(0, -"**".length)}:splat`, ...rest].join(
-				"\t",
-			);
+			return [source, `${target.slice(0, -"**".length)}:splat`, ...rest].join("\t");
 		})
 		.join("\n");
 }

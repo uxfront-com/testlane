@@ -1,4 +1,5 @@
 import { queryCollection } from "@nuxt/content/server";
+
 import { GIT_DATES } from "#git-dates";
 
 // The fields read below. Nitro's types don't see the collections Docus defines.
@@ -10,18 +11,18 @@ interface DocsPage {
 }
 
 /**
-* Serves `/sitemap.xml` in place of Docus's route, which robots.txt points
-* crawlers at. Docus lists its docs and landing pages, and skips the landing
-* collection when the app has its own app/pages/index.vue, so the homepage
-* never made it in. This lists the homepage first, then the docs pages by
-* Docus's rules: `sitemap: false` in a page's frontmatter leaves it out. Each
-* `<lastmod>` is the date of the last commit of the page's source file, or of
-* app/pages/index.vue for the homepage (modules/git-dates.ts), and is left out
-* when the build couldn't read git history.
-*
-* Nitro keeps the first handler for a route, and it scans the app's server/
-* before the layers'. Docus still adds the route to the prerendered ones.
-*/
+ * Serves `/sitemap.xml` in place of Docus's route, which robots.txt points
+ * crawlers at. Docus lists its docs and landing pages, and skips the landing
+ * collection when the app has its own app/pages/index.vue, so the homepage
+ * never made it in. This lists the homepage first, then the docs pages by
+ * Docus's rules: `sitemap: false` in a page's frontmatter leaves it out. Each
+ * `<lastmod>` is the date of the last commit of the page's source file, or of
+ * app/pages/index.vue for the homepage (modules/git-dates.ts), and is left out
+ * when the build couldn't read git history.
+ *
+ * Nitro keeps the first handler for a route, and it scans the app's server/
+ * before the layers'. Docus still adds the route to the prerendered ones.
+ */
 export default defineEventHandler(async (event) => {
 	const { siteUrl } = useRuntimeConfig(event).public;
 	const pages = (await queryCollection(event, "docs" as never).all()) as Array<DocsPage>;

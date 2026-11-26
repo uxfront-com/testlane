@@ -1,286 +1,326 @@
 // Entry point: config-dir resolution, parse, dispatch, error formatting (§4, §14).
 
 import { existsSync } from "node:fs";
+
+import { HELP, version } from "./cli/help.ts";
+import { parse } from "./cli/parse.ts";
+import type { ParseDeps, ParseResult } from "./cli/parse.ts";
+import { checkout } from "./commands/checkout.ts";
+import { clean, rm } from "./commands/clean.ts";
+import { code } from "./commands/code.ts";
+import { completions } from "./commands/completions.ts";
+import { config } from "./commands/config.ts";
+import { diff } from "./commands/diff.ts";
+import { doctor } from "./commands/doctor.ts";
+import { start, stop, logs, ps } from "./commands/lifecycle.ts";
+import { list, info, pick } from "./commands/list.ts";
+import { mcp } from "./commands/mcp.ts";
+import { run, exec, shell } from "./commands/process.ts";
+import { projects } from "./commands/projects.ts";
+import { setup } from "./commands/setup.ts";
+import { sync } from "./commands/sync.ts";
+import { isPathArgument } from "./config/detect.ts";
+import {
+	listProjectNames,
+	loadDefaults,
+	loadEffectiveProject,
+	projectExists,
+} from "./config/load.ts";
+import type { Ctx, Defaults, ProjectConfig } from "./config/schema.ts";
+import { coordsEqual, normalizeRepoUrl, parseUrlInput } from "./core/resolve.ts";
+import type { RefSpec } from "./core/resolve.ts";
+import { RealGhClient, unavailableGh } from "./git/gh.ts";
+import type { GhClient } from "./git/gh.ts";
 import { ExitCode, TestlaneError, isTestlaneError } from "./lib/errors.ts";
 import { Logger, colorEnabled } from "./lib/log.ts";
 import { defaultConfigDir } from "./lib/paths.ts";
-import { parse } from './cli/parse.ts';
-import type { ParseDeps, ParseResult } from './cli/parse.ts';
-import {
-  listProjectNames,
-  loadDefaults,
-  loadEffectiveProject,
-  projectExists,
-} from "./config/load.ts";
-import { coordsEqual, normalizeRepoUrl, parseUrlInput } from './core/resolve.ts';
-import type { RefSpec } from './core/resolve.ts';
-import { RealGhClient, unavailableGh } from './git/gh.ts';
-import type { GhClient } from './git/gh.ts';
-import type { Ctx, Defaults, ProjectConfig } from "./config/schema.ts";
-import { isPathArgument } from "./config/detect.ts";
-
-import { HELP, version } from "./cli/help.ts";
-import { checkout } from "./commands/checkout.ts";
-import { code } from "./commands/code.ts";
-import { list, info, pick } from "./commands/list.ts";
-import { clean, rm } from "./commands/clean.ts";
-import { projects } from "./commands/projects.ts";
-import { doctor } from "./commands/doctor.ts";
-import { config } from "./commands/config.ts";
-import { setup } from "./commands/setup.ts";
-import { run, exec, shell } from "./commands/process.ts";
-import { sync } from "./commands/sync.ts";
-import { start, stop, logs, ps } from "./commands/lifecycle.ts";
-import { diff } from "./commands/diff.ts";
-import { completions } from "./commands/completions.ts";
-import { mcp } from "./commands/mcp.ts";
 
 export interface MainOptions {
-  /** Injectable GitHub client; tests pass `unavailableGh` so gh is never spawned. */
-  gh?: GhClient;
+	/** Injectable GitHub client; tests pass `unavailableGh` so gh is never spawned. */
+	gh?: GhClient;
 }
 
 export async function main(argv: Array<string>, opts: MainOptions = {}): Promise<number> {
-  const debug = wantsDebug(argv);
-  try {
-    const configDir = resolveConfigDir(argv);
-    const defaults = loadDefaults(configDir);
-    const deps = buildDeps(configDir, defaults);
+	const debug = wantsDebug(argv);
+	try {
+		const configDir = resolveConfigDir(argv);
+		const defaults = loadDefaults(configDir);
+		const deps = buildDeps(configDir, defaults);
 
-    const result = parse(argv, deps);
+		const result = parse(argv, deps);
 
-    guardConfigDir(result, configDir);
+		guardConfigDir(result, configDir);
 
-    const flags = result.global;
-    const log = new Logger({
-      quiet: flags.quiet,
-      verbose: flags.verbose,
-      color: colorEnabled(flags.noColor),
-    });
-    const gh = opts.gh ?? new RealGhClient();
-    const ctx: Ctx = { configDir, defaults, flags, log, gh };
+		const flags = result.global;
+		const log = new Logger({
+			quiet: flags.quiet,
+			verbose: flags.verbose,
+			color: colorEnabled(flags.noColor),
+		});
+		const gh = opts.gh ?? new RealGhClient();
+		const ctx: Ctx = { configDir, defaults, flags, log, gh };
 
-    return await dispatch(result, ctx, defaults);
-  } catch (error) {
-    return formatError(error, debug);
-  }
+		return await dispatch(result, ctx, defaults);
+	} catch (error) {
+		return formatError(error, debug);
+	}
 }
 
 // ── Config-dir resolution (§5.1) ────────────────────────────────────────────
 
 /** --config-dir flag → $TESTLANE_CONFIG_DIR → ~/.testlane. */
 function resolveConfigDir(argv: Array<string>): string {
-  const fromFlag = preScanConfigDir(argv);
-  if (fromFlag) {return fromFlag;}
-  const fromEnv = process.env.TESTLANE_CONFIG_DIR;
-  if (fromEnv && fromEnv.trim() !== "") {return fromEnv;}
-  return defaultConfigDir();
+	const fromFlag = preScanConfigDir(argv);
+	if (fromFlag) {
+		return fromFlag;
+	}
+	const fromEnv = process.env.TESTLANE_CONFIG_DIR;
+	if (fromEnv && fromEnv.trim() !== "") {
+		return fromEnv;
+	}
+	return defaultConfigDir();
 }
 
 /** Lightweight pre-scan for --config-dir before parse (deps need it first). */
 function preScanConfigDir(argv: Array<string>): string | undefined {
-  for (let i = 0; i < argv.length; i++) {
-    const tok = argv[i]!;
-    if (tok === "--") {break;}
-    if (tok === "--config-dir") {return argv[i + 1];}
-    if (tok.startsWith("--config-dir=")) {return tok.slice("--config-dir=".length);}
-  }
-  return undefined;
+	for (let i = 0; i < argv.length; i++) {
+		const tok = argv[i]!;
+		if (tok === "--") {
+			break;
+		}
+		if (tok === "--config-dir") {
+			return argv[i + 1];
+		}
+		if (tok.startsWith("--config-dir=")) {
+			return tok.slice("--config-dir=".length);
+		}
+	}
+	return undefined;
 }
 
 function wantsDebug(argv: Array<string>): boolean {
-  if (process.env.TESTLANE_DEBUG === "1") {return true;}
-  const cut = argv.indexOf("--");
-  const pre = cut === -1 ? argv : argv.slice(0, cut);
-  return pre.includes("--verbose") || pre.includes("-v");
+	if (process.env.TESTLANE_DEBUG === "1") {
+		return true;
+	}
+	const cut = argv.indexOf("--");
+	const pre = cut === -1 ? argv : argv.slice(0, cut);
+	return pre.includes("--verbose") || pre.includes("-v");
 }
 
 // ── ParseDeps backed by config/load ─────────────────────────────────────────
 
 function buildDeps(configDir: string, defaults: Defaults): ParseDeps {
-  const commandNames = (name: string): Array<string> => {
-    try {
-      return Object.keys(loadEffectiveProject(configDir, name, defaults).commands);
-    } catch {
-      return [];
-    }
-  };
-  return {
-    projectExists: (name) => projectExists(configDir, name),
-    knownProjects: () => listProjectNames(configDir),
-    projectCommandNames: commandNames,
-    projectDefaultCommand: (name) => {
-      try {
-        return loadEffectiveProject(configDir, name, defaults).defaultCommand;
-      } catch {
-        return "code";
-      }
-    },
-    resolveUrlProject: (url) => resolveUrlProject(configDir, defaults, url),
-  };
+	const commandNames = (name: string): Array<string> => {
+		try {
+			return Object.keys(loadEffectiveProject(configDir, name, defaults).commands);
+		} catch {
+			return [];
+		}
+	};
+	return {
+		projectExists: (name) => projectExists(configDir, name),
+		knownProjects: () => listProjectNames(configDir),
+		projectCommandNames: commandNames,
+		projectDefaultCommand: (name) => {
+			try {
+				return loadEffectiveProject(configDir, name, defaults).defaultCommand;
+			} catch {
+				return "code";
+			}
+		},
+		resolveUrlProject: (url) => resolveUrlProject(configDir, defaults, url),
+	};
 }
 
 function resolveUrlProject(
-  configDir: string,
-  defaults: Defaults,
-  url: string,
+	configDir: string,
+	defaults: Defaults,
+	url: string,
 ): { project: string; ref?: RefSpec } | null {
-  const parsed = parseUrlInput(url);
-  if (!parsed) {return null;}
-  for (const name of listProjectNames(configDir)) {
-    let proj: ProjectConfig;
-    try {
-      proj = loadEffectiveProject(configDir, name, defaults);
-    } catch {
-      continue;
-    }
-    const coords = normalizeRepoUrl(proj.repo);
-    if (coords && coordsEqual(coords, parsed.coords)) {
-      return { project: name, ref: parsed.ref };
-    }
-  }
-  return null;
+	const parsed = parseUrlInput(url);
+	if (!parsed) {
+		return null;
+	}
+	for (const name of listProjectNames(configDir)) {
+		let proj: ProjectConfig;
+		try {
+			proj = loadEffectiveProject(configDir, name, defaults);
+		} catch {
+			continue;
+		}
+		const coords = normalizeRepoUrl(proj.repo);
+		if (coords && coordsEqual(coords, parsed.coords)) {
+			return { project: name, ref: parsed.ref };
+		}
+	}
+	return null;
 }
 
 // ── Config-dir existence guard (§5.1) ───────────────────────────────────────
 
 function guardConfigDir(result: ParseResult, configDir: string): void {
-  if (isExemptFromConfigDir(result)) {return;}
-  if (existsSync(configDir)) {return;}
-  throw new TestlaneError("E_CONFIG", `config directory does not exist: ${configDir}`, {
-    hint: "create it and add <project>.toml files, or pass --config-dir",
-  });
+	if (isExemptFromConfigDir(result)) {
+		return;
+	}
+	if (existsSync(configDir)) {
+		return;
+	}
+	throw new TestlaneError("E_CONFIG", `config directory does not exist: ${configDir}`, {
+		hint: "create it and add <project>.toml files, or pass --config-dir",
+	});
 }
 
 function isExemptFromConfigDir(result: ParseResult): boolean {
-  if (result.kind !== "top") {return false;}
-  if (result.verb === "help" || result.verb === "version" || result.verb === "doctor") {return true;}
-  if (result.verb === "completions") {return true;}
-  // `mcp` starts without a config dir. Each tool but `doctor` checks it per call (ADR-003).
-  if (result.verb === "mcp") {return true;}
-  // `setup` creates the config dir, so it must run when the dir is still absent.
-  if (result.verb === "setup") {return true;}
-  // `config path` is exempt; `config edit/validate` are not. `config add <url>`
-  // is, since it creates the config dir on a new machine, and so is
-  // `config detect <path>`, which reads only that directory (§9.12).
-  if (result.verb === "config") {
-    const sub = result.args[0];
-    if (sub === "add") {return configAddTarget(result.args.slice(1)) !== undefined;}
-    if (sub === "detect") {return isPathArgument(result.args.slice(1).find((a) => !a.startsWith("-") || a === "-"));}
-    return sub === undefined || sub === "path";
-  }
-  return false;
+	if (result.kind !== "top") {
+		return false;
+	}
+	if (result.verb === "help" || result.verb === "version" || result.verb === "doctor") {
+		return true;
+	}
+	if (result.verb === "completions") {
+		return true;
+	}
+	// `mcp` starts without a config dir. Each tool but `doctor` checks it per call (ADR-003).
+	if (result.verb === "mcp") {
+		return true;
+	}
+	// `setup` creates the config dir, so it must run when the dir is still absent.
+	if (result.verb === "setup") {
+		return true;
+	}
+	// `config path` is exempt; `config edit/validate` are not. `config add <url>`
+	// is, since it creates the config dir on a new machine, and so is
+	// `config detect <path>`, which reads only that directory (§9.12).
+	if (result.verb === "config") {
+		const sub = result.args[0];
+		if (sub === "add") {
+			return configAddTarget(result.args.slice(1)) !== undefined;
+		}
+		if (sub === "detect") {
+			return isPathArgument(result.args.slice(1).find((a) => !a.startsWith("-") || a === "-"));
+		}
+		return sub === undefined || sub === "path";
+	}
+	return false;
 }
 
 /** The URL `config add` was given, skipping its `--name`/`--root` values. */
 function configAddTarget(args: Array<string>): string | undefined {
-  for (let i = 0; i < args.length; i++) {
-    const tok = args[i]!;
-    if (tok === "--name" || tok === "--root") {
-      i += 1;
-      continue;
-    }
-    if (tok.startsWith("-") && tok !== "-") {continue;}
-    return parseUrlInput(tok) ? tok : undefined;
-  }
-  return undefined;
+	for (let i = 0; i < args.length; i++) {
+		const tok = args[i]!;
+		if (tok === "--name" || tok === "--root") {
+			i += 1;
+			continue;
+		}
+		if (tok.startsWith("-") && tok !== "-") {
+			continue;
+		}
+		return parseUrlInput(tok) ? tok : undefined;
+	}
+	return undefined;
 }
 
 // ── Dispatch ─────────────────────────────────────────────────────────────────
 
 async function dispatch(result: ParseResult, ctx: Ctx, defaults: Defaults): Promise<number> {
-  if (result.kind === "top") {
-    switch (result.verb) {
-      case "help":
-        process.stdout.write(HELP);
-        return ExitCode.SUCCESS;
-      case "version":
-        process.stdout.write(`testlane ${version()}\n`);
-        return ExitCode.SUCCESS;
-      case "projects":
-        return projects({ ctx, args: result.args });
-      case "doctor":
-        return doctor({ ctx, args: result.args });
-      case "config":
-        return config({ ctx, args: result.args });
-      case "setup":
-        return setup({ ctx, args: result.args });
-      case "completions":
-        return completions({ ctx, args: result.args });
-      case "mcp":
-        return mcp({ ctx, args: result.args });
-    }
-  }
+	if (result.kind === "top") {
+		switch (result.verb) {
+			case "help":
+				process.stdout.write(HELP);
+				return ExitCode.SUCCESS;
+			case "version":
+				process.stdout.write(`testlane ${version()}\n`);
+				return ExitCode.SUCCESS;
+			case "projects":
+				return projects({ ctx, args: result.args });
+			case "doctor":
+				return doctor({ ctx, args: result.args });
+			case "config":
+				return config({ ctx, args: result.args });
+			case "setup":
+				return setup({ ctx, args: result.args });
+			case "completions":
+				return completions({ ctx, args: result.args });
+			case "mcp":
+				return mcp({ ctx, args: result.args });
+		}
+	}
 
-  if (result.kind === "project") {
-    const project = loadEffectiveProject(ctx.configDir, result.project, defaults);
-    switch (result.verb) {
-      case "list":
-        // Bare `testlane <project>` on a TTY opens the interactive picker; an explicit
-        // `list` verb (or non-TTY/--json) always prints the plain table (§4.3/M2).
-        return result.defaulted
-          ? pick({ ctx, project, args: result.args })
-          : list({ ctx, project, args: result.args });
-      case "clean":
-        return clean({ ctx, project, args: result.args });
-      case "ps":
-        return ps({ ctx, project, args: result.args });
-    }
-  }
+	if (result.kind === "project") {
+		const project = loadEffectiveProject(ctx.configDir, result.project, defaults);
+		switch (result.verb) {
+			case "list":
+				// Bare `testlane <project>` on a TTY opens the interactive picker; an explicit
+				// `list` verb (or non-TTY/--json) always prints the plain table (§4.3/M2).
+				return result.defaulted
+					? pick({ ctx, project, args: result.args })
+					: list({ ctx, project, args: result.args });
+			case "clean":
+				return clean({ ctx, project, args: result.args });
+			case "ps":
+				return ps({ ctx, project, args: result.args });
+		}
+	}
 
-  // workspace
-  const project = loadEffectiveProject(ctx.configDir, result.project, defaults);
-  const wi = {
-    ctx,
-    project,
-    ref: result.ref,
-    args: result.args,
-    passthrough: result.passthrough,
-    commandName: result.commandName,
-  };
-  switch (result.verb) {
-    case "checkout":
-      return checkout(wi);
-    case "code":
-      return code(wi);
-    case "info":
-      return info(wi);
-    case "rm":
-      return rm(wi);
-    case "run":
-      return run(wi);
-    case "exec":
-      return exec(wi);
-    case "shell":
-      return shell(wi);
-    case "sync":
-      return sync(wi);
-    case "diff":
-      return diff(wi);
-    case "start":
-      return start(wi);
-    case "stop":
-      return stop(wi);
-    case "logs":
-      return logs(wi);
-    default:
-      throw new TestlaneError("E_INTERNAL", "unhandled workspace verb");
-  }
+	// workspace
+	const project = loadEffectiveProject(ctx.configDir, result.project, defaults);
+	const wi = {
+		ctx,
+		project,
+		ref: result.ref,
+		args: result.args,
+		passthrough: result.passthrough,
+		commandName: result.commandName,
+	};
+	switch (result.verb) {
+		case "checkout":
+			return checkout(wi);
+		case "code":
+			return code(wi);
+		case "info":
+			return info(wi);
+		case "rm":
+			return rm(wi);
+		case "run":
+			return run(wi);
+		case "exec":
+			return exec(wi);
+		case "shell":
+			return shell(wi);
+		case "sync":
+			return sync(wi);
+		case "diff":
+			return diff(wi);
+		case "start":
+			return start(wi);
+		case "stop":
+			return stop(wi);
+		case "logs":
+			return logs(wi);
+		default:
+			throw new TestlaneError("E_INTERNAL", "unhandled workspace verb");
+	}
 }
 
 // ── Error formatting (§13.5) ─────────────────────────────────────────────────
 
 function formatError(e: unknown, debug: boolean): number {
-  if (isTestlaneError(e)) {
-    process.stderr.write(`error(${e.errCode}): ${e.message}\n`);
-    if (e.hint) {process.stderr.write(`hint: ${e.hint}\n`);}
-    if (debug && e.stack) {process.stderr.write(`${e.stack}\n`);}
-    return e.code;
-  }
-  const err = e as Error;
-  process.stderr.write(`error(E_INTERNAL): ${err?.message ?? String(e)}\n`);
-  if (debug && err?.stack) {process.stderr.write(`${err.stack}\n`);}
-  return ExitCode.INTERNAL;
+	if (isTestlaneError(e)) {
+		process.stderr.write(`error(${e.errCode}): ${e.message}\n`);
+		if (e.hint) {
+			process.stderr.write(`hint: ${e.hint}\n`);
+		}
+		if (debug && e.stack) {
+			process.stderr.write(`${e.stack}\n`);
+		}
+		return e.code;
+	}
+	const err = e as Error;
+	process.stderr.write(`error(E_INTERNAL): ${err?.message ?? String(e)}\n`);
+	if (debug && err?.stack) {
+		process.stderr.write(`${err.stack}\n`);
+	}
+	return ExitCode.INTERNAL;
 }
 
 // Re-export for tests that want to assert the "gh disabled" path deterministically.

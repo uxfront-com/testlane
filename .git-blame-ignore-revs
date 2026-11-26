@@ -1,0 +1,5 @@
+# Format-only commits that `git blame` skips. GitHub reads this file by itself,
+# and locally `git config blame.ignoreRevsFile .git-blame-ignore-revs` turns it on.
+
+# style: format with the shared oxfmt config (#108)
+c8430216161f802ba889f362b8d928cae7f23dd5

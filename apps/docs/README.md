@@ -275,9 +275,9 @@ There's no `Content-Security-Policy`, since the scene and Nuxt's inline payload 
 
 ### Lighthouse
 
-CI's `docs build` job builds the static site, runs the SEO check on it and runs `pnpm --filter @uxfront/docs lighthouse` on every pull request that touches the docs. `lighthouserc.mjs` builds the config from the shared preset in `@uxfront/site-checks/lighthouse`.
+CI's `docs build` job builds the static site and runs the SEO check on it on every pull request that touches the docs. The `Lighthouse` workflow (`.github/workflows/lighthouse.yml`) audits it nightly, and only when `main` has moved since its last audit, through the shared workflow in `uxfront-com/.github`. It runs `pnpm --filter @uxfront/docs lighthouse` on the same static build. `lighthouserc.mjs` builds the config from the shared preset in `@uxfront/site-checks/lighthouse`.
 
-The config serves `dist` with `wrangler dev`, the way Cloudflare does, and audits six pages three times each: the homepage, Introduction, Quick Start, Review a Pull Request, Workspace Verbs and Project File. Accessibility or best practices below 0.95, or SEO below 1, fails the job. Performance only warns, since it varies with the runner.
+The config serves `dist` with `wrangler dev`, the way Cloudflare does, and audits six pages three times each: the homepage, Introduction, Quick Start, Review a Pull Request, Workspace Verbs and Project File. Accessibility or best practices below 0.95, or SEO below 1, fails the run. Performance only warns, since it varies with the runner. To audit a branch before it merges, start the workflow by hand from the Actions tab: a manual run always audits.
 
 To run it locally, build the static site as above first. It needs Google Chrome.
 

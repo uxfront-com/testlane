@@ -35,7 +35,7 @@ export function absoluteLinks(markdown: string, siteUrl: string) {
 		.split("\n")
 		.map((line) => {
 			const marker = line.match(FENCE)?.[1];
-			if (marker && (!fence || marker[0] === fence[0] && marker.length >= fence.length)) {
+			if (marker && (!fence || (marker[0] === fence[0] && marker.length >= fence.length))) {
 				fence = fence ? undefined : marker;
 				return line;
 			}

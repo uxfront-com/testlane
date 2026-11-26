@@ -6,9 +6,12 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 export default function setup(): void {
-  const repoRoot = fileURLToPath(new URL("..", import.meta.url));
-  const build = spawnSync("npx", ["tsc", "-p", "tsconfig.build.json"], { cwd: repoRoot, encoding: "utf8" });
-  if (build.status !== 0) {
-    throw new Error(`build failed:\n${build.stdout}${build.stderr}`);
-  }
+	const repoRoot = fileURLToPath(new URL("..", import.meta.url));
+	const build = spawnSync("npx", ["tsc", "-p", "tsconfig.build.json"], {
+		cwd: repoRoot,
+		encoding: "utf8",
+	});
+	if (build.status !== 0) {
+		throw new Error(`build failed:\n${build.stdout}${build.stderr}`);
+	}
 }

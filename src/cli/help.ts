@@ -8,25 +8,29 @@ import { dirname, join } from "node:path";
 export const PKG_NAME = "@uxfront/testlane";
 
 export function version(): string {
-  // Walk up from this module until we find Testlane's own package.json. The relative
-  // depth differs between source (src/cli/) and the compiled build (dist/src/cli/),
-  // so resolve by identity rather than a fixed number of "..".
-  let dir = import.meta.dirname;
-  for (let i = 0; i < 6; i++) {
-    const file = join(dir, "package.json");
-    if (existsSync(file)) {
-      try {
-        const pkg = JSON.parse(readFileSync(file, "utf8")) as { name?: string; version?: string };
-        if (pkg.name === PKG_NAME) {return pkg.version ?? "0.0.0";}
-      } catch {
-        // unreadable/invalid; keep walking up
-      }
-    }
-    const parent = dirname(dir);
-    if (parent === dir) {break;}
-    dir = parent;
-  }
-  return "0.0.0";
+	// Walk up from this module until we find Testlane's own package.json. The relative
+	// depth differs between source (src/cli/) and the compiled build (dist/src/cli/),
+	// so resolve by identity rather than a fixed number of "..".
+	let dir = import.meta.dirname;
+	for (let i = 0; i < 6; i++) {
+		const file = join(dir, "package.json");
+		if (existsSync(file)) {
+			try {
+				const pkg = JSON.parse(readFileSync(file, "utf8")) as { name?: string; version?: string };
+				if (pkg.name === PKG_NAME) {
+					return pkg.version ?? "0.0.0";
+				}
+			} catch {
+				// unreadable/invalid; keep walking up
+			}
+		}
+		const parent = dirname(dir);
+		if (parent === dir) {
+			break;
+		}
+		dir = parent;
+	}
+	return "0.0.0";
 }
 
 export const HELP = `testlane — materialize any git ref of a configured project into a runnable workspace

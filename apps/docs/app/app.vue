@@ -5,9 +5,7 @@
 const DocusApp = defineAsyncComponent(() => import("docus/app/app.vue"));
 
 const route = useRoute();
-const isDocs = computed(
-	() => route.path === "/docs" || route.path.startsWith("/docs/"),
-);
+const isDocs = computed(() => route.path === "/docs" || route.path.startsWith("/docs/"));
 
 useHead({
 	titleTemplate: (title) => (title ? `${title} - Testlane` : "Testlane"),

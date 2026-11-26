@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
+
 import { GITHUB_URL } from "../app/data/site";
 
 type AppConfig = {

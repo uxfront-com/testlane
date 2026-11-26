@@ -1,23 +1,23 @@
 {
-  "extends": "@uxfront/typescript-config/tsconfig.json",
-  "compilerOptions": {
-    "lib": ["ES2022"],
-    "module": "NodeNext",
-    "target": "ES2022",
-    "moduleResolution": "nodenext",
-    "moduleDetection": "force",
-    "allowImportingTsExtensions": true,
-    "rewriteRelativeImportExtensions": true,
-    "verbatimModuleSyntax": true,
-    "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "skipLibCheck": true,
-    "noEmit": false,
-    "declaration": false,
-    "sourceMap": false,
-    "outDir": "dist",
-    "rootDir": ".",
-    "types": ["node"]
-  },
-  "include": ["src", "bin"]
+	"extends": "@uxfront/typescript-config/tsconfig.json",
+	"compilerOptions": {
+		"lib": ["ES2022"],
+		"module": "NodeNext",
+		"target": "ES2022",
+		"moduleResolution": "nodenext",
+		"moduleDetection": "force",
+		"allowImportingTsExtensions": true,
+		"rewriteRelativeImportExtensions": true,
+		"verbatimModuleSyntax": true,
+		"strict": true,
+		"noUncheckedIndexedAccess": true,
+		"skipLibCheck": true,
+		"noEmit": false,
+		"declaration": false,
+		"sourceMap": false,
+		"outDir": "dist",
+		"rootDir": ".",
+		"types": ["node"]
+	},
+	"include": ["src", "bin"]
 }

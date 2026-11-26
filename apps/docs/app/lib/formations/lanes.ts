@@ -1,14 +1,7 @@
 import { defineFormation, mergeViews } from "@uxfront/scene";
 import type { AnchorDef, Formation, FormationOptions } from "@uxfront/scene";
 
-import {
-	BOX_X1,
-	LANES,
-	laneProgress,
-	laneReach,
-	laneY,
-	settleOf,
-} from "./lanes.geometry";
+import { BOX_X1, LANES, laneProgress, laneReach, laneY, settleOf } from "./lanes.geometry";
 
 /**
  * What Testlane does, drawn in light: one stream (the repository) from which

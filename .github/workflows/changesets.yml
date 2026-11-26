@@ -1,6 +1,10 @@
 # The npm trusted publisher for @uxfront/testlane names this file by its exact
 # filename. Renaming or moving changesets.yml revokes the publish credential,
 # and the release then fails with a misleading E404.
+#
+# The release itself runs in the shared workflow in uxfront-com/.github, pinned
+# by commit SHA. It opens or updates the "Version Packages" PR while changesets
+# are pending, and publishes to npm when that PR merges.
 name: Changesets
 
 on:
@@ -17,57 +21,14 @@ permissions: {}
 
 jobs:
   release:
-    name: Version or publish
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # A called workflow can only lower these. npm needs `id-token: write` here
+    # too, and the shared workflow passes it on only to its publish job.
     permissions:
       contents: write # version commit, git tags, GitHub releases
       pull-requests: write # the "Version Packages" PR
       id-token: write # npm trusted publishing (OIDC)
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-
-      # v6+ is required: older releases broke OIDC publishing under pnpm 11
-      # with an E404 that reads like a missing package (pnpm#11513, pnpm#11566).
-      - name: Setup pnpm
-        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
-
-      # No NODE_AUTH_TOKEN, on purpose. Trusted publishing mints a short-lived
-      # credential from the OIDC token above; there is no npm token to leak.
-      - name: Setup Node.js
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: .node-version
-          registry-url: "https://registry.npmjs.org"
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Typecheck
-        run: pnpm run typecheck
-
-      # Includes test/integration/packaging.test.ts, which asserts that every
-      # promised verb survives the build. `pnpm release` runs it again as the
-      # last thing before `changeset publish`.
-      - name: Test
-        run: pnpm test
-
-      # With any pending changeset: opens/updates the "Version Packages" PR and
-      # publishes nothing. With none: publishes @uxfront/testlane if its version is
-      # absent from the registry, then pushes the git tag and creates the
-      # GitHub release.
-      #
-      # v2 needs @changesets/cli 3. It takes the job's token by default (no
-      # GITHUB_TOKEN env), and pushes the version commit and the tag through the
-      # GitHub API. It reads what was published from the file CHANGESETS_OUTPUT
-      # names, which reaches `changeset publish` through `pnpm release`'s env.
-      - name: Version or publish
-        uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
-        with:
-          version-script: pnpm version-packages
-          publish-script: pnpm release
-          commit-message: "chore(release): version packages"
-          pr-title: "chore(release): version packages"
+    uses: uxfront-com/.github/.github/workflows/release.yml@18a1d7cb1576c8053a80f3d166cfefecd470f5b3 # main
+    with:
+      # Runs in the shared workflow's pack job, before anything reaches npm.
+      # guard:packaging asserts that every promised verb survives the build.
+      build: pnpm run typecheck && pnpm test && pnpm run build && pnpm run guard:packaging
