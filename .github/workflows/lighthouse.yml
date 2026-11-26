@@ -33,7 +33,7 @@ jobs:
       # heap than node's default.
       build: rm -rf apps/docs/.output && WORKERS_CI=1 NODE_OPTIONS=--max-old-space-size=4096 NUXT_TELEMETRY_DISABLED=1 pnpm --filter @uxfront/docs run generate
       # Six pages of the static build, served by `wrangler dev` the way
-      # Cloudflare serves them (apps/docs/lighthouserc.json). Accessibility and
+      # Cloudflare serves them (apps/docs/lighthouserc.mjs). Accessibility and
       # best practices below 0.95, or SEO below 1, fail the run. Performance
       # only warns, since it varies with the runner.
       audit: pnpm --filter @uxfront/docs lighthouse
