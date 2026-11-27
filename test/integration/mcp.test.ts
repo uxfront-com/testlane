@@ -466,6 +466,11 @@ describe("errors", () => {
 			expect(bad.value.error.errCode).toBe("E_USAGE");
 			expect(bad.value.error.message).toContain("invalid arguments for 'start'");
 		}
+		// zod 4's wording, which reaches MCP clients as it is.
+		const missing = await c.call("start", { project: "app", ref: "main" });
+		expect(missing.value.error.message).toBe(
+			"invalid arguments for 'start': command: Invalid input: expected string, received undefined",
+		);
 		// Nothing was started or checked out.
 		expect((await c.call("list", { project: "app" })).value).toEqual([]);
 		await c.close();

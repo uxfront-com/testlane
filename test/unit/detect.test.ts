@@ -4,7 +4,12 @@
 import { parse as parseToml } from "smol-toml";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { renderDraft, setDraftTransform, tomlText } from "../../src/config/detect-emit.ts";
+import {
+	renderDraft,
+	setDraftTransform,
+	tomlText,
+	validateDraft,
+} from "../../src/config/detect-emit.ts";
 import { globMatch, matchWorkspaces, parseWorkspaceYaml } from "../../src/config/detect-parse.ts";
 import { detect, isPathArgument, memoryFiles, normaliseRepoUrl } from "../../src/config/detect.ts";
 import type { Finding } from "../../src/config/detect.ts";
@@ -730,6 +735,12 @@ describe("rule 11: escaping and validation", () => {
 	it("a draft that doesn't validate is E_INTERNAL, never returned", async () => {
 		setDraftTransform((t) => `${t}\n[hooks]\nnot_a_hook = "x"\n`);
 		await expect(draft(F2_SINGLE_NUXT)).rejects.toMatchObject({ errCode: "E_INTERNAL" });
+	});
+
+	it("a draft with a bad command name says which rule it breaks", () => {
+		expect(() => validateDraft(`repo = "x"\n[commands."Bad Name"]\nrun = "x"\n`, false)).toThrow(
+			"config detect wrote a draft that doesn't validate: commands.Bad Name: must match ^[a-z0-9][a-z0-9:_-]*$",
+		);
 	});
 
 	it("no package.json: a valid draft with one note", async () => {

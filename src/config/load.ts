@@ -15,6 +15,7 @@ import { fnv1a32 } from "../lib/hash.ts";
 import { sha256Hex } from "../lib/hash.ts";
 import { resolvePath } from "../lib/paths.ts";
 import { printableLine } from "../lib/printable.ts";
+import { issueLines } from "./issues.ts";
 import { mergeRaw, parseRepoConfig, repoLabel } from "./repo.ts";
 import type { KeySource } from "./repo.ts";
 import { RawDefaultsSchema, RawProjectSchema } from "./schema.ts";
@@ -40,11 +41,7 @@ export class ConfigValidationError extends TestlaneError {
 }
 
 function zodIssues(file: string, err: z.ZodError): Array<ConfigIssue> {
-	return err.issues.map((issue) => ({
-		file,
-		path: issue.path.length ? issue.path.join(".") : "(root)",
-		message: issue.message,
-	}));
+	return issueLines(err.issues).map((line) => ({ file, ...line }));
 }
 
 // ── Discovery ───────────────────────────────────────────────────────────────
