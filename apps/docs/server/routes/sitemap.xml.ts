@@ -15,11 +15,12 @@ interface DocsPage {
  * Docus's @nuxtjs/sitemap, which nuxt.config.ts turns off. Docus's sitemap
  * lists its docs and landing pages, and skips the landing collection when the
  * app has its own app/pages/index.vue, so the homepage never makes it in, and
- * it has no `<lastmod>` for these pages. This lists the homepage first, then the docs pages by
- * Docus's rules: `sitemap: false` in a page's frontmatter leaves it out. Each
- * `<lastmod>` is the date of the last commit of the page's source file, or of
- * app/pages/index.vue for the homepage (modules/git-dates.ts), and is left out
- * when the build couldn't read git history.
+ * it has no `<lastmod>` for these pages. This lists the homepage first, then
+ * the docs pages by Docus's rules: `sitemap: false` in a page's frontmatter
+ * leaves it out. Each `<lastmod>` is the date of the last commit of the page's
+ * source file, or of app/pages/index.vue for the homepage
+ * (modules/git-dates.ts), and is left out when the build couldn't read git
+ * history.
  *
  * `nitro.prerender.routes` in nuxt.config.ts prerenders it.
  */

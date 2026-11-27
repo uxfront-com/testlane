@@ -19,10 +19,11 @@ const docs = (event: Parameters<typeof queryCollection>[0]) =>
 
 /**
  * The docs pages' Markdown copies, which nuxt-agent-discovery serves at
- * `/raw/<path>.md` and lists in llms.txt and sitemap.md. `agentDiscovery.source`
- * in nuxt.config.ts points here. Each copy is written from the page's source
- * file, not from its parsed body (server/utils/markdown-copy.ts says why). The
- * module adds the frontmatter and the sitemap link around it.
+ * `/raw/<path>.md` and lists in llms.txt and sitemap.md.
+ * `agentDiscovery.source` in nuxt.config.ts points here. Each copy is written
+ * from the page's source file, not from its parsed body
+ * (server/utils/markdown-copy.ts says why). The module adds the frontmatter and
+ * the sitemap link around it.
  *
  * It lives outside server/utils/ so that Nitro doesn't make its default export
  * an auto-import.
