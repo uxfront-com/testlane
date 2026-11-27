@@ -4,6 +4,7 @@
 import { parse as parseToml } from "smol-toml";
 
 import { printableLine, printableLines } from "../lib/printable.ts";
+import { issueLines } from "./issues.ts";
 import { ConfigValidationError } from "./load.ts";
 import { RawRepoSchema, USER_ONLY_MESSAGE } from "./schema.ts";
 import type { RawProject, RawRepo } from "./schema.ts";
@@ -33,10 +34,10 @@ export function parseRepoConfig(project: string, text: string): RawRepo {
 	const parsed = RawRepoSchema.safeParse(raw);
 	if (!parsed.success) {
 		throw new ConfigValidationError(
-			parsed.error.issues.map((issue) => ({
+			issueLines(parsed.error.issues).map((issue) => ({
 				file,
 				// Keys and messages can quote the file, so escape what a terminal would act on.
-				path: printableLine(issue.path.length ? issue.path.join(".") : "(root)"),
+				path: printableLine(issue.path),
 				message: printableLine(
 					issue.message === USER_ONLY_MESSAGE
 						? issue.message.replace("<project>", project)

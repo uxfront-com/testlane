@@ -8,6 +8,7 @@ import { parse as parseToml } from "smol-toml";
 import { TestlaneError } from "../lib/errors.ts";
 import { printableLine } from "../lib/printable.ts";
 import type { Finding } from "./detect.ts";
+import { issueLines } from "./issues.ts";
 import { RawProjectSchema, RawRepoSchema, USER_ONLY_KEYS } from "./schema.ts";
 
 export interface DraftOptions {
@@ -182,8 +183,8 @@ export function validateDraft(text: string, repoFile: boolean): Record<string, u
 	}
 	const result = (repoFile ? RawRepoSchema : RawProjectSchema).safeParse(parsed);
 	if (!result.success) {
-		const issues = result.error.issues
-			.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`)
+		const issues = issueLines(result.error.issues)
+			.map((i) => `${i.path}: ${i.message}`)
 			.join("; ");
 		throw new TestlaneError(
 			"E_INTERNAL",

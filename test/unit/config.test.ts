@@ -26,6 +26,18 @@ afterEach(() => {
 
 const write = (name: string, body: string) => writeFileSync(join(dir, name), body);
 
+function issuesOf(fn: () => void): ConfigValidationError {
+	try {
+		fn();
+	} catch (error) {
+		if (error instanceof ConfigValidationError) {
+			return error;
+		}
+		throw error;
+	}
+	throw new Error("expected a ConfigValidationError");
+}
+
 describe("loadProject — valid fixture → ProjectConfig", () => {
 	it("resolves explicit paths and defaults", () => {
 		write("defaults.toml", `editor = "zed"\n`);
@@ -118,6 +130,42 @@ describe("loadProject — invalid fixtures → aggregate errors", () => {
 			const err = error as ConfigValidationError;
 			expect(err.issues.some((i) => i.path === "setup.seed_files.0")).toBe(true);
 		}
+	});
+
+	it("reports a bad command name with the naming rule, not zod's record wrapper", () => {
+		write(
+			"bad.toml",
+			`repo = "x"\nrepo_path = "/r"\nworktrees_path = "/t"\n[commands."Bad Name"]\nrun = "x"\n[commands."Also Bad"]\nrun = "y"\n`,
+		);
+		const err = issuesOf(() => loadProject(dir, "bad", {}));
+		expect(err.issues).toEqual([
+			{
+				file: "bad.toml",
+				path: "commands.Bad Name",
+				message: "must match ^[a-z0-9][a-z0-9:_-]*$",
+			},
+			{
+				file: "bad.toml",
+				path: "commands.Also Bad",
+				message: "must match ^[a-z0-9][a-z0-9:_-]*$",
+			},
+		]);
+		expect(err.message.split("\n")[0]).toBe(
+			"bad.toml: commands.Bad Name: must match ^[a-z0-9][a-z0-9:_-]*$",
+		);
+	});
+
+	it("prints the issues the configuration docs quote, in zod 4's wording", () => {
+		// apps/docs/content/docs/5.configuration/1.overview.md and 2.project-file.md show these lines.
+		write(
+			"my-project.toml",
+			`repo = "x"\nrepo_path = "/r"\nworktrees_path = "/t"\nports = 11\nworktree_path = "y"\n`,
+		);
+		const err = issuesOf(() => loadProject(dir, "my-project", {}));
+		expect(err.message.split("\n")).toEqual([
+			"my-project.toml: ports: Too big: expected number to be <=10",
+			'my-project.toml: (root): Unrecognized key: "worktree_path"',
+		]);
 	});
 
 	it("unknown default_command is rejected", () => {
