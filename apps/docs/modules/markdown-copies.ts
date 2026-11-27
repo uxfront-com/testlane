@@ -9,16 +9,18 @@ import { stripFrontmatter } from "../server/utils/markdown-copy";
  * Gives server code the source of every Markdown page in `content/`, without
  * its frontmatter, as `MARKDOWN_SOURCES` from `#markdown-sources`, keyed by
  * its path in `content/` (a page's `stem` and `extension`, like
- * `docs/4.cli/6.exit-codes.md`). `server/routes/raw/[...slug].md.get.ts` and
- * `server/routes/llms-full.txt.get.ts` serve the pages' Markdown copies from
+ * `docs/4.cli/6.exit-codes.md`). `server/agent/source.ts`, which
+ * nuxt-agent-discovery serves `/raw/<path>.md` from, and
+ * `server/routes/llms-full.txt.get.ts` write the pages' Markdown copies from
  * it, so they need no file system where the server runs.
  *
- * Those two routes replace Nuxt Content's `/raw/**:slug.md` and nuxt-llms's
- * `/llms-full.txt`, which write the copies from the parsed pages. Both
- * modules register theirs for GET too, and the router keeps the last route
- * registered for a path and method, so this removes theirs.
+ * The llms-full.txt route replaces nuxt-llms's, which writes the copies from
+ * the parsed pages. nuxt-llms registers its route for GET too, and the router
+ * keeps the last route registered for a path and method, so this removes
+ * nuxt-llms's. Nuxt Content's own `/raw/**:slug.md` needs no removing, since
+ * nuxt-agent-discovery turns it off.
  */
-export const REPLACED_ROUTES = ["/raw/**:slug.md", "/llms-full.txt"];
+export const REPLACED_ROUTES = ["/llms-full.txt"];
 
 export default defineNuxtModule({
 	meta: { name: "markdown-copies" },

@@ -1,10 +1,11 @@
 /**
- * The Markdown copy of a docs page that `/raw/<path>.md` serves and
- * `llms-full.txt` joins, written from the page's source rather than from its
- * parsed body (audit A2). Nuxt Content's own copy stringifies the parsed body,
- * which writes tables as HTML `<table>` blocks and leaves MDC attribute residue
- * like `{rel="&#x22;nofollow&#x22;"}`. The source is Markdown already: its
- * tables stay tables, and its MDC blocks, like `::steps`, read as plain text.
+ * The Markdown copy of a docs page that `/raw/<path>.md` serves (through
+ * server/agent/source.ts) and `llms-full.txt` joins, written from the page's
+ * source rather than from its parsed body (audit A2). Nuxt Content's own copy
+ * stringifies the parsed body, which writes tables as HTML `<table>` blocks and
+ * leaves MDC attribute residue like `{rel="&#x22;nofollow&#x22;"}`. The source
+ * is Markdown already: its tables stay tables, and its MDC blocks, like
+ * `::steps`, read as plain text.
  */
 
 export interface MarkdownCopyInput {
