@@ -52,7 +52,9 @@ The refs, the project file and the workspace labels the page shows live in `app/
 
 ## The docs
 
-The documentation is built with Docus, through [`@uxfront/layer-docs`](https://www.npmjs.com/package/@uxfront/layer-docs), the second layer in `nuxt.config.ts`. Pages are markdown files in `content/docs/`, served under `/docs`. Number files and folders to order them in the sidebar, as in `1.getting-started/1.introduction.md`, which is served at `/docs/getting-started/introduction`. From those files, Docus builds the sidebar, search, table of contents, `llms.txt` and each page's Open Graph image, and the app adds a Markdown copy of each page at `/raw/<path>.md`, `llms-full.txt` and `sitemap.xml` (see [Search and AI search](#search-and-ai-search)). Docus also adds `sitemap.md`, `openapi.json` and `/raw/index.md` for AI agents, and a `Link` header on `/` that points at them.
+The documentation is built with Docus, through [`@uxfront/layer-docs`](https://www.npmjs.com/package/@uxfront/layer-docs), the second layer in `nuxt.config.ts`. Pages are markdown files in `content/docs/`, served under `/docs`. Number files and folders to order them in the sidebar, as in `1.getting-started/1.introduction.md`, which is served at `/docs/getting-started/introduction`. From those files, Docus builds the sidebar, search, table of contents, `llms.txt` and each page's Open Graph image, and the app adds a Markdown copy of each page at `/raw/<path>.md`, `llms-full.txt` and `sitemap.xml` (see [Search and AI search](#search-and-ai-search)).
+
+For AI agents, Docus also adds `sitemap.md`, `openapi.json` and `/raw/index.md`, and a `Link` header on `/` that points at them.
 
 How it shares the app with the homepage:
 
@@ -271,7 +273,9 @@ The static build also writes these headers into `dist/_headers`, from `routeRule
 
 There's no `Content-Security-Policy`, since the scene and Nuxt's inline payload would need a nonce or hash for each script. Browsers remember `Strict-Transport-Security` for a year, so keep it without `includeSubDomains` or `preload` unless every subdomain serves HTTPS.
 
-`robots.txt` lets every crawler in. Beside Docus's `User-agent: *` group, `robots.groups` in `nuxt.config.ts` names the AI crawlers we allow, so the policy is stated rather than implied: the answer engines (`OAI-SearchBot`, `ChatGPT-User`, `PerplexityBot`, `Claude-SearchBot` and `Claude-User`) and the crawlers that gather training data (`GPTBot`, `ClaudeBot`, `Google-Extended` and `CCBot`). Testlane is open-source documentation, so being in answers and in training data helps people find it. To keep one out, give its group `disallow: "/"` instead. `agentDiscovery.robots` in `nuxt.config.ts` turns off the agent list and the `Content-Signal` line that `nuxt-agent-discovery` would add, so this list is the only one.
+`robots.txt` lets every crawler in. Beside Docus's `User-agent: *` group, `robots.groups` in `nuxt.config.ts` names the AI crawlers we allow, so the policy is stated rather than implied: the answer engines (`OAI-SearchBot`, `ChatGPT-User`, `PerplexityBot`, `Claude-SearchBot` and `Claude-User`) and the crawlers that gather training data (`GPTBot`, `ClaudeBot`, `Google-Extended` and `CCBot`). Testlane is open-source documentation, so being in answers and in training data helps people find it. To keep one out, give its group `disallow: "/"` instead.
+
+`agentDiscovery.robots` in `nuxt.config.ts` turns off the agent list and the `Content-Signal` line that `nuxt-agent-discovery` would add, so this list is the only one.
 
 ### Lighthouse
 
