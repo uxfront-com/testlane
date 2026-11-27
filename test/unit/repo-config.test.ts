@@ -75,6 +75,24 @@ describe("repo schema", () => {
 		expect(err.issues.map((i) => i.path).sort()).toEqual(["(root)", "hooks"]);
 	});
 
+	it("reports a bad command name with the naming rule, not zod's record wrapper", () => {
+		const err = issuesOf(() => parseRepoConfig("app", `[commands."Bad Name"]\nrun = "x"\n`));
+		expect(err.message).toBe(
+			"app:.testlane.toml: commands.Bad Name: must match ^[a-z0-9][a-z0-9:_-]*$",
+		);
+	});
+
+	it("escapes control characters in a bad command name", () => {
+		const err = issuesOf(() => parseRepoConfig("app", `[commands."x\\u001b[2J"]\nrun = "x"\n`));
+		expect(err.issues).toEqual([
+			{
+				file: "app:.testlane.toml",
+				path: String.raw`commands.x\u001b[2J`,
+				message: "must match ^[a-z0-9][a-z0-9:_-]*$",
+			},
+		]);
+	});
+
 	it("labels a TOML syntax error with the repo file", () => {
 		const err = issuesOf(() => parseRepoConfig("app", `ports = = 1`));
 		expect(err.issues[0]!.file).toBe("app:.testlane.toml");
