@@ -1,25 +1,30 @@
 <!--
   A copy of Docus's docs page (docus/app/pages/[[lang]]/[...slug].vue, Docus
-  5.13.0) with these changes:
+  5.15.0) with these changes:
 
   - The separator above "Edit this page" and "Report an issue" is decorative,
     since it holds those links.
-  - The head is the app's own, in place of Docus's `useSeo`: a `TechArticle`
-    with the page's date and Open Graph image, published by UXFront, rather
-    than an `Article` published by an Organization named after the site (audit
-    S2), and breadcrumbs whose items are all pages, not group paths that only
-    redirect (S3). It adds `twitter:title`, `twitter:description` and a link to
-    the page's Markdown copy (G2, A4).
-  - The Open Graph card gets its alt text, and the whole description, commas
-    included. Docus drops the commas and cuts the description to keep the
-    card's URL under nuxt-og-image's length limit, but over that limit a
-    prerendered card's URL becomes a hash, so nothing needs cutting.
+  - The head is the app's own, in place of Docus's `useSeo`, which writes its
+    structured data through nuxt-schema-org (off in nuxt.config.ts): a
+    `TechArticle` with the page's date and Open Graph image, published by
+    UXFront and part of the site's `WebSite` (audit S2), and breadcrumbs whose
+    items are all pages, not group paths that only redirect (S3). It adds
+    `twitter:title`, `twitter:description` and a link to the page's Markdown
+    copy (G2, A4).
+  - The Open Graph card gets its alt text, and the whole description. Docus
+    cuts the description (`formatOgDescription`) to keep the card's URL under
+    nuxt-og-image's length limit, but over that limit a prerendered card's URL
+    becomes a hash, so nothing needs cutting.
+  - It imports `getLocaleKey` and the `DocsPage` type from the docus package,
+    where Docus's page imports them by relative path.
 
   Keep the rest in step with Docus's when it's upgraded.
 -->
 <script setup lang="ts">
-import type { ContentNavigationItem, Collections, DocsCollectionItem } from "@nuxt/content";
+import type { ContentNavigationItem, Collections } from "@nuxt/content";
 import { findPageHeadline } from "@nuxt/content/utils";
+import type { DocsPage } from "docus/app/types";
+import { getLocaleKey } from "docus/utils/locale";
 import { kebabCase } from "scule";
 
 import { GIT_DATES } from "#build/git-dates.mjs";
@@ -35,7 +40,9 @@ const { locale, isEnabled, t } = useDocusI18n();
 const { isOpen } = useAssistant();
 const appConfig = useAppConfig();
 const navigation = inject<Ref<Array<ContentNavigationItem>>>("navigation");
-const collectionName = computed(() => (isEnabled.value ? `docs_${locale.value}` : "docs"));
+const collectionName = computed(() =>
+	isEnabled.value ? `docs_${getLocaleKey(locale.value)}` : "docs",
+);
 
 const [{ data: page }, { data: surround }] = await Promise.all([
 	useAsyncData(
@@ -43,7 +50,7 @@ const [{ data: page }, { data: surround }] = await Promise.all([
 		() =>
 			queryCollection(collectionName.value as keyof Collections)
 				.path(route.path)
-				.first() as Promise<DocsCollectionItem>,
+				.first() as Promise<DocsPage>,
 	),
 	useAsyncData(`${kebabCase(route.path)}-surround`, () => {
 		return queryCollectionItemSurroundings(collectionName.value as keyof Collections, route.path, {
@@ -73,7 +80,7 @@ const ogImages = defineOgImage(
 	"Docs",
 	{
 		headline: headline.value,
-		title: title?.slice(0, 60),
+		title: formatOgTitle(title),
 		description,
 	},
 	{
@@ -146,9 +153,6 @@ const editLink = computed(() => {
 		.filter(Boolean)
 		.join("/");
 });
-
-// Add the page path to the prerender list
-addPrerenderPath(`/raw${route.path}.md`);
 </script>
 
 <template>
@@ -163,13 +167,13 @@ addPrerenderPath(`/raw${route.path}.md`);
 		>
 			<template #links>
 				<UButton
-					v-for="(link, index) in (page as DocsCollectionItem).links"
+					v-for="(link, index) in (page as DocsPage).links"
 					:key="index"
 					size="sm"
 					v-bind="link"
 				/>
 
-				<DocsPageHeaderLinks />
+				<LazyDocsPageHeaderLinks hydrate-on-idle />
 			</template>
 		</UPageHeader>
 
@@ -205,7 +209,7 @@ addPrerenderPath(`/raw${route.path}.md`);
 					</template>
 				</div>
 			</USeparator>
-			<UContentSurround :surround="surround" />
+			<LazyUContentSurround :surround="surround" hydrate-on-visible />
 		</UPageBody>
 
 		<template v-if="!isOpen" #right>

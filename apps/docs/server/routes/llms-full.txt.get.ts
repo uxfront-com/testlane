@@ -12,7 +12,8 @@ interface DocsPage {
 
 /**
  * Serves `/llms-full.txt`, every docs page's Markdown copy in sidebar order,
- * the same copies `/raw/<path>.md` serves. It replaces nuxt-llms's route,
+ * the same copies `/raw/<path>.md` serves, without the frontmatter and the
+ * sitemap link that nuxt-agent-discovery adds to each. It replaces nuxt-llms's route,
  * whose copies Nuxt Content writes from the parsed pages
  * (server/utils/markdown-copy.ts says why), and which
  * modules/markdown-copies.ts removes. llms.txt still links it.

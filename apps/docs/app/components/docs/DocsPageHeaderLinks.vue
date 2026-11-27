@@ -1,17 +1,19 @@
 <script setup lang="ts">
 /**
  * Replaces Docus's page menu (docus/app/components/docs/DocsPageHeaderLinks.vue,
- * Docus 5.13.0) with two changes. The button that opens the menu has a name,
- * since it only shows an arrow. And the menu leaves out "Copy MCP Server URL"
- * and "Add MCP Server": this site runs no MCP server (`mcp` in nuxt.config.ts).
- * Keep the rest in step with Docus's. It copies with the Clipboard API, since
- * VueUse, which Docus's uses, isn't the app's to import.
+ * Docus 5.15.0) with one change: the menu leaves out "Copy MCP Server URL" and
+ * "Add MCP Server", since this site runs no MCP server (`mcp` in
+ * nuxt.config.ts). Keep the rest in step with Docus's. It copies with the
+ * Clipboard API and joins the URLs itself, since VueUse and ufo, which
+ * Docus's uses, aren't the app's to import.
  */
 import { useRuntimeConfig } from "#imports";
 
 const route = useRoute();
 const runtimeConfig = useRuntimeConfig();
 const appBaseURL = runtimeConfig.app?.baseURL || "/";
+const rawPrefix =
+	(runtimeConfig.public.agentDiscovery as { rawPrefix?: string } | undefined)?.rawPrefix || "/raw";
 
 const { t } = useDocusI18n();
 const copied = ref(false);
@@ -23,8 +25,9 @@ async function copy(text: string) {
 	reset = setTimeout(() => (copied.value = false), 1500);
 }
 
+const rawPath = computed(() => `${rawPrefix.replace(/\/$/, "")}${route.path}.md`);
 const markdownLink = computed(
-	() => `${window?.location?.origin}${appBaseURL.replace(/\/?$/, "/")}raw${route.path}.md`,
+	() => `${window?.location?.origin}${appBaseURL.replace(/\/$/, "")}${rawPath.value}`,
 );
 const items = computed(() => [
 	[
@@ -57,7 +60,7 @@ const items = computed(() => [
 ]);
 
 async function copyPage() {
-	const page = await $fetch<string>(`/raw${route.path}.md`);
+	const page = await $fetch<string>(rawPath.value);
 	copy(page);
 }
 </script>
@@ -88,8 +91,8 @@ async function copyPage() {
 				icon="i-lucide-chevron-down"
 				color="neutral"
 				variant="soft"
+				:aria-label="t('docs.copy.more')"
 				class="border-l border-muted"
-				aria-label="More ways to use this page"
 			/>
 		</UDropdownMenu>
 	</UFieldGroup>

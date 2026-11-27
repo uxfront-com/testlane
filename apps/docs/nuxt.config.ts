@@ -77,9 +77,35 @@ export default defineNuxtConfig({
 	},
 
 	// robots.txt. Layers concatenate arrays, so these groups join Docus's
-	// `User-agent: *` group, and Docus's `Sitemap:` line stays.
+	// `User-agent: *` group. The `Sitemap:` line points at
+	// server/routes/sitemap.xml.ts, since Docus no longer sets one.
 	robots: {
 		groups: AI_CRAWLERS.map((userAgent) => ({ userAgent, allow: "/" })),
+		sitemap: "/sitemap.xml",
+	},
+
+	// nuxt-agent-discovery, which Docus installs, serves the Markdown copies at
+	// /raw/<path>.md from server/agent/source.ts, and llms.txt, sitemap.md and the
+	// discovery links around them. robots.txt keeps the site's own crawler list
+	// (AI_CRAWLERS) and no Content-Signal line, so the module adds neither. The
+	// static build never writes /.well-known/api-catalog, so it's off, and the
+	// Link header on / doesn't point at a page that 404s.
+	agentDiscovery: {
+		source: "~~/server/agent/source",
+		robots: { aiPolicy: false, contentSignal: false },
+		discovery: { apiCatalog: false },
+	},
+
+	// @nuxtjs/sitemap is off, so server/routes/sitemap.xml.ts serves
+	// /sitemap.xml with the homepage and each page's <lastmod>.
+	sitemap: {
+		enabled: false,
+	},
+
+	// nuxt-schema-org is off: app/plugins/structured-data.ts and the docs page
+	// write the site's JSON-LD, so it would add a second graph to every page.
+	schemaOrg: {
+		enabled: false,
 	},
 
 	// The docs pages' Open Graph cards, at the 1200×630 the social sites ask
@@ -158,7 +184,8 @@ export default defineNuxtConfig({
 		prerender: {
 			crawlLinks: true,
 			// /docs only redirects, so crawling the docs starts from the introduction.
-			routes: ["/", DOCS_ENTRY],
+			// Docus doesn't prerender /sitemap.xml, which nothing links to.
+			routes: ["/", DOCS_ENTRY, "/sitemap.xml"],
 			// Without this a prerendered route that 404s only prints an error, and
 			// `nuxt build` still exits 0. A dead link or a renamed content file would
 			// ship green, so the docs gate fails the build on one.

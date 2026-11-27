@@ -52,7 +52,7 @@ The refs, the project file and the workspace labels the page shows live in `app/
 
 ## The docs
 
-The documentation is built with Docus, through [`@uxfront/layer-docs`](https://www.npmjs.com/package/@uxfront/layer-docs), the second layer in `nuxt.config.ts`. Pages are markdown files in `content/docs/`, served under `/docs`. Number files and folders to order them in the sidebar, as in `1.getting-started/1.introduction.md`, which is served at `/docs/getting-started/introduction`. From those files, Docus builds the sidebar, search, table of contents, `llms.txt` and each page's Open Graph image, and the app adds a Markdown copy of each page at `/raw/<path>.md`, `llms-full.txt` and `sitemap.xml` (see [Search and AI search](#search-and-ai-search)).
+The documentation is built with Docus, through [`@uxfront/layer-docs`](https://www.npmjs.com/package/@uxfront/layer-docs), the second layer in `nuxt.config.ts`. Pages are markdown files in `content/docs/`, served under `/docs`. Number files and folders to order them in the sidebar, as in `1.getting-started/1.introduction.md`, which is served at `/docs/getting-started/introduction`. From those files, Docus builds the sidebar, search, table of contents, `llms.txt` and each page's Open Graph image, and the app adds a Markdown copy of each page at `/raw/<path>.md`, `llms-full.txt` and `sitemap.xml` (see [Search and AI search](#search-and-ai-search)). Docus also adds `sitemap.md`, `openapi.json` and `/raw/index.md` for AI agents, and a `Link` header on `/` that points at them.
 
 How it shares the app with the homepage:
 
@@ -62,7 +62,7 @@ How it shares the app with the homepage:
 - `app/app.config.ts` sets the theme colours and the GitHub, "Edit this page" and "Report an issue" links, with `rootDir: "apps/docs"`, since the docs don't live at the repository root.
 - Docus reads the site URL from `NUXT_SITE_URL`, which `nuxt.config.ts` defaults to the production origin.
 - Docus's MCP server is off (`mcp.enabled` in `nuxt.config.ts`), and so is its AI assistant, which only starts with an `AI_GATEWAY_API_KEY`.
-- `server/routes/sitemap.xml.ts` replaces Docus's `/sitemap.xml` route, as on unframework.dev. Docus's lists a landing page from `content/index.md`, which this site doesn't have, so it left the homepage out. This one lists `/` first, then the docs pages, each with the date its source file last changed.
+- `server/routes/sitemap.xml.ts` serves `/sitemap.xml`, as on unframework.dev, so `sitemap: { enabled: false }` in `nuxt.config.ts` turns off Docus's `@nuxtjs/sitemap`. Docus's sitemap lists a landing page from `content/index.md`, which this site doesn't have, so it leaves the homepage out, and it has no dates. This one lists `/` first, then the docs pages, each with the date its source file last changed.
 - In content, link to the generated files (`/llms.txt`, `/raw/…`) with `{external}`. Otherwise the router handles the click and shows the 404 page.
 
 ### Writing the docs
@@ -182,7 +182,7 @@ Every page passes axe's contrast rule in light and dark mode, and the homepage a
 - **Colours.** `app/app.css` darkens Nuxt UI's light-mode primary to the 700 shade, since green's default 500 fails AA contrast on white. `ui.prose.callout` in `app/app.config.ts` draws the callouts' text, links and inline code (`::note`, `::tip`, `::warning`, `::caution`) in the 800 shade in light mode, since Nuxt UI's 600 fails on their tinted background, `::warning`'s yellow worst at 2.75:1.
 - **Links.** `ui.prose.a` underlines links at rest, so a link in a sentence doesn't stand out by colour alone.
 - **Code.** `@uxfront/layer-docs` highlights code with the high-contrast GitHub themes, since Docus's default themes put comments below 4.5:1. To use other themes, set all three keys of `content.build.markdown.highlight.theme` in `nuxt.config.ts`: `default`, `light` and `dark`.
-- **Two Docus components.** `app/components/docs/DocsPageHeaderLinks.vue` names the button that opens the page menu, which only shows an arrow, and leaves out the menu's MCP items. `app/pages/[[lang]]/[...slug].vue` makes the separator above "Edit this page" decorative, since a separator can't hold links. Both are copies of Docus 5.13.0's, so keep them in step when you upgrade Docus.
+- **Two Docus components.** `app/components/docs/DocsPageHeaderLinks.vue` leaves out the page menu's MCP items, since the site runs no MCP server. `app/pages/[[lang]]/[...slug].vue` makes the separator above "Edit this page" decorative, since a separator can't hold links. Both are copies of Docus 5.15.0's, and each one's header lists what it changes, so keep the rest in step when you upgrade Docus.
 
 ### Redirects
 
@@ -195,9 +195,9 @@ A page that moves to another group keeps its old URL working through `MOVED_PAGE
 Search engines and answer engines, like ChatGPT search, Perplexity and Google's AI Overviews, read more than a page's text. The site gives them these, and `pnpm --filter @uxfront/docs check:seo` checks them in the static build:
 
 - **Sitemap dates.** Every URL in `sitemap.xml` has a `<lastmod>`: the date of the last commit that changed its source file, or `app/pages/index.vue` for `/`. `modules/git-dates.ts` reads them with `git log` when the site builds. A shallow clone would date every file to its one commit, so the build fetches the full history first with `git fetch --unshallow`. A build that can't read the history, like the `Dockerfile`'s, which has no git, leaves the dates out and warns, while the production build (`WORKERS_CI`) fails instead.
-- **Structured data.** The homepage has one JSON-LD graph: a `WebSite` for testlane.dev, Testlane as `SoftwareSourceCode` and UXFront as the `Organization` that publishes it. `useUxHead` also writes an `Organization` named Testlane, which `app/plugins/structured-data.ts` drops, since Testlane is software. Each docs page has a `TechArticle` with the page's date and Open Graph image, and a `BreadcrumbList` whose group items point at the group's first page, since the group's own path only redirects. `app/data/schema.ts` builds both.
+- **Structured data.** The site writes its own JSON-LD, so `schemaOrg: { enabled: false }` in `nuxt.config.ts` keeps Docus's `nuxt-schema-org` from adding a second graph to every page. The homepage has one JSON-LD graph: a `WebSite` for testlane.dev, Testlane as `SoftwareSourceCode` and UXFront as the `Organization` that publishes it. `useUxHead` also writes an `Organization` named Testlane, which `app/plugins/structured-data.ts` drops, since Testlane is software. Each docs page has a `TechArticle` with the page's date and Open Graph image, and a `BreadcrumbList` whose group items point at the group's first page, since the group's own path only redirects. `app/data/schema.ts` builds both.
 - **Social cards.** Every page has Open Graph and Twitter card tags, with a title and description of their own. The docs pages' generated cards are 1200 × 630px, with the alt text `DOCS_OG_IMAGE_ALT` in `app/data/site.ts`.
-- **Markdown copies.** `/raw/<path>.md` serves each docs page's source as Markdown: its title as an H1, its description as a quote, then its body, with its tables as Markdown tables. `llms-full.txt` joins all of them, and each docs page links its copy with `<link rel="alternate" type="text/markdown">`. Nuxt Content's own copies render tables as HTML and leave MDC attributes behind, so `modules/markdown-copies.ts` replaces its route and nuxt-llms's.
+- **Markdown copies.** `/raw/<path>.md` serves each docs page's source as Markdown: its title as an H1, its description as a quote, then its body, with its tables as Markdown tables. `nuxt-agent-discovery`, which Docus installs, serves the copies from `server/agent/source.ts` (`agentDiscovery.source` in `nuxt.config.ts`), and adds YAML frontmatter with the page's title, description and URL above each one and a link to `sitemap.md` below it. `llms-full.txt` joins the copies without those, and each docs page links its copy with `<link rel="alternate" type="text/markdown">`. Nuxt Content's own copies render tables as HTML and leave MDC attributes behind, so the site writes them from the source files, and `modules/markdown-copies.ts` replaces nuxt-llms's `llms-full.txt` route.
 
 The check reads `apps/docs/dist` only, and CI's `docs build` job runs it after the static build. Run it the same way after you build the static site (see [Deploying](#deploying)):
 
@@ -239,7 +239,7 @@ Here's how the pieces fit:
 - **The sitemap's dates come from git**, so the build fetches the clone's full history when Workers Builds clones only part of it, and fails when it can't (see [Search and AI search](#search-and-ai-search)).
 - **`modules/workers-redirects.ts` rewrites `_redirects` after the build**, because Nitro writes two rules that Workers handle wrongly. It removes the `/* /404.html 404` rule, which Workers reject, failing the whole upload. It also turns a target like `/docs/old/cli/**` into `/docs/old/cli/:splat`, since Workers read `**` as part of the path and forward the matched part only through `:splat`. Its test is `test/workers-redirects.test.ts`.
 
-A static site has no server, so one feature of the server build doesn't run on Cloudflare: the layer's redirect from `/` to `/llms.txt` for `curl` and for requests that accept `text/markdown`.
+A static site has no server, so one feature of the server build doesn't run on Cloudflare: a docs page answers a request that accepts `text/markdown` with its Markdown copy. On both builds, `/` answers with its HTML.
 
 To try the Cloudflare build locally, build it and serve it with Wrangler from the repository root:
 
@@ -271,7 +271,7 @@ The static build also writes these headers into `dist/_headers`, from `routeRule
 
 There's no `Content-Security-Policy`, since the scene and Nuxt's inline payload would need a nonce or hash for each script. Browsers remember `Strict-Transport-Security` for a year, so keep it without `includeSubDomains` or `preload` unless every subdomain serves HTTPS.
 
-`robots.txt` lets every crawler in. Beside Docus's `User-agent: *` group, `robots.groups` in `nuxt.config.ts` names the AI crawlers we allow, so the policy is stated rather than implied: the answer engines (`OAI-SearchBot`, `ChatGPT-User`, `PerplexityBot`, `Claude-SearchBot` and `Claude-User`) and the crawlers that gather training data (`GPTBot`, `ClaudeBot`, `Google-Extended` and `CCBot`). Testlane is open-source documentation, so being in answers and in training data helps people find it. To keep one out, give its group `disallow: "/"` instead.
+`robots.txt` lets every crawler in. Beside Docus's `User-agent: *` group, `robots.groups` in `nuxt.config.ts` names the AI crawlers we allow, so the policy is stated rather than implied: the answer engines (`OAI-SearchBot`, `ChatGPT-User`, `PerplexityBot`, `Claude-SearchBot` and `Claude-User`) and the crawlers that gather training data (`GPTBot`, `ClaudeBot`, `Google-Extended` and `CCBot`). Testlane is open-source documentation, so being in answers and in training data helps people find it. To keep one out, give its group `disallow: "/"` instead. `agentDiscovery.robots` in `nuxt.config.ts` turns off the agent list and the `Content-Signal` line that `nuxt-agent-discovery` would add, so this list is the only one.
 
 ### Lighthouse
 
