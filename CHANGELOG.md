@@ -1,5 +1,15 @@
 # Changelog
 
+## 4.0.0
+
+### Major Changes
+
+- bb9a9f3: Require Node.js 22 or later. Node.js 18 and 20 have reached end of life, so `engines.node` in `package.json` is now `>=22` and Testlane is tested on Node.js 22 and 24 only. **Breaking:** if you run Node.js 18 or 20, upgrade Node.js to 22 or later before you install this version.
+
+### Patch Changes
+
+- 78d3a93: Testlane now validates config files and MCP tool arguments with zod 4, so most validation messages read differently. For example, `ports: Number must be less than or equal to 10` is now `ports: Too big: expected number to be <=10`. The `file`, `path` and `message` fields of `config validate --json` and the exit codes stay the same, so only a script that matches on a message's text needs updating. A command name that breaks the naming rule still says which rule, as in `commands.Bad Name: must match ^[a-z0-9][a-z0-9:_-]*$`.
+
 ## 3.0.1
 
 ### Patch Changes
