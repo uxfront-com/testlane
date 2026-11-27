@@ -34,9 +34,9 @@ catalogs:
   # built and tested on (@uxfront/layer-ui and layer-docs need nuxt ^4.5).
   nuxt:
     "@nuxt/content": 3.17.0
-    "@nuxt/kit": 4.6.4
+    "@nuxt/kit": 4.7.0
     docus: 5.15.0
-    nuxt: 4.6.4
+    nuxt: 4.7.0
     typescript: ^6.0.3
     vue: 3.5.46
     vue-router: 5.5.1
