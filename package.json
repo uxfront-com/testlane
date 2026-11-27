@@ -55,7 +55,7 @@
 		"@uxfront/oxfmt-config": "^0.2.0",
 		"@uxfront/oxlint-config": "^0.2.0",
 		"@uxfront/typescript-config": "^0.2.0",
-		"oxfmt": "^0.79.0",
+		"oxfmt": "^0.80.0",
 		"oxlint": "^1.94.0",
 		"typescript": "^7.0.2",
 		"vitest": "^2.1.8"
