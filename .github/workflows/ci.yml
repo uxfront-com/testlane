@@ -49,8 +49,8 @@ jobs:
           exit 1
 
   # Two legs: the floor that `engines.node` in package.json promises, and the
-  # line the repository runs on, read from .node-version. setup-node ignores
-  # whichever of the two inputs a leg leaves empty.
+  # line the repository runs on. The setup action reads .node-version unless a
+  # leg sets node-version.
   test:
     name: node ${{ matrix.name }}
     runs-on: ubuntu-latest
@@ -61,23 +61,15 @@ jobs:
           - name: 22 (floor)
             node-version: "22"
           - name: current (.node-version)
-            node-version-file: .node-version
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up pnpm
-        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
-
-      - name: Set up Node ${{ matrix.name }}
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: ${{ matrix.node-version }}
-          node-version-file: ${{ matrix.node-version-file }}
-          cache: pnpm
-
       # The CLI only, as the `docs build` job installs apps/docs only.
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile --filter @uxfront/testlane
+      - name: Setup
+        uses: uxfront-com/.github/.github/actions/setup@35f7cdaf9b3c62c04b411c6c454c6f75ae43e54b # main
+        with:
+          filter: "@uxfront/testlane"
+          node-version: ${{ matrix.node-version }}
 
       - name: Typecheck
         run: pnpm run typecheck
@@ -88,29 +80,30 @@ jobs:
       - name: Test
         run: pnpm test
 
-  # oxlint with the shared uxfront config (oxlint.config.ts), over the whole
-  # repository, apps/docs included. Errors fail the job, and warnings are only
-  # reported. `--format=github` turns each finding into an annotation on the PR.
+  # oxfmt and oxlint with the shared uxfront configs (oxfmt.config.ts,
+  # oxlint.config.ts), over the whole repository, apps/docs included. The format
+  # step fails on any file oxfmt would change, and lint errors fail the lint step,
+  # while warnings are only reported. `--format=github` turns each lint finding
+  # into an annotation on the PR.
   lint:
-    name: Lint
+    name: Lint and format
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up pnpm
-        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
-
-      - name: Set up Node
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      # oxfmt and oxlint need only the root's dev dependencies, even for apps/docs.
+      - name: Setup
+        uses: uxfront-com/.github/.github/actions/setup@35f7cdaf9b3c62c04b411c6c454c6f75ae43e54b # main
         with:
-          node-version-file: .node-version
-          cache: pnpm
+          filter: "@uxfront/testlane"
 
-      # oxlint needs only the root's dev dependencies, even for apps/docs.
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile --filter @uxfront/testlane
+      - name: Format
+        id: format
+        run: pnpm run format:check
 
+      # Runs after a failed format step too, so one run reports both.
       - name: Lint
+        if: success() || steps.format.outcome == 'failure'
         run: pnpm run lint --format=github
 
   # The `test` job above runs the root scripts only, never apps/docs' build or
@@ -152,24 +145,15 @@ jobs:
             echo "No apps/docs changes — skipping the docs build."
           fi
 
-      - name: Set up pnpm
-        if: steps.filter.outputs.changed == 'true'
-        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
-
       # .node-version names the Node line the docs image ships on (the
       # `node:<line>-slim` images in apps/docs/Dockerfile), so keep the two in step.
-      - name: Set up Node
+      # The install's `--frozen-lockfile` is half the gate: it fails when a
+      # dependency bump in apps/docs/package.json never made it into pnpm-lock.yaml.
+      - name: Setup
         if: steps.filter.outputs.changed == 'true'
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        uses: uxfront-com/.github/.github/actions/setup@35f7cdaf9b3c62c04b411c6c454c6f75ae43e54b # main
         with:
-          node-version-file: .node-version
-          cache: pnpm
-
-      # `--frozen-lockfile` is half the gate: it fails when a dependency bump in
-      # apps/docs/package.json never made it into pnpm-lock.yaml.
-      - name: Install dependencies
-        if: steps.filter.outputs.changed == 'true'
-        run: pnpm install --frozen-lockfile --filter @uxfront/docs
+          filter: "@uxfront/docs"
 
       - name: Test
         if: steps.filter.outputs.changed == 'true'
@@ -185,7 +169,7 @@ jobs:
         run: pnpm --filter @uxfront/docs run build
 
       # The production build: what Workers Builds deploys to testlane.dev, and
-      # what Lighthouse audits below, since the server build above is noindex.
+      # what the SEO check below reads, since the server build above is noindex.
       # The server build's .output goes first: Nitro's prerenderer serves files
       # it finds in .output/public, so `/` would come out as the server build's
       # page, noindex and pointing at its own chunks.
@@ -201,19 +185,11 @@ jobs:
 
       # The tags, sitemap, robots.txt, llms.txt, Markdown copies, structured
       # data and redirects of every page in the static build (apps/docs/README.md,
-      # "Search and AI search"). It reads dist/ only, so it runs before
-      # Lighthouse and fails fast, naming the page and the rule.
+      # "Search and AI search"). It reads dist/ only and fails fast, naming the
+      # page and the rule.
       - name: Check SEO
         if: steps.filter.outputs.changed == 'true'
         run: pnpm --filter @uxfront/docs check:seo
-
-      # Six pages of the static build, served by `wrangler dev` the way
-      # Cloudflare serves them (apps/docs/lighthouserc.json). Accessibility and
-      # best practices below 0.95, or SEO below 1, fail the job. Performance only
-      # warns, since it varies with the runner.
-      - name: Lighthouse
-        if: steps.filter.outputs.changed == 'true'
-        run: pnpm --filter @uxfront/docs lighthouse
 
       # `nuxt typecheck` is deliberately NOT in this gate. On 5925b6e it reports
       # 3 errors, all 3 inside node_modules/@uxfront/layer-docs and none in
